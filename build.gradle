@@ -1,0 +1,102 @@
+plugins {
+    id 'java'
+    id 'jacoco'
+    id 'org.springframework.boot' version '3.5.6' apply(false)
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+jacoco {
+    toolVersion = '0.8.13'
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+allprojects {
+    group = 'com.curihous'
+    version = '0.0.1-SNAPSHOT'
+
+    repositories {
+        mavenCentral()
+    }
+}
+
+subprojects {
+    apply {
+        plugin 'java'
+        plugin 'io.spring.dependency-management'
+        plugin 'jacoco'
+    }
+
+    configurations {
+        compileOnly {
+            extendsFrom annotationProcessor
+        }
+    }
+
+    dependencyManagement {
+        imports {
+            mavenBom "org.springframework.boot:spring-boot-dependencies:3.5.6"
+        }
+    }
+
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+
+    dependencies {
+        // lombok
+        compileOnly 'org.projectlombok:lombok'
+        annotationProcessor 'org.projectlombok:lombok'
+
+        // test
+        testImplementation 'org.springframework.boot:spring-boot-starter-test'
+        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    }
+
+    tasks.withType(Test).configureEach {
+        useJUnitPlatform()
+        finalizedBy 'jacocoTestReport'
+
+        jacoco {
+            includes = ['com.curihous.qbit.*']
+            excludes = ['jdk.*', 'sun.*']
+        }
+    }
+
+    tasks.named('jacocoTestReport', JacocoReport).configure {
+        dependsOn test
+
+        reports {
+            xml.required.set(true)
+            html.required.set(false)
+            csv.required.set(false)
+        }
+
+        def excludedPatterns = ["com/curihous/qbit/**/dto/**"]
+
+        def originalClassDirs = files(classDirectories)
+
+        classDirectories.setFrom(
+                originalClassDirs.collect {
+                    fileTree(dir: it, exclude: excludedPatterns)
+                }
+        )
+
+        onlyIf {
+            System.getenv('TEST_REPORT') == 'true'
+        }
+    }
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
