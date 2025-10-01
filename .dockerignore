@@ -1,0 +1,60 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Build outputs (Docker 빌드 시 다시 생성됨)
+**/build/
+**/bin/
+**/out/
+**/target/
+
+# Gradle 캐시 (Docker 내부에서 새로 다운로드)
+.gradle/
+**/.gradle/
+
+# IDE 설정
+.idea/
+.vscode/
+.settings/
+.classpath
+.project
+*.iml
+*.iws
+*.ipr
+
+# OS 파일
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 로그 파일
+*.log
+logs/
+
+# 테스트 결과
+**/test-results/
+**/reports/
+
+# 임시 파일
+*.tmp
+*.temp
+*.swp
+*~
+
+# 문서 (이미지에 불필요)
+*.md
+README.md
+LICENSE
+docs/
+
+# Docker 관련
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+Jenkinsfile
+
