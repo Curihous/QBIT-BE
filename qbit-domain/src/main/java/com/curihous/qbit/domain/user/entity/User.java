@@ -27,9 +27,6 @@ public class User extends BaseTimeEntity {
     @Column(unique = true, nullable = false, length = 10)
     private String nickname;
 
-    @Column(name = "user_name")
-    private String userName;
-
     @Column(name = "provider", nullable = false)
     private String provider;
 
@@ -48,11 +45,10 @@ public class User extends BaseTimeEntity {
     private Boolean isNotificationEnabled = true;
 
     @Builder
-    public User(String email, String nickname, String userName, String provider,
+    public User(String email, String nickname, String provider,
                 LoginType loginType) {
         this.email = email;
         this.nickname = nickname;
-        this.userName = userName;
         this.provider = provider;
         this.loginType = loginType;
         this.isActive = true;

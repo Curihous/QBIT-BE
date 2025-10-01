@@ -72,9 +72,8 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             
             return existingUser;
         } else {
-            // 임시 닉네임으로 새 사용자 생성
-            String tempNickname = email.split("@")[0];
-            User newUser = oAuth2Attributes.toEntity(tempNickname);
+            // 카카오에서 받은 닉네임으로 새 사용자 생성
+            User newUser = oAuth2Attributes.toEntity();
             return userRepository.save(newUser);
         }
     }

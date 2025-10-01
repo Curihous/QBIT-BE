@@ -10,7 +10,7 @@ import java.util.Map;
 // OAuth2 제공업체에서 받은 사용자 정보
 public record OAuth2Attributes(
     String email,        // 이메일
-    String userName,     // 사용자명
+    String nickname,     // 닉네임
     String provider,     // 제공업체명
     LoginType loginType, // 로그인 타입
     boolean isNewUser    // 신규 가입 여부
@@ -39,11 +39,10 @@ public record OAuth2Attributes(
     }
 
     // User 엔티티로 변환
-    public User toEntity(String nickname) {
+    public User toEntity() {
         return User.builder()
                 .email(this.email)
-                .nickname(nickname)
-                .userName(this.userName)
+                .nickname(this.nickname)
                 .provider(this.provider)
                 .loginType(this.loginType)
                 .build();
@@ -51,6 +50,6 @@ public record OAuth2Attributes(
 
     // 신규 가입 여부 변경
     public OAuth2Attributes withNewUser(boolean isNewUser) {
-        return new OAuth2Attributes(this.email, this.userName, this.provider, this.loginType, isNewUser);
+        return new OAuth2Attributes(this.email, this.nickname, this.provider, this.loginType, isNewUser);
     }
 }
