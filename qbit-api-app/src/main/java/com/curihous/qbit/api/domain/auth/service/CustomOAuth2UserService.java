@@ -38,11 +38,14 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         // 사용자 정보 DTO 생성
         OAuth2Attributes oAuth2Attributes = OAuth2Attributes.of(registrationId, oAuth2UserAttributes);
 
+        // 신규 사용자 여부 확인 (이번 인증 흐름에서 생성되었는지 확인)
+        boolean userExistedBefore = userRepository.existsByEmail(oAuth2Attributes.email());
+        
         // 회원가입 및 로그인 (User를 저장하며 가져옴)
         User user = getOrSave(oAuth2Attributes);
-
-        // 신규 사용자 여부 확인 (DB에서 새로 생성된 사용자인지 확인)
-        boolean isNewUser = user.getCreatedAt().equals(user.getUpdatedAt());
+        
+        // 방금 생성된 사용자인지 판단 (이전에 없었으면 신규)
+        boolean isNewUser = !userExistedBefore;
         
         // OAuth2UserDetails 반환
         return new OAuth2UserDetails(
