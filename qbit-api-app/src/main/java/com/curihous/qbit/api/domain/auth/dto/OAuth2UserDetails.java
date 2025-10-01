@@ -29,6 +29,7 @@ public record OAuth2UserDetails(
 
     @Override
     public String getName() {
-        return (String) attributes.get(nameAttributeKey);
+        Object nameAttribute = attributes.get(nameAttributeKey);
+        return nameAttribute != null ? nameAttribute.toString() : null;
     }
 }
