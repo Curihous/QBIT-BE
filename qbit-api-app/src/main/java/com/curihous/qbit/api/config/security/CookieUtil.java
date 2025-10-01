@@ -8,8 +8,10 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.env.Environment;
+import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.util.Arrays;
 
 @Slf4j
@@ -21,17 +23,19 @@ public class CookieUtil {
 
     public void addCookie(HttpServletResponse response, String name, String value, int maxAge) {
         try {
-            Cookie cookie = new Cookie(name, value);
-            cookie.setPath("/");
-            cookie.setHttpOnly(true);
-            
             // 프로덕션 환경에서 쿠키가 HTTPS를 통해서만 전송됨
             // 개발 환경에서는 로컬 테스트를 위해 HTTP 허용
             boolean isDevProfile = Arrays.asList(environment.getActiveProfiles()).contains("dev");
-            cookie.setSecure(!isDevProfile);
             
-            cookie.setMaxAge(maxAge);
-            response.addCookie(cookie);
+            ResponseCookie cookie = ResponseCookie.from(name, value)
+                    .path("/")
+                    .httpOnly(true)
+                    .secure(!isDevProfile)
+                    .maxAge(Duration.ofSeconds(maxAge))
+                    .sameSite("Lax") // SameSite=Lax: CSRF 공격을 방지하면서도 일반적인 탐색에서는 쿠키를 전송
+                    .build();
+            
+            response.addHeader("Set-Cookie", cookie.toString());
         } catch (Exception e) {
             throw new QbitException(ErrorCode.COOKIE_ADD_FAILED);
         }
