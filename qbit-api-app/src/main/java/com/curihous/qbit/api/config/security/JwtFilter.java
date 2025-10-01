@@ -29,11 +29,16 @@ public class JwtFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
         String jwt = resolveToken(request);
 
-        if (StringUtils.hasText(jwt) && !jwtUtil.isAccessTokenExpired(jwt)) {
+        if (StringUtils.hasText(jwt)) {
             try {
-                Authentication authentication = jwtUtil.getAuthentication(jwt);
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+                // 토큰 만료 체크와 인증 처리를 모두 try 안에서 수행
+                // 예외 발생 시 SecurityContext를 초기화하고 401 반환
+                if (!jwtUtil.isAccessTokenExpired(jwt)) {
+                    Authentication authentication = jwtUtil.getAuthentication(jwt);
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
             } catch (QbitException e) {
+                // JWT 검증 실패 시 SecurityContext 초기화
                 SecurityContextHolder.clearContext();
             }
         }
