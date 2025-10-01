@@ -2,9 +2,10 @@ package com.curihous.qbit.domain.user.entity;
 
 import com.curihous.qbit.common.entity.BaseTimeEntity;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.*;
 
 @Entity
 @Table(name = "users")
@@ -17,13 +18,13 @@ public class User extends BaseTimeEntity {
     @Column(name = "user_id")
     private Long userId;
 
-    @Column(name = "email", unique = true, nullable = false)
+    @Email
+    @NotBlank
+    @Column(unique = true, nullable = false)
     private String email;
 
-    @Column(name = "password", nullable = false)
-    private String password;
-
-    @Column(name = "nickname", nullable = false)
+    @NotBlank
+    @Column(unique = true, nullable = false, length = 10)
     private String nickname;
 
     @Column(name = "user_name")
@@ -32,11 +33,36 @@ public class User extends BaseTimeEntity {
     @Column(name = "provider", nullable = false)
     private String provider;
 
-    public User(String email, String password, String nickname, String userName, String provider) {
+    @Enumerated(EnumType.STRING)
+    @NotNull
+    @Column(nullable = false)
+    private LoginType loginType;
+
+    // 간단한 상태 관리
+    // TODO: 기획에 따른 상태 관리 수정
+    @Column(nullable = false)
+    private Boolean isActive = true;
+
+    // 알림 설정
+    @Column(nullable = false)
+    private Boolean isNotificationEnabled = true;
+
+    @Builder
+    public User(String email, String nickname, String userName, String provider,
+                LoginType loginType) {
         this.email = email;
-        this.password = password;
         this.nickname = nickname;
         this.userName = userName;
         this.provider = provider;
+        this.loginType = loginType;
+        this.isActive = true;
+    }
+
+    public void deactivate() {
+        this.isActive = false;
+    }
+
+    public void activate() {
+        this.isActive = true;
     }
 }

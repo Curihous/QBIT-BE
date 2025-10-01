@@ -26,9 +26,26 @@ spring:
           max-idle: 8
           min-idle: 0
 
+# OAuth2
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          kakao:
+            client-id: ${KAKAO_CLIENT_ID}
+            client-secret: ${KAKAO_CLIENT_SECRET}
+
+# JWT 
+jwt:
+  secret:
+    access: ${JWT_ACCESS_SECRET}
+    refresh: ${JWT_REFRESH_SECRET}
+
 logging:
   level:
     com.curihous.qbit: DEBUG
     org.springframework.web: DEBUG
     org.hibernate.SQL: DEBUG
     org.springframework.data.redis: DEBUG
+    org.springframework.security: DEBUG

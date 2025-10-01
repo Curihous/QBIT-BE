@@ -1,0 +1,82 @@
+package com.curihous.qbit.domain.auth.service;
+
+import com.curihous.qbit.common.exception.ErrorCode;
+import com.curihous.qbit.common.exception.QbitException;
+import com.curihous.qbit.domain.auth.dto.OAuth2Attributes;
+import com.curihous.qbit.domain.auth.dto.OAuth2UserDetails;
+import com.curihous.qbit.domain.user.entity.User;
+import com.curihous.qbit.domain.user.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Map;
+
+@Service
+@RequiredArgsConstructor
+public class CustomOAuth2UserService extends DefaultOAuth2UserService {
+
+    private final UserRepository userRepository;
+
+    @Override
+    @Transactional
+    public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
+        // OAuth2 제공업체에서 사용자 정보 가져오기
+        Map<String, Object> oAuth2UserAttributes = super.loadUser(userRequest).getAttributes();
+
+        // registrationId 가져오기 (kakao)
+        String registrationId = userRequest.getClientRegistration().getRegistrationId();
+
+        // userNameAttributeName 가져오기
+        String userNameAttributeName = userRequest.getClientRegistration().getProviderDetails()
+                .getUserInfoEndpoint().getUserNameAttributeName();
+
+        // 사용자 정보 DTO 생성
+        OAuth2Attributes oAuth2Attributes = OAuth2Attributes.of(registrationId, oAuth2UserAttributes);
+
+        // 회원가입 및 로그인 (User를 저장하며 가져옴)
+        User user = getOrSave(oAuth2Attributes);
+
+        // 신규 사용자 여부 확인 (DB에서 새로 생성된 사용자인지 확인)
+        boolean isNewUser = user.getCreatedAt().equals(user.getUpdatedAt());
+        
+        // OAuth2UserDetails 반환
+        return new OAuth2UserDetails(
+                oAuth2UserAttributes, 
+                userNameAttributeName, 
+                user.getEmail(), 
+                isNewUser, 
+                user.getUserId()
+        );
+    }
+
+    @Transactional
+    public User getOrSave(OAuth2Attributes oAuth2Attributes) {
+        String email = oAuth2Attributes.email();
+        User existingUser = userRepository.findByEmail(email).orElse(null);
+
+        if (existingUser != null) {
+            // 기존 사용자 - 로그인 타입 확인
+            if (!existingUser.getLoginType().equals(oAuth2Attributes.loginType())) {
+                throw new QbitException(ErrorCode.EMAIL_ALREADY_REGISTERED);
+            }
+            
+            // 기존 사용자 활성화 상태 확인
+            if (!existingUser.getIsActive()) {
+                throw new QbitException(ErrorCode.USER_STATUS_IS_NOT_ACTIVE);
+            }
+            
+            return existingUser;
+        } else {
+            // 임시 닉네임으로 새 사용자 생성
+            String tempNickname = email.split("@")[0];
+            User newUser = oAuth2Attributes.toEntity(tempNickname);
+            return userRepository.save(newUser);
+        }
+    }
+}
+

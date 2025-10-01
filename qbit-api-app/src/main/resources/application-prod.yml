@@ -35,7 +35,7 @@ spring:
           max-idle: ${REDIS_POOL_MAX_IDLE:10}
           min-idle: ${REDIS_POOL_MIN_IDLE:5}
 
-# WebSocket Configuration
+# WebSocket
 websocket:
   allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS:*}
   message-size-limit: ${WEBSOCKET_MESSAGE_SIZE_LIMIT:8192}
@@ -48,6 +48,22 @@ logging:
     org.springframework.data.redis: WARN
     org.springframework.web.socket: WARN
     root: WARN
+
+# OAuth2 설정
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          kakao:
+            client-id: ${KAKAO_CLIENT_ID}
+            client-secret: ${KAKAO_CLIENT_SECRET}
+
+# JWT 설정 
+jwt:
+  secret:
+    access: ${JWT_ACCESS_SECRET}
+    refresh: ${JWT_REFRESH_SECRET}
 
 management:
   endpoints:
