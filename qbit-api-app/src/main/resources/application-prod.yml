@@ -87,7 +87,7 @@ management:
       show-details: when-authorized
 
 # Swagger (Disabled) 
-# TODO: 배포 후 활성화화
+# TODO: 배포 후 활성화
 springdoc:
   swagger-ui:
     enabled: false

@@ -22,7 +22,7 @@ public class JwtUtil {
     private final Key accessKey;
     private final Key refreshKey;
     
-    private static final Duration ACCESS_TOKEN_EXPIRE_TIME = Duration.ofMinutes(5); // TODO: 개발 후 duration 조정
+    private static final Duration ACCESS_TOKEN_EXPIRE_TIME = Duration.ofMinutes(50); // TODO: 개발 후 duration 조정
     private static final Duration REFRESH_TOKEN_EXPIRE_TIME = Duration.ofDays(7);
 
     public JwtUtil(@Value("${jwt.secret.access}") String accessSecret, 
@@ -54,33 +54,30 @@ public class JwtUtil {
     }
 
     private String generateToken(Authentication authentication, Key key, Duration expiredTime, Long userId) {
-        Claims claims = Jwts.claims();
-        claims.setSubject(authentication.getName());
-
         String role = authentication.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .findFirst()
                 .orElse("ROLE_USER");
-        claims.put("role", role);
-        
-        if (userId != null) {
-            claims.put("userId", userId);
-        }
 
         Date now = new Date();
         Date expireDate = new Date(now.getTime() + expiredTime.toMillis());
 
-        return Jwts.builder()
-                .setClaims(claims)
+        JwtBuilder builder = Jwts.builder()
+                .setSubject(authentication.getName())
+                .claim("role", role)
                 .setIssuedAt(now)
-                .setExpiration(expireDate)
-                .signWith(key, SignatureAlgorithm.HS256)
-                .compact();
+                .setExpiration(expireDate);
+        
+        if (userId != null) {
+            builder.claim("userId", userId);
+        }
+
+        return builder.signWith(key, SignatureAlgorithm.HS256).compact();
     }
 
     public void validateAccessToken(String accessToken) {
         try {
-            Jwts.parserBuilder().setSigningKey(accessKey).build().parseClaimsJws(accessToken);
+            Jwts.parser().setSigningKey(accessKey).build().parseClaimsJws(accessToken);
         } catch (SecurityException | MalformedJwtException | UnsupportedJwtException | IllegalArgumentException e) {
             throw new QbitException(ErrorCode.INVALID_TOKEN);
         } catch (ExpiredJwtException e) {
@@ -90,7 +87,7 @@ public class JwtUtil {
 
     public void validateRefreshToken(String refreshToken) {
         try {
-            Jwts.parserBuilder().setSigningKey(refreshKey).build().parseClaimsJws(refreshToken);
+            Jwts.parser().setSigningKey(refreshKey).build().parseClaimsJws(refreshToken);
         } catch (SecurityException | MalformedJwtException | UnsupportedJwtException | IllegalArgumentException e) {
             throw new QbitException(ErrorCode.INVALID_REFRESH_TOKEN);
         } catch (ExpiredJwtException e) {
@@ -121,7 +118,7 @@ public class JwtUtil {
 
     private Claims parseClaims(String token, Key key) {
         try {
-            return Jwts.parserBuilder()
+            return Jwts.parser()
                     .setSigningKey(key)
                     .build()
                     .parseClaimsJws(token).getBody();
@@ -134,7 +131,7 @@ public class JwtUtil {
 
     public boolean isAccessTokenExpired(String accessToken) {
         try {
-            Claims claims = Jwts.parserBuilder()
+            Claims claims = Jwts.parser()
                     .setSigningKey(accessKey)
                     .build()
                     .parseClaimsJws(accessToken).getBody();
@@ -142,6 +139,7 @@ public class JwtUtil {
         } catch (ExpiredJwtException e) {
             return true;
         } catch (JwtException | IllegalArgumentException e) {
+            log.error("JWT validation failed: {}", e.getMessage(), e);
             throw new QbitException(ErrorCode.JWT_VALIDATION_FAILED);
         }
     }
