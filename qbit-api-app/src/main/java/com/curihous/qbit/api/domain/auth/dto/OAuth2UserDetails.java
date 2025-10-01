@@ -1,4 +1,4 @@
-package com.curihous.qbit.domain.auth.dto;
+package com.curihous.qbit.api.domain.auth.dto;
 
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;

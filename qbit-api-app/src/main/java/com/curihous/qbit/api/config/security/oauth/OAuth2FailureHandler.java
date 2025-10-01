@@ -1,4 +1,4 @@
-package com.curihous.qbit.api.config.oauth;
+package com.curihous.qbit.api.config.security.oauth;
 
 import com.curihous.qbit.common.exception.ErrorCode;
 import com.curihous.qbit.common.exception.QbitException;

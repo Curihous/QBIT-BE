@@ -1,5 +1,6 @@
-package com.curihous.qbit.api.auth;
+package com.curihous.qbit.api.domain.auth.service;
 
+import com.curihous.qbit.api.domain.auth.dto.response.TokenResponseDto;
 import com.curihous.qbit.api.config.security.CookieUtil;
 import com.curihous.qbit.api.config.security.JwtUtil;
 import com.curihous.qbit.common.exception.ErrorCode;
@@ -15,7 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
-import java.util.Map;
 
 @Slf4j
 @Service
@@ -25,7 +25,7 @@ public class AuthService {
     private final CookieUtil cookieUtil;
 
     @Transactional(readOnly = true)
-    public Map<String, Object> refreshTokens(String accessToken, String refreshToken, HttpServletResponse response) {
+    public TokenResponseDto refreshTokens(String accessToken, String refreshToken, HttpServletResponse response) {
         try {
             // 리프레시 토큰 유효성 검증
             jwtUtil.validateRefreshToken(refreshToken);
@@ -51,11 +51,7 @@ public class AuthService {
 
             log.info("AccessToken: {}", newAccessToken);
 
-            return Map.of(
-                    "accessToken", newAccessToken,
-                    "expiresIn", jwtUtil.getAccessTokenMaxAge(),
-                    "message", "토큰 재발급 성공"
-            );
+            return new TokenResponseDto(newAccessToken, jwtUtil.getAccessTokenMaxAge());
         } catch (QbitException e) {
             throw e;
         } catch (Exception e) {
@@ -68,3 +64,4 @@ public class AuthService {
         cookieUtil.deleteCookie(request, response, "refreshToken");
     }
 }
+

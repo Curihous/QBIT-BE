@@ -1,9 +1,9 @@
-package com.curihous.qbit.domain.auth.service;
+package com.curihous.qbit.api.domain.auth.service;
 
 import com.curihous.qbit.common.exception.ErrorCode;
 import com.curihous.qbit.common.exception.QbitException;
-import com.curihous.qbit.domain.auth.dto.OAuth2Attributes;
-import com.curihous.qbit.domain.auth.dto.OAuth2UserDetails;
+import com.curihous.qbit.api.domain.auth.dto.OAuth2Attributes;
+import com.curihous.qbit.api.domain.auth.dto.OAuth2UserDetails;
 import com.curihous.qbit.domain.user.entity.User;
 import com.curihous.qbit.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;

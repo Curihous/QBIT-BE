@@ -1,10 +1,10 @@
-package com.curihous.qbit.api.config.oauth;
+package com.curihous.qbit.api.config.security.oauth;
 
 import com.curihous.qbit.api.config.security.CookieUtil;
 import com.curihous.qbit.api.config.security.JwtUtil;
 import com.curihous.qbit.common.exception.ErrorCode;
 import com.curihous.qbit.common.exception.QbitException;
-import com.curihous.qbit.domain.auth.dto.OAuth2UserDetails;
+import com.curihous.qbit.api.domain.auth.dto.OAuth2UserDetails;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +24,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
     private final JwtUtil jwtUtil;
     private final CookieUtil cookieUtil;
     
-    private static final String OAUTH_PATH = "/api/oauth";
+    private static final String OAUTH_PATH = "/oauth";
     private static final String DEPLOYED_REDIRECT_URL = "http://localhost:3000";
     private static final List<String> ALLOWED_REDIRECT_URLS = List.of(
             "http://localhost:3000",

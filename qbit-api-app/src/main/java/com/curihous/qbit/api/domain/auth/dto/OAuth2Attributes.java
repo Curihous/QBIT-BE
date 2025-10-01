@@ -1,4 +1,4 @@
-package com.curihous.qbit.domain.auth.dto;
+package com.curihous.qbit.api.domain.auth.dto;
 
 import com.curihous.qbit.common.exception.ErrorCode;
 import com.curihous.qbit.common.exception.QbitException;

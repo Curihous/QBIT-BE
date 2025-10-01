@@ -1,4 +1,4 @@
-package com.curihous.qbit.domain.user.dto;
+package com.curihous.qbit.api.domain.user.dto;
 
 import com.curihous.qbit.domain.user.entity.LoginType;
 import com.curihous.qbit.domain.user.entity.User;

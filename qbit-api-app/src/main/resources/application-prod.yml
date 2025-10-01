@@ -35,6 +35,15 @@ spring:
           max-idle: ${REDIS_POOL_MAX_IDLE:10}
           min-idle: ${REDIS_POOL_MIN_IDLE:5}
 
+  # OAuth2 설정
+  security:
+    oauth2:
+      client:
+        registration:
+          kakao:
+            client-id: ${KAKAO_CLIENT_ID}
+            client-secret: ${KAKAO_CLIENT_SECRET}
+
 # WebSocket
 websocket:
   allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS} # TODO: 프로덕션에서 명시적 도메인 설정
@@ -48,16 +57,6 @@ logging:
     org.springframework.data.redis: WARN
     org.springframework.web.socket: WARN
     root: WARN
-
-# OAuth2 설정
-spring:
-  security:
-    oauth2:
-      client:
-        registration:
-          kakao:
-            client-id: ${KAKAO_CLIENT_ID}
-            client-secret: ${KAKAO_CLIENT_SECRET}
 
 # JWT 설정 
 jwt:
@@ -73,3 +72,11 @@ management:
   endpoint:
     health:
       show-details: when-authorized
+
+# Swagger (Disabled) 
+# TODO: 배포 후 활성화화
+springdoc:
+  swagger-ui:
+    enabled: false
+  api-docs:
+    enabled: false

@@ -1,11 +1,11 @@
-package com.curihous.qbit.api.config;
+package com.curihous.qbit.api.config.security;
 
-import com.curihous.qbit.api.config.oauth.OAuth2FailureHandler;
-import com.curihous.qbit.api.config.oauth.OAuth2SuccessHandler;
+import com.curihous.qbit.api.config.security.oauth.OAuth2FailureHandler;
+import com.curihous.qbit.api.config.security.oauth.OAuth2SuccessHandler;
 import com.curihous.qbit.api.config.security.CustomAccessDeniedHandler;
 import com.curihous.qbit.api.config.security.CustomAuthenticationEntryPoint;
 import com.curihous.qbit.api.config.security.JwtFilter;
-import com.curihous.qbit.domain.auth.service.CustomOAuth2UserService;
+import com.curihous.qbit.api.domain.auth.service.CustomOAuth2UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

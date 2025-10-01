@@ -26,8 +26,7 @@ spring:
           max-idle: 8
           min-idle: 0
 
-# OAuth2
-spring:
+  # OAuth2
   security:
     oauth2:
       client:
@@ -39,8 +38,8 @@ spring:
 # JWT 
 jwt:
   secret:
-    access: ${JWT_ACCESS_SECRET}
-    refresh: ${JWT_REFRESH_SECRET}
+    access: ${JWT_ACCESS_SECRET_DEV}
+    refresh: ${JWT_REFRESH_SECRET_DEV}
 
 logging:
   level:
@@ -49,3 +48,12 @@ logging:
     org.hibernate.SQL: DEBUG
     org.springframework.data.redis: DEBUG
     org.springframework.security: DEBUG
+
+# Swagger
+springdoc:
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+  api-docs:
+    enabled: true
+    path: /api-docs
