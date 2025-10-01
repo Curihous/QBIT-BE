@@ -1,0 +1,34 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/qbit_dev
+    username: ${DB_USERNAME_DEV}
+    password: ${DB_PASSWORD_DEV}
+    driver-class-name: org.postgresql.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO_DEV}
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  
+  data:
+    redis:
+      host: ${REDIS_HOST_DEV}
+      port: ${REDIS_PORT_DEV}
+      password: ${REDIS_PASSWORD_DEV}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+
+logging:
+  level:
+    com.curihous.qbit: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.springframework.data.redis: DEBUG

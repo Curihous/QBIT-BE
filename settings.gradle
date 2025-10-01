@@ -1,0 +1,9 @@
+rootProject.name = 'qbit-backend'
+
+include 'qbit-common'
+include 'qbit-domain'
+include 'qbit-infra'
+include 'qbit-client:qbit-stock-client'
+include 'qbit-client:qbit-notification-client'
+include 'qbit-api-app'
+include 'qbit-websocket-app'
