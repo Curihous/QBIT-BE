@@ -26,7 +26,7 @@ public class JwtUtil {
     private final Key accessKey;
     private final Key refreshKey;
     
-    private static final Duration ACCESS_TOKEN_EXPIRE_TIME = Duration.ofHours(6);
+    private static final Duration ACCESS_TOKEN_EXPIRE_TIME = Duration.ofMinutes(5);
     private static final Duration REFRESH_TOKEN_EXPIRE_TIME = Duration.ofDays(7);
 
     public JwtUtil(@Value("${jwt.secret.access}") String accessSecret, 
