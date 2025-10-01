@@ -34,7 +34,6 @@ COPY qbit-websocket-app/src qbit-websocket-app/src/
 COPY qbit-domain/src qbit-domain/src/
 COPY qbit-common/src qbit-common/src/
 COPY qbit-client/qbit-stock-client/src qbit-client/qbit-stock-client/src/
-COPY qbit-client/qbit-notification-client/src qbit-client/qbit-notification-client/src/
 
 # 빌드
 RUN ./gradlew :qbit-api-app:bootJar -x test --no-daemon
