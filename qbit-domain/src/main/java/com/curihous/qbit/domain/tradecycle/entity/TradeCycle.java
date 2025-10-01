@@ -30,8 +30,8 @@ public class TradeCycle {
     @Column(name = "profit_loss_rate", nullable = false)
     private BigDecimal profitLossRate;
 
-    @Column(name = "total_investment_amount", nullable = false)
-    private Double totalInvestmentAmount;
+    @Column(name = "total_investment_amount", nullable = false, precision = 19, scale = 6)
+    private BigDecimal totalInvestmentAmount;
 
     @Column(name = "average_buy_price", nullable = false)
     private BigDecimal averageBuyPrice;
@@ -42,8 +42,8 @@ public class TradeCycle {
     @Column(name = "peak_investment")
     private BigDecimal peakInvestment;
 
-    @Column(name = "max_drawdown")
-    private Double maxDrawdown;
+    @Column(name = "max_drawdown", precision = 19, scale = 6)
+    private BigDecimal maxDrawdown;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -54,8 +54,8 @@ public class TradeCycle {
     private Stock stock;
 
     public TradeCycle(LocalDateTime startDate, LocalDateTime endDate, BigDecimal profitLossRate,
-                      Double totalInvestmentAmount, BigDecimal averageBuyPrice, BigDecimal averageSellPrice,
-                      BigDecimal peakInvestment, Double maxDrawdown, User user, Stock stock) {
+                      BigDecimal totalInvestmentAmount, BigDecimal averageBuyPrice, BigDecimal averageSellPrice,
+                      BigDecimal peakInvestment, BigDecimal maxDrawdown, User user, Stock stock) {
         this.startDate = startDate;
         this.endDate = endDate;
         this.profitLossRate = profitLossRate;

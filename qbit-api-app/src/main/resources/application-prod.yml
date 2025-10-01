@@ -1,8 +1,8 @@
 spring:
   datasource:
     url: ${DATABASE_URL}
-    username: ${DATABASE_USERNAME}
-    password: ${DATABASE_PASSWORD}
+    username: ${DATABASE_USERNAME_PROD}
+    password: ${DATABASE_PASSWORD_PROD}
     driver-class-name: ${DATABASE_DRIVER}
     hikari:
       maximum-pool-size: 20
@@ -13,7 +13,7 @@ spring:
   
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: ${JPA_DDL_AUTO_PROD}
     show-sql: false
     properties:
       hibernate:
@@ -25,9 +25,9 @@ spring:
   
   data:
     redis:
-      host: ${REDIS_HOST}
-      port: ${REDIS_PORT}
-      password: ${REDIS_PASSWORD}
+      host: ${REDIS_HOST_PROD}
+      port: ${REDIS_PORT_PROD}
+      password: ${REDIS_PASSWORD_PROD}
       timeout: 2000ms
       lettuce:
         pool:
@@ -37,7 +37,7 @@ spring:
 
 # WebSocket
 websocket:
-  allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS:*}
+  allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS} # TODO: 프로덕션에서 명시적 도메인 설정
   message-size-limit: ${WEBSOCKET_MESSAGE_SIZE_LIMIT:8192}
   buffer-size-limit: ${WEBSOCKET_BUFFER_SIZE_LIMIT:8192}
 

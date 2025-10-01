@@ -7,7 +7,6 @@
 # ===========================================
 .gradle/
 build/
-!gradle/wrapper/gradle-wrapper.jar
 
 # ===========================================
 # IDE & Editor
@@ -95,6 +94,7 @@ Thumbs.db
 # Package Files
 # ===========================================
 *.jar
+!gradle/wrapper/gradle-wrapper.jar
 *.war
 *.ear
 *.zip
