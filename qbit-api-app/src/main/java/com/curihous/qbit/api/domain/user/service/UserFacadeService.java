@@ -1,5 +1,6 @@
 package com.curihous.qbit.api.domain.user.service;
 
+import com.curihous.qbit.api.config.security.CustomUserDetails;
 import com.curihous.qbit.common.exception.ErrorCode;
 import com.curihous.qbit.common.exception.QbitException;
 import com.curihous.qbit.api.domain.auth.dto.OAuth2UserDetails;
@@ -35,10 +36,9 @@ public class UserFacadeService {
             return userService.findUserById(userDetails.userId());
         }
 
-        // JWT 토큰 기반 인증 요청인 경우
-        if (authentication.getPrincipal() instanceof org.springframework.security.core.userdetails.User) {
-            String email = authentication.getName();
-            return userService.findUserByEmail(email);
+        // JWT 토큰 기반 인증 요청인 경우 - CustomUserDetails에서 userId 추출
+        if (authentication.getPrincipal() instanceof CustomUserDetails userDetails) {
+            return userService.findUserById(userDetails.getUserId());
         }
 
         throw new QbitException(ErrorCode.UNAUTHORIZED);

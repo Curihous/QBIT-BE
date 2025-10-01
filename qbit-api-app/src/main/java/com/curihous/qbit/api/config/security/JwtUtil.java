@@ -10,15 +10,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Component;
 
 import java.security.Key;
 import java.time.Duration;
-import java.util.Collections;
 import java.util.Date;
-import java.util.List;
 
 @Slf4j
 @Component
@@ -26,7 +22,7 @@ public class JwtUtil {
     private final Key accessKey;
     private final Key refreshKey;
     
-    private static final Duration ACCESS_TOKEN_EXPIRE_TIME = Duration.ofMinutes(5);
+    private static final Duration ACCESS_TOKEN_EXPIRE_TIME = Duration.ofMinutes(5); // TODO: 개발 후 duration 조정
     private static final Duration REFRESH_TOKEN_EXPIRE_TIME = Duration.ofDays(7);
 
     public JwtUtil(@Value("${jwt.secret.access}") String accessSecret, 
@@ -42,14 +38,22 @@ public class JwtUtil {
     }
 
     public String generateAccessToken(Authentication authentication) {
-        return generateToken(authentication, accessKey, ACCESS_TOKEN_EXPIRE_TIME);
+        return generateToken(authentication, accessKey, ACCESS_TOKEN_EXPIRE_TIME, null);
     }
 
     public String generateRefreshToken(Authentication authentication) {
-        return generateToken(authentication, refreshKey, REFRESH_TOKEN_EXPIRE_TIME);
+        return generateToken(authentication, refreshKey, REFRESH_TOKEN_EXPIRE_TIME, null);
     }
 
-    private String generateToken(Authentication authentication, Key key, Duration expiredTime) {
+    public String generateAccessTokenWithUserId(Authentication authentication, Long userId) {
+        return generateToken(authentication, accessKey, ACCESS_TOKEN_EXPIRE_TIME, userId);
+    }
+
+    public String generateRefreshTokenWithUserId(Authentication authentication, Long userId) {
+        return generateToken(authentication, refreshKey, REFRESH_TOKEN_EXPIRE_TIME, userId);
+    }
+
+    private String generateToken(Authentication authentication, Key key, Duration expiredTime, Long userId) {
         Claims claims = Jwts.claims();
         claims.setSubject(authentication.getName());
 
@@ -58,6 +62,10 @@ public class JwtUtil {
                 .findFirst()
                 .orElse("ROLE_USER");
         claims.put("role", role);
+        
+        if (userId != null) {
+            claims.put("userId", userId);
+        }
 
         Date now = new Date();
         Date expireDate = new Date(now.getTime() + expiredTime.toMillis());
@@ -92,11 +100,23 @@ public class JwtUtil {
 
     public Authentication getAuthentication(String token) {
         Claims claims = parseClaims(token, accessKey);
-        List<SimpleGrantedAuthority> authorities = Collections.singletonList(
-                new SimpleGrantedAuthority(claims.get("role").toString())
-        );
-        User principal = new User(claims.getSubject(), "", authorities);
-        return new UsernamePasswordAuthenticationToken(principal, "", principal.getAuthorities());
+        
+        // JWT에서 사용자 정보 추출
+        String subject = claims.getSubject();
+        String role = claims.get("role").toString();
+        Long userId = getUserIdFromClaims(claims);
+        
+        // CustomUserDetails 생성
+        CustomUserDetails userDetails = new CustomUserDetails(userId, subject, role);
+        return new UsernamePasswordAuthenticationToken(userDetails, "", userDetails.getAuthorities());
+    }
+    
+    private Long getUserIdFromClaims(Claims claims) {
+        Object userIdObj = claims.get("userId");
+        if (userIdObj != null) {
+            return Long.valueOf(userIdObj.toString());
+        }
+        return null;
     }
 
     private Claims parseClaims(String token, Key key) {

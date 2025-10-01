@@ -44,16 +44,16 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                     .orElse(DEPLOYED_REDIRECT_URL);
             String redirectUrl = baseRedirectUrl + OAUTH_PATH;
 
-            // JWT 토큰 발급
-            String accessToken = jwtUtil.generateAccessToken(authentication);
-            int expiresIn = jwtUtil.getAccessTokenMaxAge();
-            String refreshToken = jwtUtil.generateRefreshToken(authentication);
-            cookieUtil.addCookie(response, "refreshToken", refreshToken, jwtUtil.getRefreshTokenMaxAge());
-
             // OAuth2UserDetails에서 사용자 정보 추출
             OAuth2UserDetails userDetails = (OAuth2UserDetails) authentication.getPrincipal();
             boolean isNewUser = userDetails.isNewUser();
             Long userId = userDetails.userId();
+
+            // JWT 토큰 발급 (userId 포함)
+            String accessToken = jwtUtil.generateAccessTokenWithUserId(authentication, userId);
+            int expiresIn = jwtUtil.getAccessTokenMaxAge();
+            String refreshToken = jwtUtil.generateRefreshTokenWithUserId(authentication, userId);
+            cookieUtil.addCookie(response, "refreshToken", refreshToken, jwtUtil.getRefreshTokenMaxAge());
 
             log.info("AccessToken: {}", accessToken);
 
