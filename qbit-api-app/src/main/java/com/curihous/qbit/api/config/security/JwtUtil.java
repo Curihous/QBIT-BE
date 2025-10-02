@@ -98,6 +98,11 @@ public class JwtUtil {
     public Authentication getAuthentication(String token) {
         Claims claims = parseClaims(token, accessKey);
         
+        // 토큰 만료 검증 - 만료된 토큰으로는 Authentication을 생성하지 않음
+        if (claims.getExpiration().before(new Date())) {
+            throw new QbitException(ErrorCode.EXPIRED_ACCESS_TOKEN);
+        }
+        
         // JWT에서 사용자 정보 추출
         String subject = claims.getSubject();
         String role = claims.get("role").toString();
