@@ -49,8 +49,6 @@ public class AuthService {
             // 새로운 리프레시 토큰을 쿠키에 저장
             cookieUtil.addCookie(response, "refreshToken", newRefreshToken, jwtUtil.getRefreshTokenMaxAge());
 
-            log.info("AccessToken: {}", newAccessToken);
-
             return new TokenResponseDto(newAccessToken, jwtUtil.getAccessTokenMaxAge());
         } catch (QbitException e) {
             throw e;
