@@ -12,8 +12,8 @@ public record UserResponseDto(
     String nickname,
     String provider,
     LoginType loginType,
-    Boolean isActive,
-    Boolean isNotificationEnabled,
+    boolean isActive,
+    boolean isNotificationEnabled,
     LocalDateTime createdAt,
     LocalDateTime updatedAt
 ) {
@@ -24,8 +24,8 @@ public record UserResponseDto(
                 user.getNickname(),
                 user.getProvider(),
                 user.getLoginType(),
-                user.getIsActive(),
-                user.getIsNotificationEnabled(),
+                user.isActive(),
+                user.isNotificationEnabled(),
                 user.getCreatedAt(),
                 user.getUpdatedAt()
         );

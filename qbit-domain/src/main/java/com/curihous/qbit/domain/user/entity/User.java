@@ -38,11 +38,11 @@ public class User extends BaseTimeEntity {
     // 간단한 상태 관리
     // TODO: 기획에 따른 상태 관리 수정
     @Column(nullable = false)
-    private Boolean isActive = true;
+    private boolean isActive = true;
 
     // 알림 설정
     @Column(nullable = false)
-    private Boolean isNotificationEnabled = true;
+    private boolean isNotificationEnabled = true;
 
     @Builder
     public User(String email, String nickname, String provider,

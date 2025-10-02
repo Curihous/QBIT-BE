@@ -69,7 +69,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             }
             
             // 기존 사용자 활성화 상태 확인
-            if (!existingUser.getIsActive()) {
+            if (!existingUser.isActive()) {
                 throw new QbitException(ErrorCode.USER_STATUS_IS_NOT_ACTIVE);
             }
             
