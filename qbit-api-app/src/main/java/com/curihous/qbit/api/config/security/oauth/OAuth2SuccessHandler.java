@@ -55,7 +55,8 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
             String refreshToken = jwtUtil.generateRefreshTokenWithUserId(authentication, userId);
             cookieUtil.addCookie(response, "refreshToken", refreshToken, jwtUtil.getRefreshTokenMaxAge());
 
-            log.info("AccessToken: {}", accessToken);
+            log.info("AccessToken generated successfully: length={}, masked={}", 
+                    accessToken.length(), maskToken(accessToken));
 
             // 리다이렉트 URL에 토큰 정보 포함
             String redirectUrlWithParams = UriComponentsBuilder.fromUriString(redirectUrl)
@@ -69,5 +70,13 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         } catch (Exception e) {
             throw new QbitException(ErrorCode.OAUTH2_LOGIN_FAILED);
         }
+    }
+
+    // 토큰을 마스킹하여 안전하게 로깅
+    private String maskToken(String token) {
+        if (token == null || token.length() <= 12) {
+            return "***";
+        }
+        return token.substring(0, 8) + "..." + token.substring(token.length() - 4);
     }
 }
