@@ -1,5 +1,6 @@
 package com.curihous.qbit.api.domain.auth.dto;
 
+import com.curihous.qbit.api.domain.auth.exception.MissingOAuth2AttributeException;
 import com.curihous.qbit.common.exception.ErrorCode;
 import com.curihous.qbit.common.exception.QbitException;
 import com.curihous.qbit.domain.user.entity.LoginType;
@@ -26,12 +27,39 @@ public record OAuth2Attributes(
 
     // 카카오 사용자 정보 파싱
     private static OAuth2Attributes ofKakao(Map<String, Object> attributes) {
-        Map<String, Object> kakaoAccount = (Map<String, Object>) attributes.get("kakao_account");
-        Map<String, Object> profile = (Map<String, Object>) kakaoAccount.get("profile");
+        // kakao_account 필드 검증
+        Object kakaoAccountObj = attributes.get("kakao_account");
+        if (kakaoAccountObj == null) {
+            throw new MissingOAuth2AttributeException(ErrorCode.OAUTH2_ATTRIBUTE_MISSING);
+        }
+        
+        Map<String, Object> kakaoAccount = (Map<String, Object>) kakaoAccountObj;
+        
+        // profile 필드 검증
+        Object profileObj = kakaoAccount.get("profile");
+        if (profileObj == null) {
+            throw new MissingOAuth2AttributeException(ErrorCode.OAUTH2_ATTRIBUTE_MISSING);
+        }
+        
+        Map<String, Object> profile = (Map<String, Object>) profileObj;
+        
+        // email 필드 검증
+        String email = (String) kakaoAccount.get("email");
+        if (email == null || email.trim().isEmpty()) {
+            throw new MissingOAuth2AttributeException(ErrorCode.OAUTH2_ATTRIBUTE_MISSING);
+        }
+        
+        // nickname 필드 검증
+        // TODO: 추후 로직 변경 가능성 있음
+        String nickname = (String) profile.get("nickname");
+        if (nickname == null || nickname.trim().isEmpty()) {
+            // 이메일에서 @ 앞부분을 닉네임으로 사용
+            nickname = email.split("@")[0];
+        }
         
         return new OAuth2Attributes(
-                (String) kakaoAccount.get("email"),
-                (String) profile.get("nickname"),
+                email,
+                nickname,
                 "kakao",
                 LoginType.KAKAO,
                 false

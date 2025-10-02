@@ -44,6 +44,7 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorDto, HttpStatusCode.valueOf(errorCode.getStatus()));
     }
 
+
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorDto> handleMethodArgumentTypeMismatchException(MethodArgumentTypeMismatchException e, HttpServletRequest request) {
         ErrorCode errorCode = ErrorCode.INVALID_ENUM_VALUE;

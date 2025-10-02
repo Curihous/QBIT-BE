@@ -31,6 +31,7 @@ public class SwaggerConfig {
                         .description("QBIT 백엔드 API 문서")
                         .version("v1.0.0"))
                 .servers(List.of(
+                        // TODO: 배포 이후 변경
                         new Server().url("http://localhost:8080").description("로컬 개발 서버"),
                         new Server().url("https://api.qbit.com").description("운영 서버")
                 ))

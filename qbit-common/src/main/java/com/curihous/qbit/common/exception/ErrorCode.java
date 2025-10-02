@@ -34,6 +34,7 @@ public enum ErrorCode {
     UNAUTHORIZED(401, "인증이 필요합니다."),
     // 소셜 로그인이 정상적으로 이루어지지 않음
     OAUTH2_LOGIN_FAILED(401, "소셜 로그인에 실패했습니다."),
+    OAUTH2_ATTRIBUTE_MISSING(401, "OAuth2 제공업체에서 필수 사용자 정보가 누락되었습니다."),
     EMAIL_ALREADY_REGISTERED(401, "이미 가입된 이메일입니다."),
     ILLEGAL_REGISTRATION_ID(401, "지원하지 않는 로그인 타입입니다."),
     // 유효하지 않은 토큰
