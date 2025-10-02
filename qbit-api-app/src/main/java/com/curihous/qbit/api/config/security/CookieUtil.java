@@ -43,17 +43,20 @@ public class CookieUtil {
 
     public void deleteCookie(HttpServletRequest request, HttpServletResponse response, String name) {
         try {
-            Cookie[] cookies = request.getCookies();
-            if (cookies != null) {
-                for (Cookie cookie : cookies) {
-                    if (cookie.getName().equals(name)) {
-                        cookie.setValue("");
-                        cookie.setPath("/");
-                        cookie.setMaxAge(0);
-                        response.addCookie(cookie);
-                    }
-                }
-            }
+            // 프로덕션 환경에서 쿠키가 HTTPS를 통해서만 전송됨
+            // 개발 환경에서는 로컬 테스트를 위해 HTTP 허용
+            boolean isDevProfile = Arrays.asList(environment.getActiveProfiles()).contains("dev");
+            
+            // 원본 쿠키와 동일한 속성으로 삭제 쿠키 생성
+            ResponseCookie deleteCookie = ResponseCookie.from(name, "")
+                    .path("/")
+                    .httpOnly(true)
+                    .secure(!isDevProfile)
+                    .maxAge(Duration.ofSeconds(0))
+                    .sameSite("Lax") // 원본 쿠키와 동일한 SameSite 설정
+                    .build();
+            
+            response.addHeader("Set-Cookie", deleteCookie.toString());
         } catch (Exception e) {
             throw new QbitException(ErrorCode.COOKIE_DELETE_FAILED);
         }
