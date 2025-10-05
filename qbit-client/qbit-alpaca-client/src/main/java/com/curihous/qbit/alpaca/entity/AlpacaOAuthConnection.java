@@ -2,6 +2,7 @@ package com.curihous.qbit.alpaca.entity;
 
 import com.curihous.qbit.common.entity.BaseTimeEntity;
 import com.curihous.qbit.domain.user.entity.User;
+import com.curihous.qbit.infra.security.encryption.EncryptedStringConverter;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -28,11 +29,13 @@ public class AlpacaOAuthConnection extends BaseTimeEntity {
     @Column(name = "alpaca_user_id", nullable = false)
     private String alpacaUserId;
 
+    @Convert(converter = EncryptedStringConverter.class)
     @Column(name = "access_token", nullable = false, columnDefinition = "TEXT")
-    private String accessToken; // 암호화해서 저장
+    private String accessToken; // AES-256-GCM 암호화 저장
 
+    @Convert(converter = EncryptedStringConverter.class)
     @Column(name = "refresh_token", columnDefinition = "TEXT")
-    private String refreshToken; // 암호화해서 저장
+    private String refreshToken; // AES-256-GCM 암호화 저장
 
     @Column(name = "token_type", nullable = false)
     private String tokenType = "Bearer";
