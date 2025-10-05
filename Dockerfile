@@ -12,7 +12,6 @@ COPY qbit-api-app/build.gradle qbit-api-app/
 COPY qbit-websocket-app/build.gradle qbit-websocket-app/
 COPY qbit-domain/build.gradle qbit-domain/
 COPY qbit-common/build.gradle qbit-common/
-COPY qbit-infra/build.gradle qbit-infra/
 COPY qbit-client/qbit-stock-client/build.gradle qbit-client/qbit-stock-client/
 COPY qbit-client/qbit-notification-client/build.gradle qbit-client/qbit-notification-client/
 
@@ -26,9 +25,6 @@ COPY qbit-api-app/src qbit-api-app/src/
 COPY qbit-websocket-app/src qbit-websocket-app/src/
 COPY qbit-domain/src qbit-domain/src/
 COPY qbit-common/src qbit-common/src/
-COPY qbit-infra/src qbit-infra/src/
-COPY qbit-client/qbit-stock-client/src qbit-client/qbit-stock-client/src/
-COPY qbit-client/qbit-notification-client/src qbit-client/qbit-notification-client/src/
 
 # JAR 빌드
 RUN ./gradlew :qbit-api-app:bootJar -x test --no-daemon
