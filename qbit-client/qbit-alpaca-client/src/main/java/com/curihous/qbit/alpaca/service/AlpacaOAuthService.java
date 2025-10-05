@@ -37,18 +37,25 @@ public class AlpacaOAuthService {
     private final AlpacaOAuthClient alpacaOAuthClient;
     private final AlpacaOAuthConnectionService alpacaOAuthConnectionService;
     private final UserService userService;
+    private final OAuthStateService oAuthStateService;
 
-    // OAuth 승인 URL 생성 
-    public String generateAuthUrl(String state) {
-        return UriComponentsBuilder.fromHttpUrl(authorizationUrl)
+    // OAuth 승인 URL 생성
+    public String generateAuthUrl(Long userId) {
+        String secureState = oAuthStateService.generateSecureState(userId);
+        return UriComponentsBuilder.fromUriString(authorizationUrl)
             .queryParam("response_type", "code")
             .queryParam("client_id", clientId)
             .queryParam("redirect_uri", redirectUri)
             .queryParam("scope", "trading")
-            .queryParam("state", state)
+            .queryParam("state", secureState)
             .queryParam("env", "paper") // Paper Trading
             .build()
             .toUriString();
+    }
+
+    // OAuth 상태값 검증 및 사용자 ID 추출
+    public Long validateStateAndExtractUserId(String state) {
+        return oAuthStateService.validateAndExtractUserId(state);
     }
 
     // 인증 코드를 액세스 토큰으로 교환하고 DB에 저장

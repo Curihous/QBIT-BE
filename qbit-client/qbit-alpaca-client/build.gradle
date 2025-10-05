@@ -8,11 +8,13 @@ dependencies {
     // Spring Boot
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
     
     // Common Modules
     implementation project(':qbit-common')
     implementation project(':qbit-domain')
+    implementation project(':qbit-infra')
     
     // JSON
     implementation 'com.fasterxml.jackson.core:jackson-databind'

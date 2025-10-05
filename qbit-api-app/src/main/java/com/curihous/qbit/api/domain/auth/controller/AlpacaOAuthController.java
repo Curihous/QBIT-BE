@@ -27,14 +27,14 @@ public class AlpacaOAuthController {
     @GetMapping("/authorize")
     @Operation(summary = "Alpaca OAuth 인증 시작", description = "Alpaca OAuth 승인 페이지로 리디렉션")
     public void authorize(HttpServletResponse response, @AuthenticationPrincipal CustomUserDetails userDetails) throws IOException {
-        String authUrl = alpacaOAuthService.generateAuthUrl(userDetails.getUserId().toString());
+        String authUrl = alpacaOAuthService.generateAuthUrl(userDetails.getUserId());
         response.sendRedirect(authUrl);
     }
 
     @GetMapping("/authorize-url")
     @Operation(summary = "Alpaca OAuth 인증 URL 조회 (Swagger용)", description = "Alpaca OAuth 승인 URL을 반환")
     public ResponseEntity<String> getAuthorizeUrl(@AuthenticationPrincipal CustomUserDetails userDetails) {
-        String authUrl = alpacaOAuthService.generateAuthUrl(userDetails.getUserId().toString());
+        String authUrl = alpacaOAuthService.generateAuthUrl(userDetails.getUserId());
         return ResponseEntity.ok(authUrl);
     }
 
@@ -45,10 +45,12 @@ public class AlpacaOAuthController {
             @RequestParam(required = false) String state,
             @RequestParam(required = false) String error) {
         
+        // OAuth 에러 처리
         if (error != null) {
             throw new QbitException(ErrorCode.OAUTH2_LOGIN_FAILED);
         }
         
+        // 필수 파라미터 검증
         if (code == null || code.isEmpty()) {
             throw new QbitException(ErrorCode.OAUTH2_LOGIN_FAILED);
         }
@@ -57,7 +59,10 @@ public class AlpacaOAuthController {
             throw new QbitException(ErrorCode.OAUTH2_LOGIN_FAILED);
         }
         
-        Long userId = Long.parseLong(state);
+        // 보안 강화된 상태값 검증 및 사용자 ID 추출
+        Long userId = alpacaOAuthService.validateStateAndExtractUserId(state);
+        
+        // 토큰 교환 및 저장
         AlpacaOAuthConnection connection = alpacaOAuthService.exchangeTokenAndSave(userId, code);
         
         return ResponseEntity.ok(connection);

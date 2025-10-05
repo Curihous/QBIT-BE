@@ -77,6 +77,12 @@ jwt:
     access: ${JWT_ACCESS_SECRET}
     refresh: ${JWT_REFRESH_SECRET}
 
+# OAuth 상태값 보안 설정
+oauth:
+  state:
+    secret: ${OAUTH_STATE_SECRET}
+    expiry-minutes: 10
+
 # Alpaca OAuth
 alpaca:
   oauth:
