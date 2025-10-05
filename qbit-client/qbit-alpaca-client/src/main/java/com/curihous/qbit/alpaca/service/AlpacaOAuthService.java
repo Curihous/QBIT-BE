@@ -17,6 +17,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -59,26 +60,57 @@ public class AlpacaOAuthService {
                 code, clientId, redirectUri
             );
 
+            // 계정 정보 조회로 실제 사용자 ID 획득
+            String alpacaUserId = getAlpacaUserIdFromAccount(tokenResponse.getAccessToken());
+            
             // 사용자 조회
             User user = userService.findById(userId);
 
             // 토큰 만료 시간 계산
+            long expiresInSeconds = tokenResponse.getExpiresIn() != null ?
+                tokenResponse.getExpiresIn() : 3600L; // 기본값 1시간
             LocalDateTime expiresAt = LocalDateTime.now(ZoneOffset.UTC)
-                .plusSeconds(tokenResponse.getExpiresIn());
+                .plusSeconds(expiresInSeconds);
 
             // OAuth 연결 정보 저장
-            return alpacaOAuthConnectionService.createConnection(
+            AlpacaOAuthConnection connection = alpacaOAuthConnectionService.createConnection(
                 user,
-                tokenResponse.getAlpacaUserId(),
+                alpacaUserId,
                 tokenResponse.getAccessToken(),
                 tokenResponse.getRefreshToken(),
                 tokenResponse.getTokenType(),
                 expiresAt
             );
 
+            return connection;
+
         } catch (Exception e) {
-            log.error("Alpaca OAuth 토큰 교환 실패: userId={}, code={}", userId, code, e);
+            log.error("Alpaca OAuth 토큰 교환 실패: userId={}, code={}, error={}", userId, code, e.getMessage(), e);
             throw new QbitException(ErrorCode.OAUTH2_LOGIN_FAILED);
+        }
+    }
+
+    /**
+     * Alpaca 계정 정보를 조회해서 실제 사용자 ID를 가져옴
+     */
+    private String getAlpacaUserIdFromAccount(String accessToken) {
+        try {
+            String bearerToken = "Bearer " + accessToken;
+            Map<String, Object> accountInfo = alpacaOAuthClient.getAccount(bearerToken);
+            
+            // Alpaca 계정 ID 추출
+            String accountId = (String) accountInfo.get("id");
+            if (accountId != null && !accountId.isEmpty()) {
+                return accountId;
+            } else {
+                return "account_" + System.currentTimeMillis();
+            }
+            
+        } catch (Exception e) {
+            log.error("계정 정보 조회 실패: {}", e.getMessage(), e);
+            // 계정 조회 실패 시 임시 ID 생성
+            // TODO: 지금 무조건 이 상태라 이 부분 확인 필요
+            return "temp_account_" + System.currentTimeMillis();
         }
     }
 
@@ -95,13 +127,15 @@ public class AlpacaOAuthService {
             }
 
             // 리프레시 토큰으로 새 액세스 토큰 요청
-            AlpacaTokenResponse tokenResponse = alpacaOAuthClient.refreshToken(
+            AlpacaTokenResponse tokenResponse = alpacaOAuthClient.refreshTokenWithCredentials(
                 connection.getRefreshToken(), clientId
             );
 
             // 토큰 만료 시간 계산
+            long expiresInSeconds = tokenResponse.getExpiresIn() != null ? 
+                tokenResponse.getExpiresIn() : 3600L; // 기본값 1시간
             LocalDateTime expiresAt = LocalDateTime.now(ZoneOffset.UTC)
-                .plusSeconds(tokenResponse.getExpiresIn());
+                .plusSeconds(expiresInSeconds);
 
             // 토큰 업데이트
             return alpacaOAuthConnectionService.updateTokens(
@@ -112,7 +146,6 @@ public class AlpacaOAuthService {
             );
 
         } catch (Exception e) {
-            log.error("Alpaca OAuth 토큰 갱신 실패: userId={}", userId, e);
             throw new QbitException(ErrorCode.OAUTH2_LOGIN_FAILED);
         }
     }

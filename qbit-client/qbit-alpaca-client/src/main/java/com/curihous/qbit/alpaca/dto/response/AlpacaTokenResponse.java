@@ -1,11 +1,13 @@
 package com.curihous.qbit.alpaca.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
 @Getter
 @AllArgsConstructor
 @Builder
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class AlpacaTokenResponse {
 
     @JsonProperty("access_token")

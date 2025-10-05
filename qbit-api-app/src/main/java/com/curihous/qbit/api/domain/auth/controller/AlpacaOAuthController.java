@@ -32,7 +32,7 @@ public class AlpacaOAuthController {
     }
 
     @GetMapping("/authorize-url")
-    @Operation(summary = "Alpaca OAuth 인증 URL 조회", description = "Alpaca OAuth 승인 URL을 반환 (Swagger용)")
+    @Operation(summary = "Alpaca OAuth 인증 URL 조회 (Swagger용)", description = "Alpaca OAuth 승인 URL을 반환")
     public ResponseEntity<String> getAuthorizeUrl(@AuthenticationPrincipal CustomUserDetails userDetails) {
         String authUrl = alpacaOAuthService.generateAuthUrl(userDetails.getUserId().toString());
         return ResponseEntity.ok(authUrl);
@@ -41,14 +41,25 @@ public class AlpacaOAuthController {
     @GetMapping("/callback")
     @Operation(summary = "OAuth 콜백 처리", description = "Alpaca에서 리디렉션된 코드를 처리하여 토큰 저장")
     public ResponseEntity<AlpacaOAuthConnection> callback(
-            @RequestParam String code,
-            @RequestParam String state,
+            @RequestParam(required = false) String code,
+            @RequestParam(required = false) String state,
             @RequestParam(required = false) String error) {
+        
         if (error != null) {
             throw new QbitException(ErrorCode.OAUTH2_LOGIN_FAILED);
         }
+        
+        if (code == null || code.isEmpty()) {
+            throw new QbitException(ErrorCode.OAUTH2_LOGIN_FAILED);
+        }
+        
+        if (state == null || state.isEmpty()) {
+            throw new QbitException(ErrorCode.OAUTH2_LOGIN_FAILED);
+        }
+        
         Long userId = Long.parseLong(state);
         AlpacaOAuthConnection connection = alpacaOAuthService.exchangeTokenAndSave(userId, code);
+        
         return ResponseEntity.ok(connection);
     }
 

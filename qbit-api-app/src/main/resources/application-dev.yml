@@ -72,6 +72,8 @@ logging:
     org.hibernate.SQL: DEBUG
     org.springframework.data.redis: DEBUG
     org.springframework.security: DEBUG
+    com.curihous.qbit.alpaca: DEBUG
+    feign: DEBUG
 
 # App Info
 info:

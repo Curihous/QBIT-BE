@@ -23,6 +23,8 @@ public class AlpacaClientConfig {
     public RequestInterceptor requestInterceptor() {
         return requestTemplate -> {
             requestTemplate.header("User-Agent", "QBIT-Backend/" + appVersion);
+            // 슬래시 디코딩 비활성화
+            requestTemplate.decodeSlash(false);
         };
     }
 }
