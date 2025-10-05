@@ -86,10 +86,8 @@ management:
     health:
       show-details: when-authorized
 
-# Swagger (Disabled) 
-# TODO: 배포 후 활성화
 springdoc:
   swagger-ui:
-    enabled: false
+    enabled: true
   api-docs:
-    enabled: false
+    enabled: true
