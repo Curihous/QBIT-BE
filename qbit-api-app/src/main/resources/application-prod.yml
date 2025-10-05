@@ -77,6 +77,10 @@ jwt:
     access: ${JWT_ACCESS_SECRET}
     refresh: ${JWT_REFRESH_SECRET}
 
+# 암호화 설정
+encryption:
+  secret-key: ${ENCRYPTION_SECRET_KEY}
+
 management:
   endpoints:
     web:

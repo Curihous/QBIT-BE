@@ -54,6 +54,10 @@ jwt:
     access: ${JWT_ACCESS_SECRET_DEV}
     refresh: ${JWT_REFRESH_SECRET_DEV}
 
+# 암호화 설정
+encryption:
+  secret-key: ${ENCRYPTION_SECRET_KEY_DEV}
+
 logging:
   level:
     com.curihous.qbit: DEBUG
