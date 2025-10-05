@@ -58,6 +58,17 @@ jwt:
 encryption:
   secret-key: ${ENCRYPTION_SECRET_KEY}
 
+# Alpaca OAuth 설정
+alpaca:
+  oauth:
+    client-id: ${ALPACA_OAUTH_CLIENT_ID}
+    client-secret: ${ALPACA_OAUTH_CLIENT_SECRET}
+
+# OAuth State 보안 설정
+oauth:
+  state:
+    secret: ${OAUTH_STATE_SECRET}
+
 logging:
   level:
     com.curihous.qbit: DEBUG

@@ -73,10 +73,10 @@ jobs:
             --restart unless-stopped \
             -p 8080:8080 \
             -e SPRING_PROFILES_ACTIVE=prod \
+            -e ENCRYPTION_SECRET_KEY="${{ secrets.ENCRYPTION_SECRET_KEY }}" \
             -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
             -e DATABASE_USERNAME_PROD="${{ secrets.DATABASE_USERNAME_PROD }}" \
             -e DATABASE_PASSWORD_PROD="${{ secrets.DATABASE_PASSWORD_PROD }}" \
-            -e DATABASE_DRIVER="org.postgresql.Driver" \
             -e JWT_ACCESS_SECRET="${{ secrets.JWT_ACCESS_SECRET }}" \
             -e JWT_REFRESH_SECRET="${{ secrets.JWT_REFRESH_SECRET }}" \
             -e KAKAO_CLIENT_ID="${{ secrets.KAKAO_CLIENT_ID }}" \
@@ -84,6 +84,10 @@ jobs:
             -e REDIS_HOST_PROD="${{ secrets.REDIS_HOST_PROD }}" \
             -e REDIS_PORT_PROD="${{ secrets.REDIS_PORT_PROD }}" \
             -e REDIS_PASSWORD_PROD="${{ secrets.REDIS_PASSWORD_PROD }}" \
+            -e ALPACA_OAUTH_CLIENT_ID="${{ secrets.ALPACA_OAUTH_CLIENT_ID }}" \
+            -e ALPACA_OAUTH_CLIENT_SECRET="${{ secrets.ALPACA_OAUTH_CLIENT_SECRET }}" \
+            -e OAUTH_STATE_SECRET="${{ secrets.OAUTH_STATE_SECRET }}" \
+            # -e WEBSOCKET_ALLOWED_ORIGINS="${{ secrets.WEBSOCKET_ALLOWED_ORIGINS }}" \
             ${{ secrets.DOCKER_REPO }}:${{ github.sha }}
           
           # 기존 이미지 정리

@@ -59,7 +59,7 @@ spring:
 
 # WebSocket
 websocket:
-  allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS} # TODO: 프로덕션에서 명시적 도메인 설정
+  allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS:http://localhost:3000} # TODO: 프로덕션에서 명시적 도메인 설정
   message-size-limit: ${WEBSOCKET_MESSAGE_SIZE_LIMIT:8192}
   buffer-size-limit: ${WEBSOCKET_BUFFER_SIZE_LIMIT:8192}
 
@@ -80,6 +80,17 @@ jwt:
 # 암호화 설정
 encryption:
   secret-key: ${ENCRYPTION_SECRET_KEY}
+
+# Alpaca OAuth 설정
+alpaca:
+  oauth:
+    client-id: ${ALPACA_OAUTH_CLIENT_ID}
+    client-secret: ${ALPACA_OAUTH_CLIENT_SECRET}
+
+# OAuth State 보안 설정
+oauth:
+  state:
+    secret: ${OAUTH_STATE_SECRET}
 
 management:
   endpoints:
