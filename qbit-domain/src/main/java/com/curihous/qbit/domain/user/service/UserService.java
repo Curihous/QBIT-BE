@@ -19,33 +19,32 @@ public class UserService {
 
     private final UserRepository userRepository;
 
-    public User findUserById(Long userId) {
+    public User findById(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new QbitException(ErrorCode.USER_NOT_FOUND));
     }
 
-    public User findUserByEmail(String email) {
+    public User findByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new QbitException(ErrorCode.USER_NOT_FOUND));
     }
 
     @Transactional
     public void deleteUser(Long userId) {
-        User user = findUserById(userId);
+        User user = findById(userId);
         user.deactivate();
     }
 
     @Transactional
     public void deactivateUser(Long userId) {
-        User user = findUserById(userId);
+        User user = findById(userId);
         user.deactivate();
     }
 
     @Transactional
     public void activateUser(Long userId) {
-        User user = findUserById(userId);
+        User user = findById(userId);
         user.activate();
     }
-
 }
 

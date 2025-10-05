@@ -19,7 +19,7 @@ public class TradeExecution {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "trade_execution_id")
-    private Long tradeExecutionId;
+    private Long id;
 
     @Column(name = "executed_quantity", nullable = false)
     private Integer executedQuantity;
