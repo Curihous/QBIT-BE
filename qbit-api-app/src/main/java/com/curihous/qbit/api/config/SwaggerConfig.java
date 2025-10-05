@@ -33,7 +33,7 @@ public class SwaggerConfig {
                 .servers(List.of(
                         // TODO: 배포 이후 변경
                         new Server().url("http://localhost:8080").description("로컬 개발 서버"),
-                        new Server().url("https://api.qbit.com").description("운영 서버")
+                        new Server().url("https://api.qbit.o-r.kr").description("운영 서버")
                 ))
                 .addSecurityItem(securityRequirement)
                 .components(components);
