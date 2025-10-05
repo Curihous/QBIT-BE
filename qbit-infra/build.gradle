@@ -1,15 +1,27 @@
 dependencies {
-    // Domain Module
+    // Module
+    implementation project(':qbit-common')
     implementation project(':qbit-domain')
     
     // Spring Boot
     implementation 'org.springframework.boot:spring-boot-starter'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
+    implementation 'org.springframework.security:spring-security-oauth2-client'
+    
+    // JWT
+    implementation 'io.jsonwebtoken:jjwt-api:0.13.0'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.13.0'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.13.0'
     
     // Database
     runtimeOnly 'org.postgresql:postgresql'
+    
+    // JSON
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
     
     // Lombok
     compileOnly 'org.projectlombok:lombok'

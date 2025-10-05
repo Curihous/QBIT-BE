@@ -1,7 +1,7 @@
 package com.curihous.qbit.api.domain.auth.controller;
 
-import com.curihous.qbit.api.domain.auth.dto.response.TokenResponseDto;
-import com.curihous.qbit.api.domain.auth.service.AuthService;
+import com.curihous.qbit.infra.security.auth.dto.TokenResponseDto;
+import com.curihous.qbit.infra.security.auth.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;

@@ -54,6 +54,17 @@ jwt:
     access: ${JWT_ACCESS_SECRET_DEV}
     refresh: ${JWT_REFRESH_SECRET_DEV}
 
+# Alpaca OAuth
+alpaca:
+  oauth:
+    client-id: ${ALPACA_OAUTH_CLIENT_ID}
+    client-secret: ${ALPACA_OAUTH_CLIENT_SECRET}
+    redirect-uri: https://api.qbit.o-r.kr/api/oauth/alpaca/callback
+    authorization-url: https://app.alpaca.markets/oauth/authorize
+    token-url: https://api.alpaca.markets/oauth/token
+  paper-trading:
+    base-url: https://paper-api.alpaca.markets
+    
 logging:
   level:
     com.curihous.qbit: DEBUG
@@ -61,6 +72,12 @@ logging:
     org.hibernate.SQL: DEBUG
     org.springframework.data.redis: DEBUG
     org.springframework.security: DEBUG
+
+# App Info
+info:
+  app:
+    name: QBIT Backend
+    version: 1.1.0
 
 # Swagger
 springdoc:
@@ -70,3 +87,7 @@ springdoc:
   api-docs:
     enabled: true
     path: /api-docs
+    info:
+      title: ${info.app.name} API
+      version: ${info.app.version}
+      description: ${info.app.description}

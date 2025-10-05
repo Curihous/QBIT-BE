@@ -77,6 +77,17 @@ jwt:
     access: ${JWT_ACCESS_SECRET}
     refresh: ${JWT_REFRESH_SECRET}
 
+# Alpaca OAuth
+alpaca:
+  oauth:
+    client-id: ${ALPACA_OAUTH_CLIENT_ID}
+    client-secret: ${ALPACA_OAUTH_CLIENT_SECRET}
+    redirect-uri: https://api.qbit.o-r.kr/api/oauth/alpaca/callback
+    authorization-url: https://app.alpaca.markets/oauth/authorize
+    token-url: https://api.alpaca.markets/oauth/token
+  paper-trading:
+    base-url: https://paper-api.alpaca.markets
+
 management:
   endpoints:
     web:
@@ -86,8 +97,18 @@ management:
     health:
       show-details: when-authorized
 
+# App Info
+info:
+  app:
+    name: QBIT Backend
+    version: 1.1.0
+
 springdoc:
   swagger-ui:
     enabled: true
   api-docs:
     enabled: true
+    info:
+      title: ${info.app.name} API
+      version: ${info.app.version}
+      description: ${info.app.description}
