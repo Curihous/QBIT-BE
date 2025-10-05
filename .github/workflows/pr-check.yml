@@ -65,4 +65,8 @@ jobs:
       uses: github/codeql-action/upload-sarif@v3
       if: always()
       with:
-        sarif_file: 'trivy-results.sarif'
+        image-ref: ${{ secrets.DOCKER_REPO }}:pr-${{ github.event.number }}
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        severity: 'CRITICAL,HIGH'  # Critical, High만 검사
+        ignore-unfixed: true       # 수정되지 않은 취약점 무시
