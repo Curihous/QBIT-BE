@@ -27,7 +27,7 @@ public class OAuthStateService {
 
     private final RedisTemplate<String, String> redisTemplate;
     
-    @Value("${oauth.state.secret")
+    @Value("${oauth.state.secret}")
     private String stateSecret;
     
     // OAuth 상태값 만료 시간 
