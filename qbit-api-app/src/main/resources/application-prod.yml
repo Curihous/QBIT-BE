@@ -13,7 +13,7 @@ spring:
   
   jpa:
     hibernate:
-      ddl-auto: ${JPA_DDL_AUTO_PROD}
+      ddl-auto: update
     show-sql: false
     properties:
       hibernate:
@@ -43,7 +43,7 @@ spring:
           kakao:
             client-id: ${KAKAO_CLIENT_ID}
             client-secret: ${KAKAO_CLIENT_SECRET}
-            redirect-uri: http://localhost:8080/login/oauth2/code/kakao
+            redirect-uri: https://api.qbit.o-r.kr/login/oauth2/code/kakao
             client-authentication-method: client_secret_post
             authorization-grant-type: authorization_code
             client-name: kakao-login
@@ -77,6 +77,26 @@ jwt:
     access: ${JWT_ACCESS_SECRET}
     refresh: ${JWT_REFRESH_SECRET}
 
+# OAuth 상태값 보안 설정
+oauth:
+  state:
+    secret: ${OAUTH_STATE_SECRET}
+
+# 토큰 암호화 설정
+encryption:
+  secret-key: ${ENCRYPTION_SECRET_KEY}
+
+# Alpaca OAuth
+alpaca:
+  oauth:
+    client-id: ${ALPACA_OAUTH_CLIENT_ID}
+    client-secret: ${ALPACA_OAUTH_CLIENT_SECRET}
+    redirect-uri: https://api.qbit.o-r.kr/api/oauth/alpaca/callback
+    authorization-url: https://app.alpaca.markets/oauth/authorize
+    token-url: https://api.alpaca.markets/oauth/token
+  paper-trading:
+    base-url: https://paper-api.alpaca.markets
+
 management:
   endpoints:
     web:
@@ -86,10 +106,17 @@ management:
     health:
       show-details: when-authorized
 
-# Swagger (Disabled) 
-# TODO: 배포 후 활성화
+# App Info
+info:
+  app:
+    name: QBIT Backend
+    version: 1.1.0
+
 springdoc:
   swagger-ui:
-    enabled: false
+    enabled: true
   api-docs:
-    enabled: false
+    enabled: true
+    info:
+      title: ${info.app.name} API
+      version: ${info.app.version}

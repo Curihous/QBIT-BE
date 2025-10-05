@@ -16,7 +16,7 @@ public class Journal {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "journal_id")
-    private Long journalId;
+    private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "trade_cycle_id", nullable = false)
