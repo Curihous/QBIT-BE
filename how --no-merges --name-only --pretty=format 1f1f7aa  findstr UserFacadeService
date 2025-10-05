@@ -1,0 +1,51 @@
+[33mcommit 1f1f7aaee93cb30353f3f2ed652f65d3e1f79102[m
+Author: jud1thdev <8w8u8@naver.com>
+Date:   Sun Oct 5 18:21:14 2025 +0900
+
+    feat: Alpaca Paper Trading OAuth & refactor: DDD 모듈 구조 재편성
+
+build.gradle
+qbit-api-app/build.gradle
+qbit-api-app/src/main/java/com/curihous/qbit/api/domain/auth/controller/AlpacaOAuthController.java
+qbit-api-app/src/main/java/com/curihous/qbit/api/domain/auth/controller/AuthController.java
+qbit-api-app/src/main/java/com/curihous/qbit/api/domain/user/controller/UserController.java
+qbit-api-app/src/main/java/com/curihous/qbit/api/domain/user/service/UserFacadeService.java
+qbit-api-app/src/main/resources/application-dev.yml
+qbit-api-app/src/main/resources/application-prod.yml
+qbit-client/qbit-alpaca-client/build.gradle
+qbit-client/qbit-alpaca-client/src/main/java/com/curihous/qbit/alpaca/client/AlpacaOAuthClient.java
+qbit-client/qbit-alpaca-client/src/main/java/com/curihous/qbit/alpaca/client/AlpacaTradingClient.java
+qbit-client/qbit-alpaca-client/src/main/java/com/curihous/qbit/alpaca/config/AlpacaClientConfig.java
+qbit-client/qbit-alpaca-client/src/main/java/com/curihous/qbit/alpaca/dto/internal/AlpacaConnectionStatus.java
+qbit-client/qbit-alpaca-client/src/main/java/com/curihous/qbit/alpaca/dto/request/CreateOrderRequest.java
+qbit-client/qbit-alpaca-client/src/main/java/com/curihous/qbit/alpaca/dto/request/StopLossRequest.java
+qbit-client/qbit-alpaca-client/src/main/java/com/curihous/qbit/alpaca/dto/request/TakeProfitRequest.java
+qbit-client/qbit-alpaca-client/src/main/java/com/curihous/qbit/alpaca/dto/request/UpdateOrderRequest.java
+qbit-client/qbit-alpaca-client/src/main/java/com/curihous/qbit/alpaca/dto/response/AlpacaAccountResponse.java
+qbit-client/qbit-alpaca-client/src/main/java/com/curihous/qbit/alpaca/dto/response/AlpacaOrderResponse.java
+qbit-client/qbit-alpaca-client/src/main/java/com/curihous/qbit/alpaca/dto/response/AlpacaPositionResponse.java
+qbit-client/qbit-alpaca-client/src/main/java/com/curihous/qbit/alpaca/dto/response/AlpacaTokenResponse.java
+qbit-client/qbit-alpaca-client/src/main/java/com/curihous/qbit/alpaca/entity/AlpacaOAuthConnection.java
+qbit-client/qbit-alpaca-client/src/main/java/com/curihous/qbit/alpaca/repository/AlpacaOAuthConnectionRepository.java
+qbit-client/qbit-alpaca-client/src/main/java/com/curihous/qbit/alpaca/service/AlpacaOAuthConnectionService.java
+qbit-client/qbit-alpaca-client/src/main/java/com/curihous/qbit/alpaca/service/AlpacaOAuthService.java
+qbit-common/build.gradle
+qbit-common/src/main/java/com/curihous/qbit/common/config/SwaggerConfig.java
+qbit-domain/src/main/java/com/curihous/qbit/domain/user/service/UserService.java
+qbit-infra/build.gradle
+qbit-infra/src/main/java/com/curihous/qbit/infra/security/auth/dto/TokenResponseDto.java
+qbit-infra/src/main/java/com/curihous/qbit/infra/security/auth/service/AuthService.java
+qbit-infra/src/main/java/com/curihous/qbit/infra/security/config/SecurityConfig.java
+qbit-infra/src/main/java/com/curihous/qbit/infra/security/handler/CustomAccessDeniedHandler.java
+qbit-infra/src/main/java/com/curihous/qbit/infra/security/handler/CustomAuthenticationEntryPoint.java
+qbit-infra/src/main/java/com/curihous/qbit/infra/security/jwt/JwtFilter.java
+qbit-infra/src/main/java/com/curihous/qbit/infra/security/jwt/JwtUtil.java
+qbit-infra/src/main/java/com/curihous/qbit/infra/security/oauth/OAuth2FailureHandler.java
+qbit-infra/src/main/java/com/curihous/qbit/infra/security/oauth/OAuth2SuccessHandler.java
+qbit-infra/src/main/java/com/curihous/qbit/infra/security/oauth/dto/OAuth2Attributes.java
+qbit-infra/src/main/java/com/curihous/qbit/infra/security/oauth/dto/OAuth2UserDetails.java
+qbit-infra/src/main/java/com/curihous/qbit/infra/security/oauth/exception/MissingOAuth2AttributeException.java
+qbit-infra/src/main/java/com/curihous/qbit/infra/security/oauth/service/CustomOAuth2UserService.java
+qbit-infra/src/main/java/com/curihous/qbit/infra/security/util/CookieUtil.java
+qbit-infra/src/main/java/com/curihous/qbit/infra/security/util/CustomUserDetails.java
+settings.gradle
