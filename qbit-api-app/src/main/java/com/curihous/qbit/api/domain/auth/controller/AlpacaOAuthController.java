@@ -5,7 +5,7 @@ import com.curihous.qbit.common.exception.ErrorCode;
 import com.curihous.qbit.alpaca.entity.AlpacaOAuthConnection;
 import com.curihous.qbit.alpaca.dto.internal.AlpacaConnectionStatus;
 import com.curihous.qbit.alpaca.service.AlpacaOAuthService;
-import com.curihous.qbit.domain.user.entity.User;
+import com.curihous.qbit.infra.security.util.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
@@ -26,8 +26,8 @@ public class AlpacaOAuthController {
 
     @GetMapping("/authorize")
     @Operation(summary = "Alpaca OAuth 인증 시작", description = "Alpaca OAuth 승인 페이지로 리디렉션")
-    public void authorize(HttpServletResponse response, @AuthenticationPrincipal User user) throws IOException {
-        String authUrl = alpacaOAuthService.generateAuthUrl(user.getId().toString());
+    public void authorize(HttpServletResponse response, @AuthenticationPrincipal CustomUserDetails userDetails) throws IOException {
+        String authUrl = alpacaOAuthService.generateAuthUrl(userDetails.getUserId().toString());
         response.sendRedirect(authUrl);
     }
 
@@ -47,22 +47,22 @@ public class AlpacaOAuthController {
 
     @PostMapping("/refresh")
     @Operation(summary = "액세스 토큰 갱신", description = "만료된 액세스 토큰을 갱신")
-    public ResponseEntity<AlpacaOAuthConnection> refreshToken(@AuthenticationPrincipal User user) {
-        AlpacaOAuthConnection connection = alpacaOAuthService.refreshToken(user.getId());
+    public ResponseEntity<AlpacaOAuthConnection> refreshToken(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        AlpacaOAuthConnection connection = alpacaOAuthService.refreshToken(userDetails.getUserId());
         return ResponseEntity.ok(connection);
     }
 
     @DeleteMapping("/disconnect")
     @Operation(summary = "Alpaca 계정 연결 해제", description = "Alpaca OAuth 연결을 해제")
-    public ResponseEntity<Void> disconnect(@AuthenticationPrincipal User user) {
-        alpacaOAuthService.disconnect(user.getId());
+    public ResponseEntity<Void> disconnect(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        alpacaOAuthService.disconnect(userDetails.getUserId());
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/status")
     @Operation(summary = "연결 상태 확인", description = "Alpaca 계정 연결 상태 확인")
-    public ResponseEntity<AlpacaConnectionStatus> getConnectionStatus(@AuthenticationPrincipal User user) {
-        AlpacaConnectionStatus status = alpacaOAuthService.getConnectionStatus(user.getId());
+    public ResponseEntity<AlpacaConnectionStatus> getConnectionStatus(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        AlpacaConnectionStatus status = alpacaOAuthService.getConnectionStatus(userDetails.getUserId());
         return ResponseEntity.ok(status);
     }
 }
