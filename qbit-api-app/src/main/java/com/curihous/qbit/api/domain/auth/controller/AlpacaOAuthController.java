@@ -31,6 +31,13 @@ public class AlpacaOAuthController {
         response.sendRedirect(authUrl);
     }
 
+    @GetMapping("/authorize-url")
+    @Operation(summary = "Alpaca OAuth 인증 URL 조회", description = "Alpaca OAuth 승인 URL을 반환 (Swagger용)")
+    public ResponseEntity<String> getAuthorizeUrl(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        String authUrl = alpacaOAuthService.generateAuthUrl(userDetails.getUserId().toString());
+        return ResponseEntity.ok(authUrl);
+    }
+
     @GetMapping("/callback")
     @Operation(summary = "OAuth 콜백 처리", description = "Alpaca에서 리디렉션된 코드를 처리하여 토큰 저장")
     public ResponseEntity<AlpacaOAuthConnection> callback(
