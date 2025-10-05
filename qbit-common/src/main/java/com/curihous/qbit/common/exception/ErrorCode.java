@@ -31,8 +31,12 @@ public enum ErrorCode {
     // 401 Unauthorized
     // 로그인 상태여야 하는 요청
     NOT_AUTHENTICATED(401, "로그인 상태가 아닙니다."),
+    UNAUTHORIZED(401, "인증이 필요합니다."),
     // 소셜 로그인이 정상적으로 이루어지지 않음
     OAUTH2_LOGIN_FAILED(401, "소셜 로그인에 실패했습니다."),
+    OAUTH2_ATTRIBUTE_MISSING(401, "OAuth2 제공업체에서 필수 사용자 정보가 누락되었습니다."),
+    EMAIL_ALREADY_REGISTERED(401, "이미 가입된 이메일입니다."),
+    ILLEGAL_REGISTRATION_ID(401, "지원하지 않는 로그인 타입입니다."),
     // 유효하지 않은 토큰
     INVALID_TOKEN(401, "유효하지 않은 토큰입니다."),
     INVALID_REFRESH_TOKEN(401, "유효하지 않은 리프레시 토큰입니다."),
@@ -86,6 +90,13 @@ public enum ErrorCode {
     DATABASE_ERROR(500, "데이터베이스 오류가 발생했습니다."),
     INTERNAL_SERVER_ERROR(500, "서버 내부 오류가 발생했습니다."),
     WEBSOCKET_CONNECTION_ERROR(500, "WebSocket 연결 중 문제가 발생했습니다."),
+    
+    // Auth 관련 내부 에러
+    COOKIE_ADD_FAILED(500, "쿠키 추가에 실패했습니다."),
+    COOKIE_DELETE_FAILED(500, "쿠키 삭제에 실패했습니다."),
+    COOKIE_GET_FAILED(500, "쿠키 조회에 실패했습니다."),
+    JWT_GENERATION_FAILED(500, "JWT 토큰 생성에 실패했습니다."),
+    JWT_VALIDATION_FAILED(500, "JWT 토큰 검증에 실패했습니다."),
 
     ;
 

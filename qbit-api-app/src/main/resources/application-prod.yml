@@ -35,6 +35,28 @@ spring:
           max-idle: ${REDIS_POOL_MAX_IDLE:10}
           min-idle: ${REDIS_POOL_MIN_IDLE:5}
 
+  # OAuth2
+  security:
+    oauth2:
+      client:
+        registration:
+          kakao:
+            client-id: ${KAKAO_CLIENT_ID}
+            client-secret: ${KAKAO_CLIENT_SECRET}
+            redirect-uri: http://localhost:8080/login/oauth2/code/kakao
+            client-authentication-method: client_secret_post
+            authorization-grant-type: authorization_code
+            client-name: kakao-login
+            scope: # kakao 개인 정보 동의 항목 설정의 ID 값
+              - profile_nickname
+              - account_email
+        provider:
+          kakao:
+            authorization-uri: https://kauth.kakao.com/oauth/authorize
+            token-uri: https://kauth.kakao.com/oauth/token
+            user-info-uri: https://kapi.kakao.com/v2/user/me
+            user-name-attribute: id
+
 # WebSocket
 websocket:
   allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS} # TODO: 프로덕션에서 명시적 도메인 설정
@@ -49,6 +71,12 @@ logging:
     org.springframework.web.socket: WARN
     root: WARN
 
+# JWT 설정 
+jwt:
+  secret:
+    access: ${JWT_ACCESS_SECRET}
+    refresh: ${JWT_REFRESH_SECRET}
+
 management:
   endpoints:
     web:
@@ -57,3 +85,11 @@ management:
   endpoint:
     health:
       show-details: when-authorized
+
+# Swagger (Disabled) 
+# TODO: 배포 후 활성화
+springdoc:
+  swagger-ui:
+    enabled: false
+  api-docs:
+    enabled: false
