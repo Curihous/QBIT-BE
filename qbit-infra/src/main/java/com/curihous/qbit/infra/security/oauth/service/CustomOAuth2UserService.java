@@ -7,6 +7,7 @@ import com.curihous.qbit.infra.security.oauth.dto.OAuth2UserDetails;
 import com.curihous.qbit.domain.user.entity.User;
 import com.curihous.qbit.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
@@ -68,9 +70,10 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 throw new QbitException(ErrorCode.EMAIL_ALREADY_REGISTERED);
             }
             
-            // 기존 사용자 활성화 상태 확인
+            // 기존 사용자가 비활성화 상태라면 자동으로 활성화
             if (!existingUser.isActive()) {
-                throw new QbitException(ErrorCode.USER_STATUS_IS_NOT_ACTIVE);
+                existingUser.activate();
+                log.info("비활성화된 사용자가 OAuth2 로그인을 통해 자동 활성화됨: email={}", email);
             }
             
             return existingUser;

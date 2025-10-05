@@ -65,10 +65,11 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of(
-                "http://localhost:5000", // 프론트엔드
-                "http://localhost:3000", // 프론트엔드
-                "http://localhost:8080", // 백엔드
-                "https://api.qbit.o-r.kr" // 백엔드 배포
+                "http://localhost:5000", // 개발 환경 프론트엔드
+                "http://localhost:3000", // 개발 환경 프론트엔드
+                "http://localhost:8080", // 개발 환경 백엔드
+                "https://qbit.o-r.kr",   // 프로덕션 프론트엔드
+                "https://api.qbit.o-r.kr" // 프로덕션 백엔드
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));

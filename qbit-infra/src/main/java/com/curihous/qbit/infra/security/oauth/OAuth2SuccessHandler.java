@@ -25,10 +25,11 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
     private final CookieUtil cookieUtil;
     
     private static final String OAUTH_PATH = "/oauth";
-    private static final String DEPLOYED_REDIRECT_URL = "http://localhost:3000";
+    private static final String DEPLOYED_REDIRECT_URL = "https://qbit.o-r.kr"; // 배포
     private static final List<String> ALLOWED_REDIRECT_URLS = List.of(
-            "http://localhost:3000",
-            "http://localhost:8080"
+            "http://localhost:3000",     // FE 로컬 
+            "http://localhost:8080",     // BE 로컬
+            "https://qbit.o-r.kr"        // 배포
     );
 
     @Override
