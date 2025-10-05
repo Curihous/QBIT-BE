@@ -76,6 +76,8 @@ jobs:
             -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
             -e DATABASE_USERNAME_PROD="${{ secrets.DATABASE_USERNAME_PROD }}" \
             -e DATABASE_PASSWORD_PROD="${{ secrets.DATABASE_PASSWORD_PROD }}" \
+            -e DATABASE_DRIVER="org.postgresql.Driver" \
+            -e JPA_DDL_AUTO_PROD="validate" \
             -e JWT_ACCESS_SECRET="${{ secrets.JWT_ACCESS_SECRET }}" \
             -e JWT_REFRESH_SECRET="${{ secrets.JWT_REFRESH_SECRET }}" \
             -e KAKAO_CLIENT_ID="${{ secrets.KAKAO_CLIENT_ID }}" \
