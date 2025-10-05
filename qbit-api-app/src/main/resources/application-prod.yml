@@ -81,7 +81,6 @@ jwt:
 oauth:
   state:
     secret: ${OAUTH_STATE_SECRET}
-    expiry-minutes: 10
 
 # 토큰 암호화 설정
 encryption:

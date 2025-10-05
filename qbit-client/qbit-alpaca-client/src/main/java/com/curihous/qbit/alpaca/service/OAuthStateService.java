@@ -27,11 +27,12 @@ public class OAuthStateService {
 
     private final RedisTemplate<String, String> redisTemplate;
     
-    @Value("${oauth.state.secret:default-secret-key-change-in-production}")
+    @Value("${oauth.state.secret")
     private String stateSecret;
     
-    @Value("${oauth.state.expiry-minutes:10}")
-    private int stateExpiryMinutes;
+    // OAuth 상태값 만료 시간 
+    // TODO: 개발 완료 후 변경 필요
+    private static final int STATE_EXPIRY_MINUTES = 50;
     
     private static final String STATE_PREFIX = "oauth:state:";
     private static final String HMAC_ALGORITHM = "HmacSHA256";
@@ -59,7 +60,7 @@ public class OAuthStateService {
             
             // 6. Redis에 상태값 저장 (중복 사용 방지 및 만료 관리)
             String redisKey = STATE_PREFIX + userId + ":" + timestamp;
-            redisTemplate.opsForValue().set(redisKey, state, Duration.ofMinutes(stateExpiryMinutes));
+            redisTemplate.opsForValue().set(redisKey, state, Duration.ofMinutes(STATE_EXPIRY_MINUTES));
             
             return state;
             
@@ -105,7 +106,7 @@ public class OAuthStateService {
             
             // 4. 타임스탬프 만료 검증
             long currentTime = Instant.now().getEpochSecond();
-            if (currentTime - timestamp > (stateExpiryMinutes * 60)) {
+            if (currentTime - timestamp > (STATE_EXPIRY_MINUTES * 60)) {
                 throw new QbitException(ErrorCode.OAUTH2_LOGIN_FAILED);
             }
             

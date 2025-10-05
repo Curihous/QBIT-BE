@@ -24,7 +24,7 @@ public class EncryptionService {
     private static final int GCM_IV_LENGTH = 12; // 96 bits
     private static final int GCM_TAG_LENGTH = 16; // 128 bits
 
-    @Value("${encryption.secret-key:default-encryption-key-change-in-production}")
+    @Value("${encryption.secret-key}")
     private String secretKeyString;
 
     private SecretKey getSecretKey() {
