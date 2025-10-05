@@ -144,17 +144,4 @@ public class OAuthStateService {
         byte[] signatureBytes = mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
         return Base64.getUrlEncoder().withoutPadding().encodeToString(signatureBytes);
     }
-
-    // 만료된 상태값 정리
-    public void cleanupExpiredStates() {
-        try {
-            // Redis TTL을 사용하므로 자동으로 만료되지만, 
-            // 혹시 모를 수동 정리를 위해 패턴으로 검색하여 삭제
-            String pattern = STATE_PREFIX + "*";
-            redisTemplate.delete(redisTemplate.keys(pattern));
-            
-        } catch (Exception e) {
-            // 정리 실패는 무시 (Redis TTL이 자동으로 처리)
-        }
-    }
 }
