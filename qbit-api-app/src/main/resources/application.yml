@@ -1,3 +1,9 @@
 spring:
   profiles:
     active: ${SPRING_PROFILES_ACTIVE}
+
+info:
+  app:
+    name: QBIT-API
+    version: 1.2.0
+    description: QBIT 백엔드 API
