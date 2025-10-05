@@ -87,7 +87,6 @@ jobs:
             -e ALPACA_OAUTH_CLIENT_ID="${{ secrets.ALPACA_OAUTH_CLIENT_ID }}" \
             -e ALPACA_OAUTH_CLIENT_SECRET="${{ secrets.ALPACA_OAUTH_CLIENT_SECRET }}" \
             -e OAUTH_STATE_SECRET="${{ secrets.OAUTH_STATE_SECRET }}" \
-            # -e WEBSOCKET_ALLOWED_ORIGINS="${{ secrets.WEBSOCKET_ALLOWED_ORIGINS }}" \
             ${{ secrets.DOCKER_REPO }}:${{ github.sha }}
           
           # 기존 이미지 정리

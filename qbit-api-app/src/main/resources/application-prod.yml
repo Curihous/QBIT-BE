@@ -58,6 +58,7 @@ spring:
             user-name-attribute: id
 
 # WebSocket
+# TODO: 프로덕션에서 명시적 도메인 설정
 websocket:
   allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS:http://localhost:3000} # TODO: 프로덕션에서 명시적 도메인 설정
   message-size-limit: ${WEBSOCKET_MESSAGE_SIZE_LIMIT:8192}
