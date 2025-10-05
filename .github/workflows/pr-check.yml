@@ -50,14 +50,15 @@ jobs:
         file: ./Dockerfile
         platforms: linux/amd64
         push: false
-        tags: ${{ secrets.DOCKER_REPO }}:pr-${{ github.event.number }}
+        load: true
+        tags: qbit-api:pr-${{ github.event.number }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
     - name: Run security scan
       uses: aquasecurity/trivy-action@master
       with:
-        image-ref: ${{ secrets.DOCKER_REPO }}:pr-${{ github.event.number }}
+        image-ref: qbit-api:pr-${{ github.event.number }}
         format: 'sarif'
         output: 'trivy-results.sarif'
         severity: 'CRITICAL,HIGH'  # Critical, High만 검사
