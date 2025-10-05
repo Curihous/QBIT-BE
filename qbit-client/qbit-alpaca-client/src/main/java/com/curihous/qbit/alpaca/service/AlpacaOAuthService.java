@@ -145,10 +145,16 @@ public class AlpacaOAuthService {
                 .plusSeconds(expiresInSeconds);
 
             // 토큰 업데이트
+            String newRefreshToken = tokenResponse.getRefreshToken();
+            if (newRefreshToken == null || newRefreshToken.isEmpty()) {
+                // 리프레시 토큰이 없는 경우 기존 토큰 보존
+                newRefreshToken = connection.getRefreshToken();
+            }
+            
             return alpacaOAuthConnectionService.updateTokens(
                 connection,
                 tokenResponse.getAccessToken(),
-                tokenResponse.getRefreshToken(),
+                newRefreshToken,
                 expiresAt
             );
 

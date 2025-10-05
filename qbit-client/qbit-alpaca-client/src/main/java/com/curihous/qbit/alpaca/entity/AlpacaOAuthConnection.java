@@ -65,7 +65,10 @@ public class AlpacaOAuthConnection extends BaseTimeEntity {
 
     public void updateTokens(String accessToken, String refreshToken, LocalDateTime expiresAt) {
         this.accessToken = accessToken;
-        this.refreshToken = refreshToken;
+        // 리프레시 토큰이 null이 아닌 경우에만 업데이트
+        if (refreshToken != null && !refreshToken.isEmpty()) {
+            this.refreshToken = refreshToken;
+        }
         this.expiresAt = expiresAt;
     }
 
