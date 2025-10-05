@@ -19,7 +19,7 @@ public class OrderRequest {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "order_request_id")
-    private Long orderRequestId;
+    private Long id;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "order_type", nullable = false)

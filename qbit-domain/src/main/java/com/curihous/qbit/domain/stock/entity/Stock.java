@@ -15,7 +15,7 @@ public class Stock extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "stock_id")
-    private Long stockId;
+    private Long id;
 
     @Column(name = "market", nullable = false)
     private String market;

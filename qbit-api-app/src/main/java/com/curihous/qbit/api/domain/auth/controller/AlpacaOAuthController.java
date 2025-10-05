@@ -27,7 +27,7 @@ public class AlpacaOAuthController {
     @GetMapping("/authorize")
     @Operation(summary = "Alpaca OAuth 인증 시작", description = "Alpaca OAuth 승인 페이지로 리디렉션")
     public void authorize(HttpServletResponse response, @AuthenticationPrincipal User user) throws IOException {
-        String authUrl = alpacaOAuthService.generateAuthUrl(user.getUserId().toString());
+        String authUrl = alpacaOAuthService.generateAuthUrl(user.getId().toString());
         response.sendRedirect(authUrl);
     }
 
@@ -48,21 +48,21 @@ public class AlpacaOAuthController {
     @PostMapping("/refresh")
     @Operation(summary = "액세스 토큰 갱신", description = "만료된 액세스 토큰을 갱신")
     public ResponseEntity<AlpacaOAuthConnection> refreshToken(@AuthenticationPrincipal User user) {
-        AlpacaOAuthConnection connection = alpacaOAuthService.refreshToken(user.getUserId());
+        AlpacaOAuthConnection connection = alpacaOAuthService.refreshToken(user.getId());
         return ResponseEntity.ok(connection);
     }
 
     @DeleteMapping("/disconnect")
     @Operation(summary = "Alpaca 계정 연결 해제", description = "Alpaca OAuth 연결을 해제")
     public ResponseEntity<Void> disconnect(@AuthenticationPrincipal User user) {
-        alpacaOAuthService.disconnect(user.getUserId());
+        alpacaOAuthService.disconnect(user.getId());
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/status")
     @Operation(summary = "연결 상태 확인", description = "Alpaca 계정 연결 상태 확인")
     public ResponseEntity<AlpacaConnectionStatus> getConnectionStatus(@AuthenticationPrincipal User user) {
-        AlpacaConnectionStatus status = alpacaOAuthService.getConnectionStatus(user.getUserId());
+        AlpacaConnectionStatus status = alpacaOAuthService.getConnectionStatus(user.getId());
         return ResponseEntity.ok(status);
     }
 }

@@ -47,6 +47,6 @@ public class UserSecurityFacade {
     @Transactional
     public void deleteCurrentUser() {
         User user = getCurrentUser();
-        userService.deleteUser(user.getUserId());
+        userService.deleteUser(user.getId());
     }
 }

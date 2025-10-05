@@ -19,7 +19,7 @@ public class DailyAsset {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "daily_asset_id")
-    private Long dailyAssetId;
+    private Long id;
 
     @Column(name = "total_asset_value", nullable = false, precision = 20, scale = 4)
     private BigDecimal totalAssetValue;

@@ -53,7 +53,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 userNameAttributeName, 
                 user.getEmail(), 
                 isNewUser, 
-                user.getUserId()
+                user.getId()
         );
     }
 
