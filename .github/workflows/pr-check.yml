@@ -37,10 +37,18 @@ jobs:
     - name: Run tests
       run: ./gradlew test --no-daemon
 
+    - name: Set up Buildx
+      uses: docker/setup-buildx-action@v3
+      with:
+        install: true
+        driver: docker-container
+
     - name: Build Docker image (no push)
       uses: docker/build-push-action@v5
       with:
         context: .
+        file: ./Dockerfile
+        platforms: linux/amd64
         push: false
         tags: ${{ secrets.DOCKER_REPO }}:pr-${{ github.event.number }}
         cache-from: type=gha
