@@ -56,7 +56,7 @@ jwt:
 
 # 암호화 설정
 encryption:
-  secret-key: ${ENCRYPTION_SECRET_KEY_DEV}
+  secret-key: ${ENCRYPTION_SECRET_KEY}
 
 logging:
   level:
