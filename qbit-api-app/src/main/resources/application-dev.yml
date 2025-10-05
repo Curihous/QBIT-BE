@@ -59,7 +59,7 @@ alpaca:
   oauth:
     client-id: ${ALPACA_OAUTH_CLIENT_ID}
     client-secret: ${ALPACA_OAUTH_CLIENT_SECRET}
-    redirect-uri: https://api.qbit.o-r.kr/api/oauth/alpaca/callback
+    redirect-uri: http://localhost:8080/api/oauth/alpaca/callback
     authorization-url: https://app.alpaca.markets/oauth/authorize
     token-url: https://api.alpaca.markets/oauth/token
   paper-trading:
