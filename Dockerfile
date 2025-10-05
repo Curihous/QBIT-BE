@@ -29,25 +29,16 @@ COPY qbit-common/src qbit-common/src/
 # JAR 빌드
 RUN ./gradlew :qbit-api-app:bootJar -x test --no-daemon
 
-# Extract
-FROM eclipse-temurin:17-jre-jammy AS extract
-WORKDIR /workspace
-COPY --from=build /workspace/qbit-api-app/build/libs/*.jar app.jar
-RUN java -Djarmode=layertools -jar app.jar extract --destination extracted
-
 # Run
-FROM eclipse-temurin:17-jre-jammy AS run
+FROM eclipse-temurin:17-jre-jammy
 
 # 보안을 위한 non-root 사용자 생성
 RUN groupadd -r spring && useradd -r -g spring spring
 
 WORKDIR /app
 
-# 레이어별 복사 (Spring Boot 레이어드 JAR 최적화)
-COPY --from=extract --chown=spring:spring /workspace/extracted/dependencies ./dependencies
-COPY --from=extract --chown=spring:spring /workspace/extracted/snapshot-dependencies ./snapshot-dependencies
-COPY --from=extract --chown=spring:spring /workspace/extracted/spring-boot-loader ./spring-boot-loader
-COPY --from=extract --chown=spring:spring /workspace/extracted/application ./application
+# JAR 파일 복사
+COPY --from=build --chown=spring:spring /workspace/qbit-api-app/build/libs/*.jar app.jar
 
 # non-root 사용자로 실행
 USER spring:spring
