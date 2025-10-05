@@ -1,0 +1,87 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [ deploy ]
+  workflow_dispatch:  
+
+env:
+  DOCKER_IMAGE: ${{ secrets.DOCKER_REPO }}
+  DOCKER_TAG: ${{ github.sha }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Make gradlew executable
+      run: chmod +x ./gradlew
+
+    - name: Build Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ secrets.DOCKER_REPO }}:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Deploy to EC2
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.KEY }}
+        port: 22
+        script: |
+          # 기존 컨테이너 정리
+          docker stop qbit-api || true
+          docker rm qbit-api || true
+          
+          # Docker Hub 로그인
+          echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+          
+          # 최신 이미지 다운로드
+          docker pull ${{ secrets.DOCKER_REPO }}:${{ github.sha }}
+          
+          # 새 컨테이너 실행
+          docker run -d \
+            --name qbit-api \
+            --restart unless-stopped \
+            -p 8080:8080 \
+            -e SPRING_PROFILES_ACTIVE=prod \
+            -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+            -e DATABASE_USERNAME_PROD="${{ secrets.DATABASE_USERNAME_PROD }}" \
+            -e DATABASE_PASSWORD_PROD="${{ secrets.DATABASE_PASSWORD_PROD }}" \
+            -e JWT_ACCESS_SECRET="${{ secrets.JWT_ACCESS_SECRET }}" \
+            -e JWT_REFRESH_SECRET="${{ secrets.JWT_REFRESH_SECRET }}" \
+            -e KAKAO_CLIENT_ID="${{ secrets.KAKAO_CLIENT_ID }}" \
+            -e KAKAO_CLIENT_SECRET="${{ secrets.KAKAO_CLIENT_SECRET }}" \
+            -e REDIS_HOST_PROD="${{ secrets.REDIS_HOST_PROD }}" \
+            -e REDIS_PORT_PROD="${{ secrets.REDIS_PORT_PROD }}" \
+            -e REDIS_PASSWORD_PROD="${{ secrets.REDIS_PASSWORD_PROD }}" \
+            ${{ secrets.DOCKER_REPO }}:${{ github.sha }}
+          
+          # 기존 이미지 정리
+          docker image prune -f
+
+    - name: Notify deployment status
+      if: always()
+      uses: Ilshidur/action-discord@master
+      env:
+        DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+      with:
+        args: |
+          배포 상태: ${{ job.status }}
+          브랜치: ${{ github.ref_name }}
+          커밋: ${{ github.sha }}
+          실행자: ${{ github.actor }}

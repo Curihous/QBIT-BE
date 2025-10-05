@@ -1,0 +1,56 @@
+# Git
+.git
+.gitignore
+
+# Gradle
+.gradle
+**/build
+gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea
+*.iml
+.vscode
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+out/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Documentation
+*.md
+docs/
+
+# Test files
+**/test/
+**/src/test/
+
+# Coverage reports
+build/reports/
+coverage/
+
+# Other build artifacts
+dist/
+target/
