@@ -92,4 +92,3 @@ springdoc:
     info:
       title: ${info.app.name} API
       version: ${info.app.version}
-      description: ${info.app.description}
