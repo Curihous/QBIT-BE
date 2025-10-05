@@ -14,6 +14,8 @@ COPY qbit-domain/build.gradle qbit-domain/
 COPY qbit-common/build.gradle qbit-common/
 COPY qbit-client/qbit-stock-client/build.gradle qbit-client/qbit-stock-client/
 COPY qbit-client/qbit-notification-client/build.gradle qbit-client/qbit-notification-client/
+COPY qbit-client/qbit-alpaca-client/build.gradle qbit-client/qbit-alpaca-client/
+COPY qbit-infra/build.gradle qbit-infra/
 
 RUN chmod +x gradlew
 
@@ -25,6 +27,8 @@ COPY qbit-api-app/src qbit-api-app/src/
 COPY qbit-websocket-app/src qbit-websocket-app/src/
 COPY qbit-domain/src qbit-domain/src/
 COPY qbit-common/src qbit-common/src/
+COPY qbit-client/qbit-alpaca-client/src qbit-client/qbit-alpaca-client/src/
+COPY qbit-infra/src qbit-infra/src/
 
 # JAR 빌드
 RUN ./gradlew :qbit-api-app:bootJar -x test --no-daemon

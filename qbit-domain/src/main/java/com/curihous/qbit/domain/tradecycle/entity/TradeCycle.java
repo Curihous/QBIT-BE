@@ -19,7 +19,7 @@ public class TradeCycle {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "trade_cycle_id")
-    private Long tradeCycleId;
+    private Long id;
 
     @Column(name = "start_date", nullable = false)
     private LocalDateTime startDate;

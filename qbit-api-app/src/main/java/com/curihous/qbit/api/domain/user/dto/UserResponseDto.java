@@ -19,7 +19,7 @@ public record UserResponseDto(
 ) {
     public static UserResponseDto from(User user) {
         return new UserResponseDto(
-                user.getUserId(),
+                user.getId(),
                 user.getEmail(),
                 user.getNickname(),
                 user.getProvider(),
