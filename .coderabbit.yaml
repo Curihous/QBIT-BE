@@ -5,14 +5,20 @@ reviews:
   request_changes_workflow: false
   high_level_summary: true
   high_level_summary_placeholder: "@coderabbitai summary"
-  high_level_summary_in_walkthrough: true
+  high_level_summary_in_walkthrough: false
+  pr_description_template: |
+    
+    ---
+    
+    ## 🐰 Summary By Coderabbit
+    {{summary}}
   auto_title_placeholder: "@coderabbitai"
   review_status: true
   commit_status: false
   fail_commit_status: false
   collapse_walkthrough: true
   changed_files_summary: true
-  sequence_diagrams: true
+  sequence_diagrams: false
   assess_linked_issues: true
   related_issues: true
   related_prs: false
