@@ -104,14 +104,26 @@ jobs:
           # 기존 이미지 정리
           docker image prune -f
 
+    - name: Get commit message and version
+      id: info
+      run: |
+        COMMIT_MSG=$(git log -1 --pretty=format:"%s")
+        echo "commit_message=$COMMIT_MSG" >> $GITHUB_OUTPUT
+        
+        VERSION=$(grep "version:" qbit-api-app/src/main/resources/application.yml | cut -d' ' -f2)
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+
     - name: Notify deployment status
       if: always()
       uses: Ilshidur/action-discord@master
       env:
         DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
       with:
-        args: |
-          배포 상태: ${{ job.status }}
-          브랜치: ${{ github.ref_name }}
-          커밋: ${{ github.sha }}
-          실행자: ${{ github.actor }}
+          args: |
+            **QBIT 백엔드 배포 알림**
+            
+            **상태:** ${{ job.status == 'success' && '✅ 성공' || '❌ 실패' }}
+            **버전:** `v${{ steps.info.outputs.version }}`
+            **브랜치:** `${{ github.ref_name }}`
+            **커밋 제목:** [${{ steps.info.outputs.commit_message }}](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
+            **실행자:** ${{ github.actor }}
