@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 
 @RestController
-@RequestMapping("/api/oauth/alpaca")
+@RequestMapping("/oauth2/alpaca")
 @RequiredArgsConstructor
 @Tag(name = "Alpaca OAuth", description = "Alpaca OAuth 인증 API")
 public class AlpacaOAuthController {
