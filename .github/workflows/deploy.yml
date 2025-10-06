@@ -8,6 +8,7 @@ on:
 env:
   DOCKER_IMAGE: ${{ secrets.DOCKER_REPO }}
   DOCKER_TAG: ${{ github.sha }}
+  CACHE_NAMESPACE: prod-v1  # TODO: 캐시 불호환 변경 시 수정
 
 jobs:
   build-and-deploy:
@@ -57,34 +58,67 @@ jobs:
         key: ${{ secrets.KEY }}
         port: 22
         script: |
-          # 기존 애플리케이션 컨테이너 정리
-          docker stop qbit-api || true
-          docker rm qbit-api || true
-          
-          # Docker Hub 로그인
+          # 0) 공용 네트워크 보장
+          docker network inspect qbit-net >/dev/null 2>&1 || docker network create qbit-net
+
+          # 1) Docker Hub 로그인 & 이미지 풀
           echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
-          
-          # 최신 이미지 다운로드
           docker pull ${{ secrets.DOCKER_REPO }}:${{ github.sha }}
-          
-          # Redis 컨테이너 확인 및 실행 (없으면 새로 생성)
-          if ! docker ps -a --format "table {{.Names}}" | grep -q "^qbit-redis$"; then
-            docker run -d \
-              --name qbit-redis \
-              --restart unless-stopped \
-              -p 6379:6379 \
-              redis:alpine
+
+          # 2) Redis 컨테이너 관리(재사용), 포트 바인딩 없음
+          echo "[INFO] Managing Redis container..."
+          if docker ps -a --format '{{.Names}}' | grep -qw qbit-redis; then
+            if [ "$(docker inspect -f '{{.State.Running}}' qbit-redis)" != "true" ]; then
+              docker start qbit-redis
+            else
+              echo "[INFO] Redis already running"
+            fi
           else
-            docker start qbit-redis || true
+            docker pull redis:7-alpine || true
+            docker run -d --name qbit-redis \
+              --restart unless-stopped \
+              --network qbit-net \
+              -v qbit-redis-data:/data \
+              redis:7-alpine redis-server \
+                --appendonly yes \
+                --requirepass "${{ secrets.REDIS_PASSWORD_PROD }}"
           fi
-          
-          # 새 컨테이너 실행
+
+          # 2-1) Redis 헬스체크(비번/무비번 모두 커버)
+          echo "[INFO] Waiting for Redis to be ready..."
+          for i in $(seq 1 60); do
+            if docker exec qbit-redis sh -c 'redis-cli -a "$REDIS_PASS" ping 2>/dev/null || redis-cli ping' \
+              --env REDIS_PASS="${{ secrets.REDIS_PASSWORD_PROD }}" | grep -q PONG; then
+              echo "[INFO] Redis is ready"
+              break
+            fi
+            sleep 0.5
+            if [ $i -eq 60 ]; then
+              echo "[ERROR] Redis not responding"
+              docker logs qbit-redis || true
+              exit 1
+            fi
+          done
+
+          # 2-2) (옵션) 캐시 드랍 토글
+          if [ "${DROP_REDIS:-false}" = "true" ]; then
+            echo "[WARN] FLUSHALL Redis (DROP_REDIS=true)"
+            docker exec qbit-redis sh -c 'redis-cli -a "$REDIS_PASS" FLUSHALL 2>/dev/null || redis-cli FLUSHALL' \
+              --env REDIS_PASS="${{ secrets.REDIS_PASSWORD_PROD }}"
+          fi
+
+          # 3) API 교체: 같은 네트워크에서 qbit-redis로만 붙기
+          docker rm -f qbit-api || true
           docker run -d \
             --name qbit-api \
             --restart unless-stopped \
-            --link qbit-redis:qbit-redis \
+            --network qbit-net \
             -p 8080:8080 \
             -e SPRING_PROFILES_ACTIVE=prod \
+            -e REDIS_HOST_PROD=qbit-redis \
+            -e REDIS_PORT_PROD=6379 \
+            -e REDIS_PASSWORD_PROD="${{ secrets.REDIS_PASSWORD_PROD }}" \
+            -e CACHE_NS=${{ env.CACHE_NAMESPACE }} \
             -e ENCRYPTION_SECRET_KEY="${{ secrets.ENCRYPTION_SECRET_KEY }}" \
             -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
             -e DATABASE_USERNAME_PROD="${{ secrets.DATABASE_USERNAME_PROD }}" \
@@ -93,16 +127,26 @@ jobs:
             -e JWT_REFRESH_SECRET="${{ secrets.JWT_REFRESH_SECRET }}" \
             -e KAKAO_CLIENT_ID="${{ secrets.KAKAO_CLIENT_ID }}" \
             -e KAKAO_CLIENT_SECRET="${{ secrets.KAKAO_CLIENT_SECRET }}" \
-            -e REDIS_HOST_PROD="${{ secrets.REDIS_HOST_PROD }}" \
-            -e REDIS_PORT_PROD="${{ secrets.REDIS_PORT_PROD }}" \
-            -e REDIS_PASSWORD_PROD="${{ secrets.REDIS_PASSWORD_PROD }}" \
             -e ALPACA_OAUTH_CLIENT_ID="${{ secrets.ALPACA_OAUTH_CLIENT_ID }}" \
             -e ALPACA_OAUTH_CLIENT_SECRET="${{ secrets.ALPACA_OAUTH_CLIENT_SECRET }}" \
             -e OAUTH_STATE_SECRET="${{ secrets.OAUTH_STATE_SECRET }}" \
+            -e ALPACA_OAUTH_REDIRECT_URI="${{ secrets.ALPACA_OAUTH_REDIRECT_URI }}" \
+            -e INFO_APP_VERSION="${{ github.sha }}" \
             ${{ secrets.DOCKER_REPO }}:${{ github.sha }}
-          
-          # 기존 이미지 정리
+
+          # 4) API 컨테이너 시작 확인
+          echo "[INFO] Waiting for API container..."
+          sleep 8
+          if ! docker ps --format '{{.Names}}' | grep -q '^qbit-api$'; then
+            echo "[ERROR] API container failed to start"
+            docker logs qbit-api 2>/dev/null || true
+            exit 1
+          fi
+          echo "[INFO] API container is up"
+
+          # 5) 사용하지 않는 이미지 정리
           docker image prune -f
+
 
     - name: Get commit message and version
       id: info
