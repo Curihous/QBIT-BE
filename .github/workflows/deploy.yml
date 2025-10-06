@@ -110,7 +110,7 @@ jobs:
         COMMIT_MSG=$(git log -1 --pretty=format:"%s")
         echo "commit_message=$COMMIT_MSG" >> $GITHUB_OUTPUT
         
-        VERSION=$(grep "version:" qbit-api-app/src/main/resources/application.yml | cut -d' ' -f2)
+        VERSION=$(grep "version:" qbit-api-app/src/main/resources/application.yml | sed 's/.*version: *//' | sed 's/ *#.*//')
         echo "version=$VERSION" >> $GITHUB_OUTPUT
 
     - name: Notify deployment status
