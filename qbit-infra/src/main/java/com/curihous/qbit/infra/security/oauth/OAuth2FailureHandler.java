@@ -15,9 +15,17 @@ import java.io.IOException;
 @Component
 public class OAuth2FailureHandler extends SimpleUrlAuthenticationFailureHandler {
 
+//    @Override
+//    public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response,
+//                                        AuthenticationException exception) throws IOException {
+//        throw new QbitException(ErrorCode.OAUTH2_LOGIN_FAILED);
+//    }
+
     @Override
-    public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response,
+    public void onAuthenticationFailure(HttpServletRequest request,
+                                        HttpServletResponse response,
                                         AuthenticationException exception) throws IOException {
-        throw new QbitException(ErrorCode.OAUTH2_LOGIN_FAILED);
+        log.error("OAuth2 authentication failed: {}", exception.getMessage(), exception);
+        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "OAuth2 Login Failed: " + exception.getMessage());
     }
 }
