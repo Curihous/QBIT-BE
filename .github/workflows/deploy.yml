@@ -57,7 +57,7 @@ jobs:
         key: ${{ secrets.KEY }}
         port: 22
         script: |
-          # 기존 컨테이너 정리
+          # 기존 애플리케이션 컨테이너 정리
           docker stop qbit-api || true
           docker rm qbit-api || true
           
@@ -67,10 +67,22 @@ jobs:
           # 최신 이미지 다운로드
           docker pull ${{ secrets.DOCKER_REPO }}:${{ github.sha }}
           
+          # Redis 컨테이너 확인 및 실행 (없으면 새로 생성)
+          if ! docker ps -a --format "table {{.Names}}" | grep -q "^qbit-redis$"; then
+            docker run -d \
+              --name qbit-redis \
+              --restart unless-stopped \
+              -p 6379:6379 \
+              redis:alpine
+          else
+            docker start qbit-redis || true
+          fi
+          
           # 새 컨테이너 실행
           docker run -d \
             --name qbit-api \
             --restart unless-stopped \
+            --link qbit-redis:qbit-redis \
             -p 8080:8080 \
             -e SPRING_PROFILES_ACTIVE=prod \
             -e ENCRYPTION_SECRET_KEY="${{ secrets.ENCRYPTION_SECRET_KEY }}" \
