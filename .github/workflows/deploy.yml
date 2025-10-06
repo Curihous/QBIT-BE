@@ -145,7 +145,6 @@ jobs:
             -e ALPACA_OAUTH_CLIENT_ID="${{ secrets.ALPACA_OAUTH_CLIENT_ID }}" \
             -e ALPACA_OAUTH_CLIENT_SECRET="${{ secrets.ALPACA_OAUTH_CLIENT_SECRET }}" \
             -e OAUTH_STATE_SECRET="${{ secrets.OAUTH_STATE_SECRET }}" \
-            -e ALPACA_OAUTH_REDIRECT_URI="${{ secrets.ALPACA_OAUTH_REDIRECT_URI }}" \
             -e INFO_APP_VERSION="${{ github.sha }}" \
             ${{ secrets.DOCKER_REPO }}:${{ github.sha }}
 

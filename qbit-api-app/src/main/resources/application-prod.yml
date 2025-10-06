@@ -60,7 +60,7 @@ spring:
 # WebSocket
 # TODO: 프로덕션에서 명시적 도메인 설정
 websocket:
-  allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS:http://localhost:3000} # TODO: 프로덕션에서 명시적 도메인 설정
+  allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS:http://localhost:3000}
   message-size-limit: ${WEBSOCKET_MESSAGE_SIZE_LIMIT:8192}
   buffer-size-limit: ${WEBSOCKET_BUFFER_SIZE_LIMIT:8192}
 
