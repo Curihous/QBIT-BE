@@ -2,6 +2,7 @@ package com.curihous.qbit.infra.security.config;
 
 import com.curihous.qbit.infra.security.oauth.OAuth2FailureHandler;
 import com.curihous.qbit.infra.security.oauth.OAuth2SuccessHandler;
+import com.curihous.qbit.infra.security.oauth.RedisOAuth2AuthorizationRequestRepository;
 import com.curihous.qbit.infra.security.handler.CustomAccessDeniedHandler;
 import com.curihous.qbit.infra.security.handler.CustomAuthenticationEntryPoint;
 import com.curihous.qbit.infra.security.jwt.JwtFilter;
@@ -32,7 +33,9 @@ public class SecurityConfig {
     private final JwtFilter jwtFilter;
     private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
     private final CustomAccessDeniedHandler customAccessDeniedHandler;
+    private final RedisOAuth2AuthorizationRequestRepository redisOAuth2AuthorizationRequestRepository;
 
+    // Spring Security 필터 체인 설정
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
@@ -51,6 +54,9 @@ public class SecurityConfig {
                         .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
                         .successHandler(oAuth2SuccessHandler)
                         .failureHandler(oAuth2FailureHandler)
+                        .authorizationEndpoint(auth -> auth
+                                .authorizationRequestRepository(redisOAuth2AuthorizationRequestRepository)
+                        )
                 )
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(customAuthenticationEntryPoint)
@@ -61,6 +67,7 @@ public class SecurityConfig {
         return http.build();
     }
 
+    // CORS 설정 - 프론트엔드와 백엔드 간 크로스 오리진 요청 허용
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
