@@ -123,7 +123,7 @@ jobs:
             **QBIT 백엔드 배포 알림**
             
             **상태:** ${{ job.status == 'success' && '✅ 성공' || '❌ 실패' }}
-            **버전:** `v${{ steps.info.outputs.version }}`
-            **브랜치:** `${{ github.ref_name }}`
+            **버전:** v${{ steps.info.outputs.version }}
+            **브랜치:** ${{ github.ref_name }}
             **커밋 제목:** [${{ steps.info.outputs.commit_message }}](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
             **실행자:** ${{ github.actor }}
