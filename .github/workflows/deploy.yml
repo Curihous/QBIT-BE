@@ -84,7 +84,7 @@ jobs:
                 --requirepass "${{ secrets.REDIS_PASSWORD_PROD }}"
           fi
 
-          # 2-1) Redis 헬스체크(비번/무비번 모두 커버)
+          # 2-2) Redis 헬스체크
           echo "[INFO] Waiting for Redis to be ready..."
           for i in $(seq 1 60); do
             if docker exec qbit-redis sh -c 'redis-cli -a "$REDIS_PASS" ping 2>/dev/null || redis-cli ping' \
@@ -99,13 +99,6 @@ jobs:
               exit 1
             fi
           done
-
-          # 2-2) (옵션) 캐시 드랍 토글
-          if [ "${DROP_REDIS:-false}" = "true" ]; then
-            echo "[WARN] FLUSHALL Redis (DROP_REDIS=true)"
-            docker exec qbit-redis sh -c 'redis-cli -a "$REDIS_PASS" FLUSHALL 2>/dev/null || redis-cli FLUSHALL' \
-              --env REDIS_PASS="${{ secrets.REDIS_PASSWORD_PROD }}"
-          fi
 
           # 3) API 교체: 같은 네트워크에서 qbit-redis로만 붙기
           docker rm -f qbit-api || true
