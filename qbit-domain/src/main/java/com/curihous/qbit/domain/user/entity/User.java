@@ -24,7 +24,7 @@ public class User extends BaseTimeEntity {
     private String email;
 
     @NotBlank
-    @Column(unique = true, nullable = false, length = 10)
+    @Column(unique = true, nullable = false, length = 20)
     private String nickname;
 
     @Column(name = "provider", nullable = false)
@@ -32,16 +32,16 @@ public class User extends BaseTimeEntity {
 
     @Enumerated(EnumType.STRING)
     @NotNull
-    @Column(nullable = false)
+    @Column(name = "login_type", nullable = false)
     private LoginType loginType;
 
     // 간단한 상태 관리
     // TODO: 기획에 따른 상태 관리 수정
-    @Column(nullable = false)
+    @Column(name = "is_active", nullable = false)
     private boolean isActive = true;
 
     // 알림 설정
-    @Column(nullable = false)
+    @Column(name = "is_notification_enabled", nullable = false)
     private boolean isNotificationEnabled = true;
 
     @Builder

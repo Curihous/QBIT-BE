@@ -47,6 +47,20 @@ public class KakaoAuthService {
                 throw new QbitException(ErrorCode.OAUTH2_LOGIN_FAILED);
             }
             
+            log.info("카카오 API 응답 원본: kakaoId={}, email={}, nickname={}", 
+                    userInfo.getId(), userInfo.getEmail(), userInfo.getNickname());
+            
+            // 필수 정보 검증
+            if (userInfo.getEmail() == null || userInfo.getEmail().isEmpty()) {
+                log.error("카카오 사용자 정보에서 이메일이 없습니다.");
+                throw new QbitException(ErrorCode.OAUTH2_LOGIN_FAILED);
+            }
+            
+            if (userInfo.getNickname() == null || userInfo.getNickname().isEmpty()) {
+                log.error("카카오 사용자 정보에서 닉네임이 없습니다.");
+                throw new QbitException(ErrorCode.OAUTH2_LOGIN_FAILED);
+            }
+            
             log.info("카카오 사용자 정보 조회 성공: email={}, nickname={}", 
                     userInfo.getEmail(), userInfo.getNickname());
             
