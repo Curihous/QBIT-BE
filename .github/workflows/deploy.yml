@@ -8,7 +8,7 @@ on:
 env:
   DOCKER_IMAGE: ${{ secrets.DOCKER_REPO }}
   DOCKER_TAG: ${{ github.sha }}
-  CACHE_NAMESPACE: prod-v2  # TODO: 캐시 불호환 변경 시 수정
+  CACHE_NAMESPACE: prod-v3  # TODO: 캐시 불호환 변경 시 수정
 
 jobs:
   build-and-deploy:
