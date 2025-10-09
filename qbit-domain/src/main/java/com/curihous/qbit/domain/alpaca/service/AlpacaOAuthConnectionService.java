@@ -34,11 +34,11 @@ public class AlpacaOAuthConnectionService {
     // 새로운 Alpaca OAuth 연결 생성
     @Transactional
     public AlpacaOAuthConnection createConnection(User user, String alpacaUserId, String accessToken, 
-                                                String refreshToken, String tokenType, LocalDateTime expiresAt) {
+                                                String tokenType, LocalDateTime expiresAt) {
         // 기존 연결이 있다면 토큰 정보만 업데이트
         Optional<AlpacaOAuthConnection> existingConnection = alpacaOAuthConnectionRepository.findByUser(user);
         if (existingConnection.isPresent()) {
-            return updateTokens(existingConnection.get(), accessToken, refreshToken, expiresAt);
+            return updateTokens(existingConnection.get(), accessToken, expiresAt);
         }
 
         // 기존 연결이 없다면 새로 생성
@@ -46,7 +46,6 @@ public class AlpacaOAuthConnectionService {
             .user(user)
             .alpacaUserId(alpacaUserId)
             .accessToken(accessToken)
-            .refreshToken(refreshToken)
             .tokenType(tokenType)
             .expiresAt(expiresAt)
             .build();
@@ -54,11 +53,11 @@ public class AlpacaOAuthConnectionService {
         return alpacaOAuthConnectionRepository.save(connection);
     }
 
-    // Alpaca OAuth 연결의 액세스 토큰 및 리프레시 토큰 업데이트
+    // Alpaca OAuth 연결의 액세스 토큰 업데이트
     @Transactional
     public AlpacaOAuthConnection updateTokens(AlpacaOAuthConnection connection, String accessToken, 
-                                            String refreshToken, LocalDateTime expiresAt) {
-        connection.updateTokens(accessToken, refreshToken, expiresAt);
+                                            LocalDateTime expiresAt) {
+        connection.updateTokens(accessToken, expiresAt);
         return alpacaOAuthConnectionRepository.save(connection);
     }
 

@@ -38,6 +38,12 @@ public class AlpacaOrderRequestService {
         AlpacaOAuthConnection connection = alpacaOAuthConnectionService.findByUserId(user.getId())
                 .orElseThrow(() -> new QbitException(ErrorCode.UNAUTHORIZED, "Alpaca 계정이 연동되지 않았습니다"));
 
+        // 토큰 만료 사전 체크
+        if (connection.isTokenExpired()) {
+            throw new QbitException(ErrorCode.UNAUTHORIZED, 
+                "Alpaca 액세스 토큰이 만료되었습니다. 재인증이 필요합니다.");
+        }
+
         String authorization = "Bearer " + connection.getAccessToken();
 
         // 1. Alpaca 주문 생성

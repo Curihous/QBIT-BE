@@ -27,13 +27,6 @@ public interface AlpacaOAuthClient {
         @RequestBody String formBody
     );
 
-    // OAuth 토큰 갱신
-    @PostMapping(value = "/oauth/token", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
-    AlpacaTokenResponse refreshToken(
-        @RequestHeader("Authorization") String basicAuth,
-        @RequestBody String formBody
-    );
-
     default AlpacaTokenResponse exchangeToken(String code, String clientId, String redirectUri) {
         String basicAuth = "Basic " + Base64.getEncoder()
             .encodeToString((clientId + ":" + getClientSecret()).getBytes(StandardCharsets.UTF_8));
@@ -43,16 +36,6 @@ public interface AlpacaOAuthClient {
             "&redirect_uri=" + URLEncoder.encode(redirectUri, StandardCharsets.UTF_8);
         
         return exchangeToken(basicAuth, formBody);
-    }
-
-    default AlpacaTokenResponse refreshTokenWithCredentials(String refreshToken, String clientId) {
-        String basicAuth = "Basic " + Base64.getEncoder()
-            .encodeToString((clientId + ":" + getClientSecret()).getBytes(StandardCharsets.UTF_8));
-        
-        String formBody = "grant_type=refresh_token" +
-            "&refresh_token=" + URLEncoder.encode(refreshToken, StandardCharsets.UTF_8);
-        
-        return refreshToken(basicAuth, formBody);
     }
 
     default String getClientSecret() {

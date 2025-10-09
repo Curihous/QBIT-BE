@@ -33,10 +33,6 @@ public class AlpacaOAuthConnection extends BaseTimeEntity {
     @Column(name = "access_token", nullable = false, columnDefinition = "TEXT")
     private String accessToken;
 
-    @Convert(converter = EncryptedStringConverter.class)
-    @Column(name = "refresh_token", columnDefinition = "TEXT")
-    private String refreshToken;
-
     @Column(name = "token_type", nullable = false)
     private String tokenType = "Bearer";
 
@@ -52,22 +48,18 @@ public class AlpacaOAuthConnection extends BaseTimeEntity {
 
     @Builder
     public AlpacaOAuthConnection(User user, String alpacaUserId, String accessToken, 
-                                String refreshToken, String tokenType, LocalDateTime expiresAt) {
+                                String tokenType, LocalDateTime expiresAt) {
         this.user = user;
         this.alpacaUserId = alpacaUserId;
         this.accessToken = accessToken;
-        this.refreshToken = refreshToken;
         this.tokenType = tokenType;
         this.expiresAt = expiresAt;
         this.isPaperTrading = true;
         this.alpacaConnectionStatus = AlpacaConnectionStatus.ACTIVE;
     }
 
-    public void updateTokens(String accessToken, String refreshToken, LocalDateTime expiresAt) {
+    public void updateTokens(String accessToken, LocalDateTime expiresAt) {
         this.accessToken = accessToken;
-        if (refreshToken != null && !refreshToken.isEmpty()) {
-            this.refreshToken = refreshToken;
-        }
         this.expiresAt = expiresAt;
     }
 

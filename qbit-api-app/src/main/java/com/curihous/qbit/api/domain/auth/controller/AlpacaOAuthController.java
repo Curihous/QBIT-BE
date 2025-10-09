@@ -115,13 +115,6 @@ public class AlpacaOAuthController {
         return new ResponseEntity<>(html, headers, HttpStatus.OK);
     }
 
-    @PostMapping("/refresh")
-    @Operation(summary = "액세스 토큰 갱신", description = "만료된 액세스 토큰을 갱신")
-    public ResponseEntity<AlpacaOAuthConnection> refreshToken(@AuthenticationPrincipal CustomUserDetails userDetails) {
-        AlpacaOAuthConnection connection = alpacaOAuthService.refreshToken(userDetails.getUserId());
-        return ResponseEntity.ok(connection);
-    }
-
     @DeleteMapping("/disconnect")
     @Operation(summary = "Alpaca 계정 연결 해제", description = "Alpaca OAuth 연결을 해제")
     public ResponseEntity<Void> disconnect(@AuthenticationPrincipal CustomUserDetails userDetails) {
