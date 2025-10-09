@@ -146,17 +146,7 @@ jobs:
             -e INFO_APP_VERSION="${{ github.sha }}" \
             ${{ secrets.DOCKER_REPO }}:${{ github.sha }}
 
-          # 4) API 컨테이너 시작 확인
-          echo "[INFO] Waiting for API container..."
-          sleep 8
-          if ! docker ps --format '{{.Names}}' | grep -q '^qbit-api$'; then
-            echo "[ERROR] API container failed to start"
-            docker logs qbit-api 2>/dev/null || true
-            exit 1
-          fi
-          echo "[INFO] API container is up"
-
-          # 5) 사용하지 않는 이미지 정리
+          # 4) 사용하지 않는 이미지 정리
           docker image prune -f
 
     - name: Notify deployment status
