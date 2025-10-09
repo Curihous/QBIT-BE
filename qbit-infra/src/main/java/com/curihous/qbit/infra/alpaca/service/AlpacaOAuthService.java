@@ -21,6 +21,7 @@ import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.Optional;
 
+// TODO: 로그 제거
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -69,6 +70,8 @@ public class AlpacaOAuthService {
             );
 
             // 계정 정보 조회로 실제 사용자 ID 획득
+            log.info("Alpaca 토큰 교환 성공, access token 앞 10자: {}", 
+                tokenResponse.accessToken() != null ? tokenResponse.accessToken().substring(0, Math.min(10, tokenResponse.accessToken().length())) : "null");
             String alpacaUserId = getAlpacaUserIdFromAccount(tokenResponse.accessToken());
             
             // 사용자 조회
@@ -102,6 +105,7 @@ public class AlpacaOAuthService {
     private String getAlpacaUserIdFromAccount(String accessToken) {
         try {
             String bearerToken = "Bearer " + accessToken;
+            log.info("Alpaca 계정 정보 조회 시도, Bearer token 길이: {}", bearerToken.length());
             Map<String, Object> accountInfo = alpacaOAuthClient.getAccount(bearerToken);
             
             // Alpaca 계정 ID 추출

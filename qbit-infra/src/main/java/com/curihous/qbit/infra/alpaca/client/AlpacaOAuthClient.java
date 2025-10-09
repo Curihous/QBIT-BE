@@ -17,7 +17,7 @@ import java.util.Map;
 // Alpaca OAuth 2.0 인증 API 호출을 위한 Feign 클라이언트
 @FeignClient(
     name = "alpaca-oauth-client",
-    url = "https://api.alpaca.markets",
+    url = "${alpaca.api.base-url:https://paper-api.alpaca.markets}",  // TODO: Paper Trading 사용 시 paper-api로 요청해도 동작하는지 확인 필요
     configuration = AlpacaClientConfig.class
 )
 public interface AlpacaOAuthClient {
