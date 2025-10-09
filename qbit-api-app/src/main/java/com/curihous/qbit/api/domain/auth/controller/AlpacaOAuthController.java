@@ -10,6 +10,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -40,7 +43,7 @@ public class AlpacaOAuthController {
 
     @GetMapping("/callback")
     @Operation(summary = "OAuth 콜백 처리", description = "Alpaca에서 리디렉션된 코드를 처리하여 토큰 저장")
-    public ResponseEntity<AlpacaOAuthConnection> callback(
+    public ResponseEntity<String> callback(
             @RequestParam(required = false) String code,
             @RequestParam(required = false) String state,
             @RequestParam(required = false) String error) {
@@ -62,10 +65,57 @@ public class AlpacaOAuthController {
         // 보안 강화된 상태값 검증 및 사용자 ID 추출
         Long userId = alpacaOAuthService.validateStateAndExtractUserId(state);
         
-        // 토큰 교환 및 저장
-        AlpacaOAuthConnection connection = alpacaOAuthService.exchangeTokenAndSave(userId, code);
+        // 토큰 교환 및 저장 (백엔드에서 토큰 저장)
+        alpacaOAuthService.exchangeTokenAndSave(userId, code);
         
-        return ResponseEntity.ok(connection);
+        // 프론트엔드에 HTML 페이지 반환
+        String html = """
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Alpaca 연동 완료</title>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+                    <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
+                </head>
+                <body>
+                    <div style="text-align: center; padding: 50px; font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif;">
+                        <h1 style="color: #2E7D32; font-size: 24px; font-weight: 600; margin-bottom: 16px;">Alpaca 계정 연동이 완료되었습니다!</h1>
+                        <p style="color: #666; font-size: 16px; margin-bottom: 30px;">잠시 후 앱으로 돌아갑니다...</p>
+                        <div style="margin-top: 30px;">
+                            <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #2196F3; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                        </div>
+                    </div>
+                    
+                    <script>
+                        // 앱으로 복귀하는 로직
+                        setTimeout(() => {
+                            // Universal Links로 앱 복귀
+                            window.location.href = 'https://api.qbit.o-r.kr/auth/alpaca/callback?success=true';
+                        }, 1500);
+                    </script>
+                    
+                    <style>
+                        @keyframes spin {
+                            0% { transform: rotate(0deg); }
+                            100% { transform: rotate(360deg); }
+                        }
+                        
+                        body {
+                            margin: 0;
+                            padding: 0;
+                            background-color: #fafafa;
+                        }
+                    </style>
+                </body>
+                </html>
+                """;
+        
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.TEXT_HTML);
+        
+        return new ResponseEntity<>(html, headers, HttpStatus.OK);
     }
 
     @PostMapping("/refresh")
