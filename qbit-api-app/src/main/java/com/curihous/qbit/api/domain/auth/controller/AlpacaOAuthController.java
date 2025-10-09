@@ -2,9 +2,9 @@ package com.curihous.qbit.api.domain.auth.controller;
 
 import com.curihous.qbit.common.exception.QbitException;
 import com.curihous.qbit.common.exception.ErrorCode;
-import com.curihous.qbit.alpaca.entity.AlpacaOAuthConnection;
-import com.curihous.qbit.alpaca.dto.internal.AlpacaConnectionStatus;
-import com.curihous.qbit.alpaca.service.AlpacaOAuthService;
+import com.curihous.qbit.domain.alpaca.entity.AlpacaOAuthConnection;
+import com.curihous.qbit.infra.alpaca.dto.internal.AlpacaConnectionStatusDto;
+import com.curihous.qbit.infra.alpaca.service.AlpacaOAuthService;
 import com.curihous.qbit.infra.security.util.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -19,7 +19,7 @@ import java.io.IOException;
 @RestController
 @RequestMapping("/auth/alpaca")
 @RequiredArgsConstructor
-@Tag(name = "Alpaca OAuth", description = "Alpaca OAuth 인증 API")
+@Tag(name = "Alpaca OAuth", description = "Alpaca OAuth 인증 API입니다.")
 public class AlpacaOAuthController {
 
     private final AlpacaOAuthService alpacaOAuthService;
@@ -84,8 +84,8 @@ public class AlpacaOAuthController {
 
     @GetMapping("/status")
     @Operation(summary = "연결 상태 확인", description = "Alpaca 계정 연결 상태 확인")
-    public ResponseEntity<AlpacaConnectionStatus> getConnectionStatus(@AuthenticationPrincipal CustomUserDetails userDetails) {
-        AlpacaConnectionStatus status = alpacaOAuthService.getConnectionStatus(userDetails.getUserId());
+    public ResponseEntity<AlpacaConnectionStatusDto> getConnectionStatus(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        AlpacaConnectionStatusDto status = alpacaOAuthService.getConnectionStatus(userDetails.getUserId());
         return ResponseEntity.ok(status);
     }
 }
