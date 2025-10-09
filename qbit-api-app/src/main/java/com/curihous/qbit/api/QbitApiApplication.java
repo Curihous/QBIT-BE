@@ -8,10 +8,10 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 @SpringBootApplication(scanBasePackages = "com.curihous.qbit")
-@EnableJpaRepositories(basePackages = {"com.curihous.qbit.domain", "com.curihous.qbit.alpaca"})
-@EntityScan(basePackages = {"com.curihous.qbit.domain", "com.curihous.qbit.alpaca"})
+@EnableJpaRepositories(basePackages = {"com.curihous.qbit.domain"})
+@EntityScan(basePackages = {"com.curihous.qbit.domain"})
 @EnableJpaAuditing
-@EnableFeignClients(basePackages = "com.curihous.qbit.alpaca.client")
+@EnableFeignClients(basePackages = "com.curihous.qbit.infra.alpaca.client")
 public class QbitApiApplication {
 
     public static void main(String[] args) {
