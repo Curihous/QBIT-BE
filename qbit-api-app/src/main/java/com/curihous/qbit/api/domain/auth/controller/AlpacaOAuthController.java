@@ -89,16 +89,8 @@ public class AlpacaOAuthController {
                     </div>
                     
                     <script>
-                        // 앱으로 복귀하는 로직
-                        setTimeout(() => {
-                            // 딥링크로 앱 직접 실행
-                            window.location.href = 'qbit://alpaca/callback/success';
-                            
-                            // 앱이 열리지 않으면 안내 메시지
-                            setTimeout(() => {
-                                document.body.innerHTML = '<div style="text-align:center;padding:50px;font-family:Pretendard,-apple-system,sans-serif;"><h2 style="color:#666;">오류가 발생하여 큐빗 어플리케이션 접속이 불가합니다.</h2>/div>';
-                            }, 2000);
-                        }, 1500);
+                        // 웹 브릿지 패턴: HTTP URL을 거쳐서 딥링크 시도
+                        window.location.href = 'https://api.qbit.o-r.kr/auth/alpaca/redirect?success=true';
                     </script>
                     
                     <style>
@@ -135,6 +127,57 @@ public class AlpacaOAuthController {
     public ResponseEntity<Void> disconnect(@AuthenticationPrincipal CustomUserDetails userDetails) {
         alpacaOAuthService.disconnect(userDetails.getUserId());
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/redirect")
+    @Operation(summary = "웹 브릿지 페이지", description = "HTTP URL을 통해 딥링크를 시도하는 브릿지 페이지")
+    public ResponseEntity<String> redirect(@RequestParam(required = false) String success) {
+        if (!"true".equals(success)) {
+            throw new QbitException(ErrorCode.OAUTH2_LOGIN_FAILED);
+        }
+        
+        String redirectHtml = """
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>앱으로 이동</title>
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                </head>
+                <body>
+                    <script>
+                        // 딥링크로 앱 실행
+                        window.location.href = 'qbit://auth/alpaca/callback?success=true';
+                        
+                        // 앱이 열리지 않으면 오류 메시지
+                        setTimeout(() => {
+                            document.body.innerHTML = `
+                                <div style="text-align:center;padding:50px;font-family:Pretendard,-apple-system,sans-serif;max-width:600px;margin:0 auto;">
+                                    <div style="margin-bottom:30px;">
+                                        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <circle cx="12" cy="12" r="10" stroke="#d32f2f" stroke-width="2"/>
+                                            <path d="M12 8v4M12 16h.01" stroke="#d32f2f" stroke-width="2" stroke-linecap="round"/>
+                                        </svg>
+                                    </div>
+                                    <h2 style="color:#d32f2f;font-size:24px;font-weight:600;margin-bottom:16px;">앱 실행 실패</h2>
+                                    <p style="color:#666;font-size:16px;line-height:1.6;margin-bottom:30px;">
+                                        큐빗 앱을 실행할 수 없습니다.<br>
+                                    </p>
+                                    <button onclick="window.location.href='qbit://auth/alpaca/callback?success=true'" 
+                                            style="background:#2196F3;color:white;border:none;border-radius:8px;padding:14px 32px;font-size:16px;font-weight:600;cursor:pointer;font-family:inherit;">
+                                        앱 실행 재시도
+                                    </button>
+                                </div>
+                            `;
+                        }, 2000);
+                    </script>
+                </body>
+                </html>
+                """;
+        
+        return ResponseEntity.ok()
+                .header("Content-Type", "text/html; charset=UTF-8")
+                .body(redirectHtml);
     }
 
     @GetMapping("/status")
