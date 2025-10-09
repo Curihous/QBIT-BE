@@ -5,7 +5,6 @@ import com.curihous.qbit.common.exception.QbitException;
 import com.curihous.qbit.domain.user.entity.User;
 import com.curihous.qbit.domain.user.service.UserService;
 import com.curihous.qbit.infra.security.util.CustomUserDetails;
-import com.curihous.qbit.infra.security.oauth.dto.OAuth2UserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -31,12 +30,7 @@ public class UserSecurityFacade {
             throw new QbitException(ErrorCode.UNAUTHORIZED);
         }
 
-        // OAuth2UserDetails에서 userId 가져오기 (OAuth2 로그인 직후)
-        if (authentication.getPrincipal() instanceof OAuth2UserDetails userDetails) {
-            return userService.findById(userDetails.userId());
-        }
-
-        // JWT 토큰 기반 인증 요청인 경우 - CustomUserDetails에서 userId 추출
+        // JWT 토큰 기반 인증 요청 - CustomUserDetails에서 userId 추출
         if (authentication.getPrincipal() instanceof CustomUserDetails userDetails) {
             return userService.findById(userDetails.getUserId());
         }
