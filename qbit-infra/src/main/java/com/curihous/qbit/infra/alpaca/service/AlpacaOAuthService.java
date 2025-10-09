@@ -71,7 +71,8 @@ public class AlpacaOAuthService {
             User user = userService.findById(userId);
 
             long expiresInSeconds = tokenResponse.expiresIn() != null ?
-                tokenResponse.expiresIn() : 604800L; // TODO: 기본값 확인 필요. alpaca가 안 줄 경우 7일
+                    tokenResponse.expiresIn() : 604800L;
+            // TODO: alpaca가 모의투자라서 제한을 두지 않는것같으므로.. 추후 보안을 위해 주기적 재인증 로직 추가 필요
             LocalDateTime expiresAt = LocalDateTime.now(ZoneOffset.UTC)
                 .plusSeconds(expiresInSeconds);
 
