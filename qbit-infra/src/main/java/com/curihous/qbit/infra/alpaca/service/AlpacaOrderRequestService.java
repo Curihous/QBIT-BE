@@ -72,30 +72,35 @@ public class AlpacaOrderRequestService {
 
     // 주문 수정
     @Transactional
-    public AlpacaOrderResponse updateOrder(User user, String orderId, UpdateOrderRequest request) {
+    public AlpacaOrderResponse updateOrder(User user, Long orderId, UpdateOrderRequest request) {
         AlpacaOAuthConnection connection = alpacaOAuthConnectionService.findByUserId(user.getId())
                 .orElseThrow(() -> new QbitException(ErrorCode.UNAUTHORIZED, "Alpaca 계정이 연동되지 않았습니다"));
 
         String authorization = "Bearer " + connection.getAccessToken();
 
         try {
-            // 1. Alpaca API 호출 (새로운 주문 B 생성)
-            AlpacaOrderResponse newOrderResponse = alpacaTradingPort.updateOrder(authorization, orderId, request);
-            
-            // 2. 기존 주문(A) DB에서 조회
-            OrderRequest oldOrder = orderRequestRepository.findByAlpacaOrderId(orderId)
+            // 1. 내부 ID로 기존 주문(A) DB에서 조회
+            OrderRequest oldOrder = orderRequestRepository.findByIdAndUser(orderId, user)
                     .orElseThrow(() -> new QbitException(ErrorCode.ORDER_REQUEST_NOT_FOUND, "주문을 찾을 수 없습니다: " + orderId));
             
-            // 3. 기존 주문(A)에 대체 정보 업데이트
+            // 2. 주문 타입별 수정 가능 필드 검증
+            validateUpdateRequest(oldOrder, request);
+            
+            String alpacaOrderId = oldOrder.getAlpacaOrderId();
+            
+            // 3. Alpaca API 호출 (새로운 주문 B 생성)
+            AlpacaOrderResponse newOrderResponse = alpacaTradingPort.updateOrder(authorization, alpacaOrderId, request);
+            
+            // 4. 기존 주문(A)에 대체 정보 업데이트
             oldOrder.markAsReplaced(newOrderResponse.id(), newOrderResponse.replacedAt());
             orderRequestRepository.save(oldOrder);
             
-            // 4. 새 주문(B) DB에 저장 (Stock 연결)
+            // 5. 새 주문(B) DB에 저장 (Stock 연결)
             Stock stock = oldOrder.getStock();  // 동일 종목이므로 기존 Stock 재사용
             OrderRequest newOrder = convertToEntity(newOrderResponse, user, stock);
             orderRequestRepository.save(newOrder);
             
-            log.info("주문 수정 완료: 기존 주문={}, 새 주문={}", orderId, newOrderResponse.id());
+            log.info("주문 수정 완료: 기존 주문 ID={}, Alpaca ID={}, 새 Alpaca 주문={}", orderId, alpacaOrderId, newOrderResponse.id());
             
             return newOrderResponse;
         } catch (QbitException e) {
@@ -103,6 +108,48 @@ public class AlpacaOrderRequestService {
         } catch (Exception e) {
             log.error("Alpaca 주문 수정 실패: orderId={}, error={}", orderId, e.getMessage(), e);
             throw new QbitException(ErrorCode.EXTERNAL_API_ERROR, "주문 수정에 실패했습니다: " + e.getMessage());
+        }
+    }
+
+    // 주문 타입별 수정 가능 필드 검증
+    private void validateUpdateRequest(OrderRequest oldOrder, UpdateOrderRequest request) {
+        OrderType orderType = oldOrder.getType();
+        
+        switch (orderType) {
+            case MARKET:
+                // 시장가 주문: 가격 관련 필드 수정 불가
+                if (request.limitPrice() != null) {
+                    throw new QbitException(ErrorCode.INVALID_ORDER_PRICE, 
+                        "시장가 주문에서는 지정가를 수정할 수 없습니다");
+                }
+                if (request.stopPrice() != null) {
+                    throw new QbitException(ErrorCode.INVALID_ORDER_PRICE, 
+                        "시장가 주문에서는 손절가를 수정할 수 없습니다");
+                }
+                break;
+                
+            case LIMIT:
+                // 지정가 주문: stopPrice 수정 불가
+                if (request.stopPrice() != null) {
+                    throw new QbitException(ErrorCode.INVALID_ORDER_PRICE, 
+                        "지정가 주문에서는 손절가를 수정할 수 없습니다");
+                }
+                break;
+                
+            case STOP:
+                // 손절 주문: limitPrice 수정 불가
+                if (request.limitPrice() != null) {
+                    throw new QbitException(ErrorCode.INVALID_ORDER_PRICE, 
+                        "손절 주문에서는 지정가를 수정할 수 없습니다");
+                }
+                break;
+                
+            case STOP_LIMIT:
+                // 손절지정가 주문: 두 가격 모두 수정 가능
+                break;
+                
+            default:
+                log.warn("알 수 없는 주문 유형: {}", orderType);
         }
     }
 

@@ -105,23 +105,6 @@ jobs:
                 --requirepass "${{ secrets.REDIS_PASSWORD_PROD }}"
           fi
 
-          # 2-1) Redis 헬스체크 
-          echo "[INFO] Waiting for Redis to be ready..."
-          for i in $(seq 1 60); do
-            if [ -n "${{ secrets.REDIS_PASSWORD_PROD }}" ]; then
-              docker exec qbit-redis redis-cli -a "${{ secrets.REDIS_PASSWORD_PROD }}" ping 2>/dev/null | grep -q PONG && break
-            else
-              docker exec qbit-redis redis-cli ping 2>/dev/null | grep -q PONG && break
-            fi
-            sleep 0.5
-            if [ $i -eq 60 ]; then
-              echo "[ERROR] Redis not responding"
-              docker logs qbit-redis || true
-              exit 1
-            fi
-          done
-          echo "[INFO] Redis is ready"
-
           # 3) API 교체: 같은 네트워크에서 qbit-redis로만 붙기
           docker rm -f qbit-api || true
           docker run -d \
@@ -150,7 +133,7 @@ jobs:
           docker image prune -f
 
     - name: Notify deployment status
-      if: always()
+      if: success() || failure()
       uses: Ilshidur/action-discord@master
       env:
         DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
