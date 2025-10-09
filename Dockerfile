@@ -32,6 +32,12 @@ RUN ./gradlew :qbit-api-app:bootJar -x test --no-daemon
 # Run
 FROM eclipse-temurin:17-jre-jammy
 
+# 시간대를 Asia/Seoul로 설정
+RUN apt-get update && apt-get install -y tzdata && \
+    ln -sf /usr/share/zoneinfo/Asia/Seoul /etc/localtime && \
+    echo "Asia/Seoul" > /etc/timezone && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
 # 보안을 위한 non-root 사용자 생성
 RUN groupadd -r spring && useradd -r -g spring spring
 
