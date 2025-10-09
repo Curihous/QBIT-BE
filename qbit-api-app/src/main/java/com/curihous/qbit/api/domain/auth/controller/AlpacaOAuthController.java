@@ -91,8 +91,13 @@ public class AlpacaOAuthController {
                     <script>
                         // 앱으로 복귀하는 로직
                         setTimeout(() => {
-                            // Universal Links로 앱 복귀
-                            window.location.href = 'https://api.qbit.o-r.kr/auth/alpaca/callback?success=true';
+                            // 딥링크로 앱 직접 실행
+                            window.location.href = 'qbit://alpaca/callback/success';
+                            
+                            // 앱이 열리지 않으면 안내 메시지
+                            setTimeout(() => {
+                                document.body.innerHTML = '<div style="text-align:center;padding:50px;font-family:Pretendard,-apple-system,sans-serif;"><h2 style="color:#666;">오류가 발생하여 큐빗 어플리케이션 접속이 불가합니다.</h2>/div>';
+                            }, 2000);
                         }, 1500);
                     </script>
                     

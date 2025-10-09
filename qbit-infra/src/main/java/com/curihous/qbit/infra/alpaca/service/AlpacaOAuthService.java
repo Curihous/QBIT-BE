@@ -75,17 +75,21 @@ public class AlpacaOAuthService {
             log.info("Alpaca 토큰 교환 성공, access token 앞 10자: {}", 
                 tokenResponse.accessToken() != null ? tokenResponse.accessToken().substring(0, Math.min(10, tokenResponse.accessToken().length())) : "null");
             String alpacaUserId = getAlpacaUserIdFromAccount(tokenResponse.accessToken());
+            log.info("Step 1 완료: Alpaca 사용자 ID 획득");
             
             // 사용자 조회
             User user = userService.findById(userId);
+            log.info("Step 2 완료: QBIT 사용자 조회 (userId={})", userId);
 
             // 토큰 만료 시간 계산
             long expiresInSeconds = tokenResponse.expiresIn() != null ?
                 tokenResponse.expiresIn() : 3600L; // 기본값 1시간
             LocalDateTime expiresAt = LocalDateTime.now(ZoneOffset.UTC)
                 .plusSeconds(expiresInSeconds);
+            log.info("Step 3 완료: 토큰 만료 시간 계산 (expiresAt={})", expiresAt);
 
             // OAuth 연결 정보 저장
+            log.info("Step 4 시작: DB 저장 시도");
             AlpacaOAuthConnection connection = alpacaOAuthConnectionService.createConnection(
                 user,
                 alpacaUserId,
@@ -94,6 +98,7 @@ public class AlpacaOAuthService {
                 tokenResponse.tokenType(),
                 expiresAt
             );
+            log.info("Step 4 완료: DB 저장 성공");
 
             return connection;
 
