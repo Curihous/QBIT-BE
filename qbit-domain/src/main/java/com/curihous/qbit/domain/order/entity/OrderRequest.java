@@ -113,6 +113,8 @@ public class OrderRequest extends BaseTimeEntity {
     @Column(name = "replaces", length = 100)
     private String replaces;
 
+    // === FK ===
+
     // 종목 정보
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "stock_id")
