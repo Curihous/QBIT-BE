@@ -24,7 +24,6 @@ COPY qbit-api-app/src qbit-api-app/src/
 COPY qbit-websocket-app/src qbit-websocket-app/src/
 COPY qbit-domain/src qbit-domain/src/
 COPY qbit-common/src qbit-common/src/
-COPY qbit-client/qbit-alpaca-client/src qbit-client/qbit-alpaca-client/src/
 COPY qbit-infra/src qbit-infra/src/
 
 # JAR 빌드
