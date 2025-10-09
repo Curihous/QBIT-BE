@@ -8,7 +8,7 @@ on:
 env:
   DOCKER_IMAGE: ${{ secrets.DOCKER_REPO }}
   DOCKER_TAG: ${{ github.sha }}
-  CACHE_NAMESPACE: prod-v2  # TODO: 캐시 불호환 변경 시 수정
+  CACHE_NAMESPACE: prod-v3  # TODO: 캐시 불호환 변경 시 수정
 
 jobs:
   build-and-deploy:
@@ -140,8 +140,6 @@ jobs:
             -e DATABASE_PASSWORD_PROD="${{ secrets.DATABASE_PASSWORD_PROD }}" \
             -e JWT_ACCESS_SECRET="${{ secrets.JWT_ACCESS_SECRET }}" \
             -e JWT_REFRESH_SECRET="${{ secrets.JWT_REFRESH_SECRET }}" \
-            -e KAKAO_CLIENT_ID="${{ secrets.KAKAO_CLIENT_ID }}" \
-            -e KAKAO_CLIENT_SECRET="${{ secrets.KAKAO_CLIENT_SECRET }}" \
             -e ALPACA_OAUTH_CLIENT_ID="${{ secrets.ALPACA_OAUTH_CLIENT_ID }}" \
             -e ALPACA_OAUTH_CLIENT_SECRET="${{ secrets.ALPACA_OAUTH_CLIENT_SECRET }}" \
             -e OAUTH_STATE_SECRET="${{ secrets.OAUTH_STATE_SECRET }}" \

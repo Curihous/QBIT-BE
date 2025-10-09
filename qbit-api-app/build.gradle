@@ -7,7 +7,6 @@ dependencies {
     implementation project(':qbit-common')
     implementation project(':qbit-domain')
     implementation project(':qbit-infra')
-    implementation project(':qbit-client:qbit-alpaca-client')
     
     // Spring Boot
     implementation 'org.springframework.boot:spring-boot-starter-web'

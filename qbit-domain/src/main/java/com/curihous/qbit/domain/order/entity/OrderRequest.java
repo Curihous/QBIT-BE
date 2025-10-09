@@ -1,9 +1,12 @@
 package com.curihous.qbit.domain.order.entity;
 
+import com.curihous.qbit.common.entity.BaseTimeEntity;
 import com.curihous.qbit.domain.stock.entity.Stock;
 import com.curihous.qbit.domain.user.entity.User;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -14,54 +17,147 @@ import java.time.LocalDateTime;
 @Table(name = "order_requests")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class OrderRequest {
+public class OrderRequest extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "order_request_id")
     private Long id;
 
+    // Alpaca 주문 ID
+    @NotNull
+    @Column(name = "alpaca_order_id", nullable = false, unique = true)
+    private String alpacaOrderId;
+
+    // 종목 심볼
+    @NotNull
+    @Column(name = "symbol", nullable = false, length = 10)
+    private String symbol;
+
+    // 주문 수량
+    @NotNull
+    @Column(name = "quantity", nullable = false, precision = 20, scale = 8)
+    private BigDecimal quantity;
+
+    // 체결된 수량
+    @Column(name = "filled_quantity", precision = 20, scale = 8)
+    private BigDecimal filledQuantity;
+
+    // 주문 방향 (매수/매도)
+    @NotNull
     @Enumerated(EnumType.STRING)
-    @Column(name = "order_type", nullable = false)
-    private OrderType orderType;
+    @Column(name = "side", nullable = false, length = 10)
+    private OrderSide side;
 
-    @Column(name = "quantity", nullable = false)
-    private Integer quantity;
-
-    @Column(name = "order_price", precision = 20, scale = 8)
-    private BigDecimal orderPrice;
-
+    // 주문 유형 (시장가/지정가)
+    @NotNull
     @Enumerated(EnumType.STRING)
-    @Column(name = "order_status", nullable = false)
-    private OrderStatus orderStatus;
+    @Column(name = "type", nullable = false, length = 20)
+    private OrderType type;
 
-    @Column(name = "requested_at", nullable = false)
-    private LocalDateTime requestedAt;
+    // 주문 유효기간
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(name = "time_in_force", nullable = false, length = 10)
+    private TimeInForce timeInForce;
 
+    // 지정가 (limit order일 때만)
+    @Column(name = "limit_price", precision = 20, scale = 8)
+    private BigDecimal limitPrice;
+
+    // 손절가 (stop order일 때만)
+    @Column(name = "stop_price", precision = 20, scale = 8)
+    private BigDecimal stopPrice;
+
+    // 평균 체결가
+    @Column(name = "filled_avg_price", precision = 20, scale = 8)
+    private BigDecimal filledAvgPrice;
+
+    // 주문 상태
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    private OrderStatus status;
+
+    // 클라이언트 주문 ID (주문 중복 방지용)
+    @Column(name = "client_order_id", length = 100)
+    private String clientOrderId;
+
+    // Alpaca에서 주문 생성 시간
+    @Column(name = "alpaca_created_at")
+    private LocalDateTime alpacaCreatedAt;
+
+    // 주문 제출 시간
+    @Column(name = "submitted_at")
+    private LocalDateTime submittedAt;
+
+    // 체결 완료 시간
+    @Column(name = "filled_at")
+    private LocalDateTime filledAt;
+
+    // 취소 시간
+    @Column(name = "canceled_at")
+    private LocalDateTime canceledAt;
+
+    // === 주문 수정 추적 필드 ===
+    
+    // 대체된 시간 (이 주문이 수정되어 대체된 시간)
+    @Column(name = "replaced_at")
+    private LocalDateTime replacedAt;
+
+    // 이 주문을 대체한 주문 ID 
+    @Column(name = "replaced_by", length = 100)
+    private String replacedBy;
+
+    // 이 주문이 대체한 주문 ID 
+    @Column(name = "replaces", length = 100)
+    private String replaces;
+
+    // 종목 정보
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "stock_id", nullable = false)
+    @JoinColumn(name = "stock_id")
     private Stock stock;
 
+    // 주문한 사용자
+    @NotNull
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    public OrderRequest(OrderType orderType, Integer quantity, BigDecimal orderPrice,
-                        OrderStatus orderStatus, LocalDateTime requestedAt, Stock stock, User user) {
-        this.orderType = orderType;
+    @Builder
+    public OrderRequest(String alpacaOrderId, String symbol, BigDecimal quantity, BigDecimal filledQuantity,
+                        OrderSide side, OrderType type, TimeInForce timeInForce, BigDecimal limitPrice,
+                        BigDecimal stopPrice, BigDecimal filledAvgPrice, OrderStatus status, String clientOrderId, 
+                        LocalDateTime alpacaCreatedAt, LocalDateTime submittedAt,
+                        LocalDateTime filledAt, LocalDateTime canceledAt,
+                        LocalDateTime replacedAt, String replacedBy, String replaces,
+                        Stock stock, User user) {
+        this.alpacaOrderId = alpacaOrderId;
+        this.symbol = symbol;
         this.quantity = quantity;
-        this.orderPrice = orderPrice;
-        this.orderStatus = orderStatus;
-        this.requestedAt = requestedAt;
+        this.filledQuantity = filledQuantity;
+        this.side = side;
+        this.type = type;
+        this.timeInForce = timeInForce;
+        this.limitPrice = limitPrice;
+        this.stopPrice = stopPrice;
+        this.filledAvgPrice = filledAvgPrice;
+        this.status = status;
+        this.clientOrderId = clientOrderId;
+        this.alpacaCreatedAt = alpacaCreatedAt;
+        this.submittedAt = submittedAt;
+        this.filledAt = filledAt;
+        this.canceledAt = canceledAt;
+        this.replacedAt = replacedAt;
+        this.replacedBy = replacedBy;
+        this.replaces = replaces;
         this.stock = stock;
         this.user = user;
     }
 
-    public enum OrderType {
-        BUY, SELL
-    }
-
-    public enum OrderStatus {
-        REQUESTED, PARTIALLY_FILLED, FILLED, CANCELED
+    // 주문이 대체되었을 때 호출
+    public void markAsReplaced(String replacedBy, LocalDateTime replacedAt) {
+        this.replacedBy = replacedBy;
+        this.replacedAt = replacedAt;
     }
 }

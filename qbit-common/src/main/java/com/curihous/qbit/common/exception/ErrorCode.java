@@ -48,6 +48,9 @@ public enum ErrorCode {
     // 쿠키에 리프레시 토큰이 들어있지 않은 경우
     NO_COOKIE(401, "쿠키에 리프레시 토큰이 존재하지 않습니다."),
     USER_STATUS_IS_NOT_ACTIVE(401, "계정이 활성 상태가 아닙니다."),
+    // Alpaca 연결 관련
+    ALPACA_NOT_CONNECTED(401, "Alpaca 계정이 연결되지 않았습니다."),
+    ALPACA_TOKEN_EXPIRED(401, "Alpaca 액세스 토큰이 만료되었습니다."),
 
     // 403 Forbidden
     // 권한이 없는 요청을 보냄
