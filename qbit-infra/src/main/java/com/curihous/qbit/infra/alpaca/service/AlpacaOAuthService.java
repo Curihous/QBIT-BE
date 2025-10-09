@@ -1,6 +1,8 @@
 package com.curihous.qbit.infra.alpaca.service;
 
 import com.curihous.qbit.infra.alpaca.client.AlpacaOAuthClient;
+import com.curihous.qbit.infra.alpaca.client.AlpacaTradingClient;
+import com.curihous.qbit.infra.alpaca.dto.response.AlpacaAccountResponse;
 import com.curihous.qbit.infra.alpaca.dto.response.AlpacaTokenResponse;
 import com.curihous.qbit.infra.alpaca.dto.internal.AlpacaConnectionStatusDto;
 import com.curihous.qbit.common.exception.QbitException;
@@ -18,7 +20,6 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.Map;
 import java.util.Optional;
 
 // TODO: 로그 제거
@@ -37,6 +38,7 @@ public class AlpacaOAuthService {
     private String authorizationUrl;
 
     private final AlpacaOAuthClient alpacaOAuthClient;
+    private final AlpacaTradingClient alpacaTradingClient;
     private final AlpacaOAuthConnectionService alpacaOAuthConnectionService;
     private final UserService userService;
     private final AlpacaOAuthStateService alpacaOAuthStateService;
@@ -103,24 +105,22 @@ public class AlpacaOAuthService {
 
     // Alpaca 계정 정보를 조회해서 실제 사용자 ID를 가져옴
     private String getAlpacaUserIdFromAccount(String accessToken) {
+        String bearerToken = "Bearer " + accessToken;
+        log.info("Alpaca 계정 정보 조회 시도, Bearer token 길이: {}", bearerToken.length());
+        
         try {
-            String bearerToken = "Bearer " + accessToken;
-            log.info("Alpaca 계정 정보 조회 시도, Bearer token 길이: {}", bearerToken.length());
-            Map<String, Object> accountInfo = alpacaOAuthClient.getAccount(bearerToken);
+            // Paper Trading API로 계정 정보 조회
+            AlpacaAccountResponse accountInfo = alpacaTradingClient.getAccount(bearerToken);
+            String accountId = accountInfo.id();
             
-            // Alpaca 계정 ID 추출
-            String accountId = (String) accountInfo.get("id");
-            if (accountId != null && !accountId.isEmpty()) {
-                return accountId;
-            } else {
-                return "account_" + System.currentTimeMillis();
-            }
+            log.info("Alpaca 계정 ID 조회 성공: {}", accountId);
+            return accountId;
             
         } catch (Exception e) {
-            log.error("계정 정보 조회 실패: {}", e.getMessage(), e);
-            // 계정 조회 실패 시 임시 ID 생성
-            // TODO: 지금 무조건 이 상태라 이 부분 확인 필요
-            return "temp_account_" + System.currentTimeMillis();
+            // Feign 예외 등 외부 API 호출 실패를 QbitException으로 변환
+            log.error("Alpaca 계정 정보 조회 실패: {}", e.getMessage(), e);
+            throw new QbitException(ErrorCode.EXTERNAL_API_ERROR, 
+                "Alpaca 계정 정보 조회에 실패했습니다. Paper Trading 계정이 활성화되어 있는지 확인해주세요.");
         }
     }
 

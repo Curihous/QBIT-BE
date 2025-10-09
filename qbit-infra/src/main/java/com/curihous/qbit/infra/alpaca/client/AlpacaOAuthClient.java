@@ -4,7 +4,6 @@ import com.curihous.qbit.infra.alpaca.config.AlpacaClientConfig;
 import com.curihous.qbit.infra.alpaca.dto.response.AlpacaTokenResponse;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -12,30 +11,28 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
-import java.util.Map;
 
 // Alpaca OAuth 2.0 인증 API 호출을 위한 Feign 클라이언트
 @FeignClient(
     name = "alpaca-oauth-client",
-    url = "${alpaca.api.base-url:https://paper-api.alpaca.markets}",  // TODO: Paper Trading 사용 시 paper-api로 요청해도 동작하는지 확인 필요
+    url = "https://api.alpaca.markets", // Paper API 안됨
     configuration = AlpacaClientConfig.class
 )
 public interface AlpacaOAuthClient {
 
+    // OAuth 토큰 교환
     @PostMapping(value = "/oauth/token", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
     AlpacaTokenResponse exchangeToken(
         @RequestHeader("Authorization") String basicAuth,
         @RequestBody String formBody
     );
 
+    // OAuth 토큰 갱신
     @PostMapping(value = "/oauth/token", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
     AlpacaTokenResponse refreshToken(
         @RequestHeader("Authorization") String basicAuth,
         @RequestBody String formBody
     );
-
-    @GetMapping("/v2/account")
-    Map<String, Object> getAccount(@RequestHeader("Authorization") String bearerToken);
 
     default AlpacaTokenResponse exchangeToken(String code, String clientId, String redirectUri) {
         String basicAuth = "Basic " + Base64.getEncoder()
