@@ -39,7 +39,7 @@ public class TradingController {
     @Operation(summary = "주문 수정", description = "미체결 또는 부분 체결된 주문의 수량, 가격 등을 수정합니다")
     @PatchMapping("/orders/{orderId}")
     public ResponseEntity<AlpacaOrderResponse> updateOrder(
-            @PathVariable String orderId,
+            @PathVariable Long orderId,
             @Valid @RequestBody UpdateOrderRequest request
     ) {
         User user = userSecurityFacade.getCurrentUser();

@@ -72,19 +72,21 @@ public class AlpacaOrderRequestService {
 
     // 주문 수정
     @Transactional
-    public AlpacaOrderResponse updateOrder(User user, String orderId, UpdateOrderRequest request) {
+    public AlpacaOrderResponse updateOrder(User user, Long orderId, UpdateOrderRequest request) {
         AlpacaOAuthConnection connection = alpacaOAuthConnectionService.findByUserId(user.getId())
                 .orElseThrow(() -> new QbitException(ErrorCode.UNAUTHORIZED, "Alpaca 계정이 연동되지 않았습니다"));
 
         String authorization = "Bearer " + connection.getAccessToken();
 
         try {
-            // 1. Alpaca API 호출 (새로운 주문 B 생성)
-            AlpacaOrderResponse newOrderResponse = alpacaTradingPort.updateOrder(authorization, orderId, request);
-            
-            // 2. 기존 주문(A) DB에서 조회
-            OrderRequest oldOrder = orderRequestRepository.findByAlpacaOrderId(orderId)
+            // 1. 내부 ID로 기존 주문(A) DB에서 조회
+            OrderRequest oldOrder = orderRequestRepository.findByIdAndUser(orderId, user)
                     .orElseThrow(() -> new QbitException(ErrorCode.ORDER_REQUEST_NOT_FOUND, "주문을 찾을 수 없습니다: " + orderId));
+            
+            String alpacaOrderId = oldOrder.getAlpacaOrderId();
+            
+            // 2. Alpaca API 호출 (새로운 주문 B 생성)
+            AlpacaOrderResponse newOrderResponse = alpacaTradingPort.updateOrder(authorization, alpacaOrderId, request);
             
             // 3. 기존 주문(A)에 대체 정보 업데이트
             oldOrder.markAsReplaced(newOrderResponse.id(), newOrderResponse.replacedAt());
@@ -95,7 +97,7 @@ public class AlpacaOrderRequestService {
             OrderRequest newOrder = convertToEntity(newOrderResponse, user, stock);
             orderRequestRepository.save(newOrder);
             
-            log.info("주문 수정 완료: 기존 주문={}, 새 주문={}", orderId, newOrderResponse.id());
+            log.info("주문 수정 완료: 기존 주문 ID={}, Alpaca ID={}, 새 Alpaca 주문={}", orderId, alpacaOrderId, newOrderResponse.id());
             
             return newOrderResponse;
         } catch (QbitException e) {
