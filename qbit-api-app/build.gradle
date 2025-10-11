@@ -3,7 +3,7 @@ plugins {
 }
 
 dependencies {
-    // Common Modules
+    // Common
     implementation project(':qbit-common')
     implementation project(':qbit-domain')
     implementation project(':qbit-infra')

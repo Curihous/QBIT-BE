@@ -76,6 +76,11 @@ oauth:
   state:
     secret: ${OAUTH_STATE_SECRET}
 
+# 주식 동기화 설정
+stock:
+  sync:
+    on: ${STOCK_SYNC_ON}
+
 management:
   endpoints:
     web:

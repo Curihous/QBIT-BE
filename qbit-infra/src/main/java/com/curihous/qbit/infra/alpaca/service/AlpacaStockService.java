@@ -9,8 +9,10 @@ import com.curihous.qbit.domain.alpaca.service.AlpacaOAuthConnectionService;
 import com.curihous.qbit.domain.stock.entity.Stock;
 import com.curihous.qbit.domain.stock.repository.StockRepository;
 import com.curihous.qbit.domain.user.entity.User;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +29,31 @@ public class AlpacaStockService {
     private final StockRepository stockRepository;
     private final AlpacaTradingPort alpacaTradingPort;
     private final AlpacaOAuthConnectionService alpacaOAuthConnectionService;
+
+    @Value("${stock.sync.on:false}")
+    private boolean syncOnStartup;  // 환경변수로 강제 동기화 제어
+
+    @PostConstruct
+    public void initStocks() {
+        try {
+            long stockCount = stockRepository.count();
+            
+            // 1. 첫 배포
+            if (stockCount < 100) {
+                syncAllUSStocks();
+            } 
+            // 1-2. 환경변수로 강제 동기화 설정된 경우 
+            else if (syncOnStartup) {
+                log.info("강제 동기화 설정 활성화. 현재 {}개 종목 → 전체 동기화 시작", stockCount);
+                syncAllUSStocks();
+            } 
+            else {
+                log.info("DB 주식 동기화 건너뜀");
+            }
+        } catch (Exception e) {
+            log.warn("초기 주식 동기화 실패 (서버는 정상 시작): {}", e.getMessage());
+        }
+    }
 
     // Cache-Aside 패턴: DB에 없으면 Alpaca API에서 조회 후 저장
     @Transactional
