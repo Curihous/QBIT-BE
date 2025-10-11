@@ -4,7 +4,7 @@ import com.curihous.qbit.domain.order.entity.OrderRequest;
 import com.curihous.qbit.domain.order.entity.OrderType;
 import io.swagger.v3.oas.annotations.media.Schema;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * 주문 생성 성공 응답 DTO
@@ -32,8 +32,8 @@ public record OrderCreatedResponseDto(
     @Schema(description = "주문 상태 (new/accepted/partially_filled/filled/canceled)", example = "accepted")
     String status,
 
-    @Schema(description = "주문 시간", example = "2024-01-15T09:30:00")
-    LocalDateTime orderedAt,
+    @Schema(description = "주문 시간 (RFC3339, UTC)", example = "2024-01-15T09:30:00.123456Z")
+    OffsetDateTime orderedAt,
 
     @Schema(description = "주문 ID (조회용)", example = "12345")
     Long orderId,

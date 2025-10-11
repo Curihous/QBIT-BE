@@ -11,7 +11,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "order_requests")
@@ -85,25 +85,25 @@ public class OrderRequest extends BaseTimeEntity {
 
     // Alpaca에서 주문 생성 시간
     @Column(name = "alpaca_created_at")
-    private LocalDateTime alpacaCreatedAt;
+    private OffsetDateTime alpacaCreatedAt;
 
     // 주문 제출 시간
     @Column(name = "submitted_at")
-    private LocalDateTime submittedAt;
+    private OffsetDateTime submittedAt;
 
     // 체결 완료 시간
     @Column(name = "filled_at")
-    private LocalDateTime filledAt;
+    private OffsetDateTime filledAt;
 
     // 취소 시간
     @Column(name = "canceled_at")
-    private LocalDateTime canceledAt;
+    private OffsetDateTime canceledAt;
 
     // === 주문 수정 추적 필드 ===
     
     // 대체된 시간 (이 주문이 수정되어 대체된 시간)
     @Column(name = "replaced_at")
-    private LocalDateTime replacedAt;
+    private OffsetDateTime replacedAt;
 
     // 이 주문을 대체한 주문 ID 
     @Column(name = "replaced_by", length = 100)
@@ -130,9 +130,9 @@ public class OrderRequest extends BaseTimeEntity {
     public OrderRequest(String alpacaOrderId, String symbol, BigDecimal quantity, BigDecimal filledQuantity,
                         OrderSide side, OrderType type, TimeInForce timeInForce, BigDecimal limitPrice,
                         BigDecimal stopPrice, BigDecimal filledAvgPrice, OrderStatus status, String clientOrderId, 
-                        LocalDateTime alpacaCreatedAt, LocalDateTime submittedAt,
-                        LocalDateTime filledAt, LocalDateTime canceledAt,
-                        LocalDateTime replacedAt, String replacedBy, String replaces,
+                        OffsetDateTime alpacaCreatedAt, OffsetDateTime submittedAt,
+                        OffsetDateTime filledAt, OffsetDateTime canceledAt,
+                        OffsetDateTime replacedAt, String replacedBy, String replaces,
                         Stock stock, User user) {
         this.alpacaOrderId = alpacaOrderId;
         this.symbol = symbol;
@@ -158,7 +158,7 @@ public class OrderRequest extends BaseTimeEntity {
     }
 
     // 주문이 대체되었을 때 호출
-    public void markAsReplaced(String replacedBy, LocalDateTime replacedAt) {
+    public void markAsReplaced(String replacedBy, OffsetDateTime replacedAt) {
         this.replacedBy = replacedBy;
         this.replacedAt = replacedAt;
     }

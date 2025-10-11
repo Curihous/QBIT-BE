@@ -3,7 +3,7 @@ package com.curihous.qbit.infra.alpaca.dto.response;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * Alpaca 주문 정보 응답 DTO
@@ -25,25 +25,25 @@ public record AlpacaOrderResponse(
     @JsonProperty("client_order_id")
     String clientOrderId,
 
-    @Schema(description = "주문 생성 시간")
+    @Schema(description = "주문 생성 시간 (RFC3339, UTC)")
     @JsonProperty("created_at")
-    LocalDateTime createdAt,
+    OffsetDateTime createdAt,
 
-    @Schema(description = "주문 제출 시간")
+    @Schema(description = "주문 제출 시간 (RFC3339, UTC)")
     @JsonProperty("submitted_at")
-    LocalDateTime submittedAt,
+    OffsetDateTime submittedAt,
 
-    @Schema(description = "체결 완료 시간")
+    @Schema(description = "체결 완료 시간 (RFC3339, UTC)")
     @JsonProperty("filled_at")
-    LocalDateTime filledAt,
+    OffsetDateTime filledAt,
 
-    @Schema(description = "취소 시간")
+    @Schema(description = "취소 시간 (RFC3339, UTC)")
     @JsonProperty("canceled_at")
-    LocalDateTime canceledAt,
+    OffsetDateTime canceledAt,
 
-    @Schema(description = "대체된 시간")
+    @Schema(description = "대체된 시간 (RFC3339, UTC)")
     @JsonProperty("replaced_at")
-    LocalDateTime replacedAt,
+    OffsetDateTime replacedAt,
 
     @Schema(description = "이 주문을 대체한 주문 ID")
     @JsonProperty("replaced_by")

@@ -3,7 +3,7 @@ package com.curihous.qbit.api.domain.trading.dto;
 import com.curihous.qbit.domain.order.entity.OrderRequest;
 import io.swagger.v3.oas.annotations.media.Schema;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * 주문 상세 조회 응답 DTO
@@ -53,20 +53,20 @@ public record OrderDetailResponseDto(
     @Schema(description = "주문 상태 (new/accepted/partially_filled/filled/canceled/rejected)", example = "filled")
     String status,
 
-    @Schema(description = "주문 생성 시간", example = "2024-01-15T09:30:00")
-    LocalDateTime createdAt,
+    @Schema(description = "주문 생성 시간 (RFC3339, UTC)", example = "2024-01-15T09:30:00.123456Z")
+    OffsetDateTime createdAt,
 
-    @Schema(description = "주문 제출 시간", example = "2024-01-15T09:30:01")
-    LocalDateTime submittedAt,
+    @Schema(description = "주문 제출 시간 (RFC3339, UTC)", example = "2024-01-15T09:30:01.234567Z")
+    OffsetDateTime submittedAt,
 
-    @Schema(description = "체결 완료 시간", example = "2024-01-15T09:30:15")
-    LocalDateTime filledAt,
+    @Schema(description = "체결 완료 시간 (RFC3339, UTC)", example = "2024-01-15T09:30:15.345678Z")
+    OffsetDateTime filledAt,
 
-    @Schema(description = "취소 시간 (취소된 경우)", example = "2024-01-15T10:00:00")
-    LocalDateTime canceledAt,
+    @Schema(description = "취소 시간 (RFC3339, UTC)", example = "2024-01-15T10:00:00.456789Z")
+    OffsetDateTime canceledAt,
 
-    @Schema(description = "대체된 시간 (수정된 경우)", example = "2024-01-15T09:45:00")
-    LocalDateTime replacedAt,
+    @Schema(description = "대체된 시간 (RFC3339, UTC)", example = "2024-01-15T09:45:00.567890Z")
+    OffsetDateTime replacedAt,
 
     @Schema(description = "이 주문을 대체한 새 주문의 Alpaca ID (수정된 경우)", example = "61e69015-8549-4bfd-b9c3-01e75843f47d")
     String replacedBy,
