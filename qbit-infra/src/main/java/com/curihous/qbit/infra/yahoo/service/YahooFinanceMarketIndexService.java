@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.annotation.PostConstruct;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -95,10 +96,21 @@ public class YahooFinanceMarketIndexService implements MarketIndexPort {
         try {
             YahooFinanceChartResponse yahooData = yahooFinanceClient.getChart(symbol);
             
+            // ZERO 데이터 검증 (Yahoo API에서 데이터를 제대로 못 받아온 경우)
+            BigDecimal currentPrice = yahooData.getCurrentPrice();
+            boolean isInvalidData = currentPrice.compareTo(BigDecimal.ZERO) == 0;
+            
             Optional<MarketIndex> existing = marketIndexRepository.findBySymbol(symbol);
             
             if (existing.isPresent()) {
-                // 기존 데이터 업데이트
+                // 기존 데이터가 있는 경우
+                if (isInvalidData) {
+                    // 가격이 ZERO면 업데이트 없이 기존 데이터 유지
+                    log.warn("Yahoo Finance 데이터 이상: {} - 가격이 0입니다. 기존 데이터 유지", symbol);
+                    return;
+                }
+                
+                // 정상 데이터로 업데이트
                 MarketIndex index = existing.get();
                 index.updatePrice(
                     yahooData.getCurrentPrice(),
@@ -111,7 +123,10 @@ public class YahooFinanceMarketIndexService implements MarketIndexPort {
                 
                 log.debug("지수 업데이트: {} = {}", symbol, yahooData.getCurrentPrice());
             } else {
-                // 새 지수 생성
+                // 데이터가 0으로 이상해도 초기 데이터가 없으므로 저장하긴 함. 
+                if (isInvalidData) {
+                    log.warn("Yahoo Finance 초기 데이터 이상: {} - 가격이 0입니다. 저장하지만 확인 필요", symbol);
+                }
                 createIndexFromYahooData(yahooData);
             }
         } catch (Exception e) {
@@ -151,9 +166,9 @@ public class YahooFinanceMarketIndexService implements MarketIndexPort {
     private String getIndexName(String symbol) {
         return switch (symbol) {
             case "^GSPC" -> "S&P 500";
-            case "^IXIC" -> "NASDAQ Composite";
-            case "^DJI" -> "Dow Jones Industrial Average";
-            case "^VIX" -> "CBOE Volatility Index";
+            case "^IXIC" -> "나스닥";
+            case "^DJI" -> "다우존스 지수";
+            case "^VIX" -> "변동성 지수(VIX)";
             default -> symbol.replace("^", "");
         };
     }
@@ -164,7 +179,8 @@ public class YahooFinanceMarketIndexService implements MarketIndexPort {
         try {
             // yyyy-MM-dd → Unix timestamp 변환
             long period1 = java.time.LocalDate.parse(from).atStartOfDay(java.time.ZoneId.of("UTC")).toEpochSecond();
-            long period2 = java.time.LocalDate.parse(to).atStartOfDay(java.time.ZoneId.of("UTC")).toEpochSecond();
+            // period2는 exclusive이므로 +1일 해서 'to' 날짜까지 포함되도록 함
+            long period2 = java.time.LocalDate.parse(to).plusDays(1).atStartOfDay(java.time.ZoneId.of("UTC")).toEpochSecond();
             
             YahooFinanceChartResponse yahooData = yahooFinanceClient.getChartHistory(symbol, "1d", period1, period2);
             
