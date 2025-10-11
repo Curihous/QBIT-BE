@@ -23,4 +23,12 @@ public class StockService {
     public Optional<Stock> findBySymbol(String symbol) {
         return stockRepository.findBySymbol(symbol);
     }
+    
+    // symbol 또는 name으로 검색
+    public List<Stock> searchStocks(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return getAllStocks(); // TODO: 인기 종목 조회로 변경
+        }
+        return stockRepository.searchByKeyword(keyword);
+    }
 }
