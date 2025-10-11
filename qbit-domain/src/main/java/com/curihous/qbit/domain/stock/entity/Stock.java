@@ -106,25 +106,49 @@ public class Stock extends BaseTimeEntity {
             return null;
         }
         
-        // 1. 주식 타입 먼저 제거 (Common Stock, Ordinary Shares, Class A/B 등)
+        String original = companyName;
+        
+        // 1. 주식 타입 제거 (Common Stock, Ordinary Shares, Preferred Stock, Class A/B 등)
         String cleaned = companyName
-                .replaceAll("(?i)\\s+(Common|Ordinary)\\s+(Stock|Shares)", "")
+                .replaceAll("(?i)\\s+Common\\s+Stock", "")
+                .replaceAll("(?i)\\s+Ordinary\\s+Shares", "")
+                .replaceAll("(?i)\\s+Preferred\\s+Stock", "")
                 .replaceAll("(?i)\\s+Class\\s+[A-Z]", "")
                 .trim();
         
         // 2. 회사 접미사 제거 (Inc., Corp., Ltd., LLC, Co., Company 등)
         cleaned = cleaned
-                .replaceAll("(?i),?\\s+(Inc\\.?|Corp\\.?|Corporation|Ltd\\.?|Limited|LLC|L\\.L\\.C\\.?|Co\\.?|Company|Group|Plc|PLC|AG)$", "")
+                .replaceAll("(?i),\\s*Inc\\.?$", "")
+                .replaceAll("(?i)\\s+Inc\\.?$", "")
+                .replaceAll("(?i)\\s+Corp\\.?$", "")
+                .replaceAll("(?i)\\s+Corporation$", "")
+                .replaceAll("(?i)\\s+Ltd\\.?$", "")
+                .replaceAll("(?i)\\s+Limited$", "")
+                .replaceAll("(?i)\\s+LLC$", "")
+                .replaceAll("(?i)\\s+L\\.L\\.C\\.?$", "")
+                .replaceAll("(?i)\\s+Co\\.?$", "")
+                .replaceAll("(?i)\\s+Company$", "")
+                .replaceAll("(?i)\\s+Group$", "")
+                .replaceAll("(?i)\\s+Plc$", "")
+                .replaceAll("(?i)\\s+PLC$", "")
+                .replaceAll("(?i)\\s+AG$", "")
                 .trim();
         
         // 3. 특수문자 제거
-        cleaned = cleaned.replaceAll("[,.()'\"&]", "");
+        cleaned = cleaned.replaceAll("[,.()'\"&]", "").trim();
         
-        // 4. 첫 번째 단어만 추출 
+        // 4. 첫 번째 단어만 추출
         String[] words = cleaned.split("\\s+");
-        String firstWord = words.length > 0 ? words[0] : cleaned;
+        String firstWord = words.length > 0 && !words[0].isEmpty() ? words[0] : cleaned;
         
         // 5. 소문자 변환 + .com 추가
-        return firstWord.toLowerCase() + ".com";
+        String result = firstWord.toLowerCase() + ".com";
+        
+        // 디버그 로그 
+        if (!original.equals(companyName)) {
+            System.out.println("[DEBUG] Domain 생성: " + original + " → " + result);
+        }
+        
+        return result;
     }
 }
