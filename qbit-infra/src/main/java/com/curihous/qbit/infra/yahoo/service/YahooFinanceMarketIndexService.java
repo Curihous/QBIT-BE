@@ -151,9 +151,9 @@ public class YahooFinanceMarketIndexService implements MarketIndexPort {
     private String getIndexName(String symbol) {
         return switch (symbol) {
             case "^GSPC" -> "S&P 500";
-            case "^IXIC" -> "NASDAQ Composite";
-            case "^DJI" -> "Dow Jones Industrial Average";
-            case "^VIX" -> "CBOE Volatility Index";
+            case "^IXIC" -> "나스닥";
+            case "^DJI" -> "다우존스 지수";
+            case "^VIX" -> "변동성 지수(VIX)";
             default -> symbol.replace("^", "");
         };
     }

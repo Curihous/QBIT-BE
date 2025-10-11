@@ -14,7 +14,7 @@ public interface MarketIndexRepository extends JpaRepository<MarketIndex, Long> 
 
     Optional<MarketIndex> findBySymbol(String symbol);
 
-    // 주요 지수 목록 조회 (polygonMarketIndexService에서 country = "US", isActive = true로 설정 완료)
+    // DB에서 주요 지수 목록 조회 (배치 작업으로 동기화됨)
     @Query("SELECT m FROM MarketIndex m ORDER BY m.symbol")
     List<MarketIndex> findMajorIndices();
 }
