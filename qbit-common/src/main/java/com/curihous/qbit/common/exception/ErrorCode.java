@@ -28,6 +28,10 @@ public enum ErrorCode {
     INSUFFICIENT_BALANCE(400, "잔고가 부족합니다."),
     INVALID_TRADE_CYCLE(400, "유효하지 않은 거래 사이클입니다."),
 
+    // 지수 관련 에러 - Yahoo Finance API
+    INDEX_NOT_FOUND(404, "해당 지수를 찾을 수 없습니다."),
+    INDEX_DATA_UNAVAILABLE(503, "지수 데이터를 조회할 수 없습니다."),
+
     // 401 Unauthorized
     // 로그인 상태여야 하는 요청
     NOT_AUTHENTICATED(401, "로그인 상태가 아닙니다."),

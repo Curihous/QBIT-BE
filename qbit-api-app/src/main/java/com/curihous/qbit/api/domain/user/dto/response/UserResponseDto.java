@@ -1,11 +1,16 @@
-package com.curihous.qbit.api.domain.user.dto;
+package com.curihous.qbit.api.domain.user.dto.response;
 
 import com.curihous.qbit.domain.user.entity.LoginType;
 import com.curihous.qbit.domain.user.entity.User;
 
 import java.time.LocalDateTime;
 
-// TODO: 확인용 DTO이므로 제거 또는 수정 필요
+/**
+ * 사용자 정보 조회 응답 DTO
+ * 
+ * 사용 API:
+ * - GET /users/me
+ */
 public record UserResponseDto(
     Long userId,
     String email,
@@ -31,3 +36,4 @@ public record UserResponseDto(
         );
     }
 }
+

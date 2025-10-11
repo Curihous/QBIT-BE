@@ -1,7 +1,6 @@
-package com.curihous.qbit.api.domain.trading.dto;
+package com.curihous.qbit.api.domain.trading.dto.response;
 
 import com.curihous.qbit.domain.order.entity.OrderRequest;
-import com.curihous.qbit.domain.order.entity.OrderType;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.OffsetDateTime;
@@ -11,8 +10,6 @@ import java.time.OffsetDateTime;
  * 
  * 사용 API:
  * - POST /trading/orders
- * 
- * 주문 생성 성공 모달에 표시할 정보
  */
 @Schema(description = "주문 생성 성공 응답")
 public record OrderCreatedResponseDto(
@@ -117,3 +114,4 @@ public record OrderCreatedResponseDto(
         );
     }
 }
+

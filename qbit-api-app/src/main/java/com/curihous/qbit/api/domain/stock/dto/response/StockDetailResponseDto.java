@@ -1,7 +1,6 @@
-package com.curihous.qbit.api.domain.stock.dto;
+package com.curihous.qbit.api.domain.stock.dto.response;
 
 import com.curihous.qbit.domain.stock.entity.Stock;
-import com.curihous.qbit.infra.alpaca.dto.response.AlpacaAssetResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
@@ -47,7 +46,6 @@ public record StockDetailResponseDto(
     String logoUrl
 ) {
     
-    // Stock 엔티티를 StockDetailResponseDto로 변환 (DB 조회용)
     public static StockDetailResponseDto fromEntity(Stock stock) {
         return new StockDetailResponseDto(
                 stock.getSymbol(),
@@ -63,21 +61,5 @@ public record StockDetailResponseDto(
                 stock.getLogoUrl()
         );
     }
-    
-    // AlpacaAssetResponse를 StockDetailResponseDto로 변환 (API 조회용)
-    public static StockDetailResponseDto from(AlpacaAssetResponse alpacaAsset) {
-        return new StockDetailResponseDto(
-                alpacaAsset.symbol(),
-                alpacaAsset.name(),
-                alpacaAsset.exchange(),
-                alpacaAsset.assetClass(),
-                alpacaAsset.status(),
-                alpacaAsset.tradable(),
-                alpacaAsset.fractionable(),
-                alpacaAsset.minOrderSize(),
-                alpacaAsset.minTradeIncrement(),
-                alpacaAsset.priceIncrement(),
-                null // 추후 Clearbit 통해 로고 추가
-        );
-    }
 }
+

@@ -1,7 +1,7 @@
 package com.curihous.qbit.api.domain.auth.controller;
 
-import com.curihous.qbit.api.domain.auth.dto.KakaoLoginRequest;
-import com.curihous.qbit.api.domain.auth.dto.KakaoLoginResponse;
+import com.curihous.qbit.api.domain.auth.dto.request.KakaoLoginRequestDto;
+import com.curihous.qbit.api.domain.auth.dto.response.KakaoLoginResponseDto;
 import com.curihous.qbit.infra.kakao.service.KakaoLoginService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -31,8 +31,8 @@ public class AuthController {
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
             @ApiResponse(responseCode = "401", description = "유효하지 않은 카카오 액세스 토큰")
     })
-    public ResponseEntity<KakaoLoginResponse> kakaoLogin(
-            @Valid @RequestBody KakaoLoginRequest request,
+    public ResponseEntity<KakaoLoginResponseDto> kakaoLogin(
+            @Valid @RequestBody KakaoLoginRequestDto request,
             HttpServletResponse response) {
         
         Map<String, Object> result = kakaoLoginService.loginWithKakao(
@@ -40,7 +40,7 @@ public class AuthController {
                 response
         );
         
-        KakaoLoginResponse loginResponse = new KakaoLoginResponse(
+        KakaoLoginResponseDto loginResponse = new KakaoLoginResponseDto(
                 (String) result.get("accessToken"),
                 (Integer) result.get("expiresIn"),
                 (Boolean) result.get("isNewUser"),

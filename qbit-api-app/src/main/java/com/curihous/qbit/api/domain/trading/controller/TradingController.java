@@ -1,12 +1,12 @@
 package com.curihous.qbit.api.domain.trading.controller;
 
-import com.curihous.qbit.api.domain.trading.dto.OrderCreatedResponseDto;
-import com.curihous.qbit.api.domain.trading.dto.OrderDetailResponseDto;
-import com.curihous.qbit.infra.alpaca.dto.request.CreateOrderRequest;
-import com.curihous.qbit.infra.alpaca.dto.request.UpdateOrderRequest;
-import com.curihous.qbit.infra.alpaca.dto.response.AlpacaOrderResponse;
-import com.curihous.qbit.infra.alpaca.service.AlpacaOrderRequestService;
+import com.curihous.qbit.api.domain.trading.dto.request.CreateOrderRequestDto;
+import com.curihous.qbit.api.domain.trading.dto.request.UpdateOrderRequestDto;
+import com.curihous.qbit.api.domain.trading.dto.response.OrderCreatedResponseDto;
+import com.curihous.qbit.api.domain.trading.dto.response.OrderDetailResponseDto;
+import com.curihous.qbit.api.domain.trading.dto.response.OrderUpdateResponseDto;
 import com.curihous.qbit.domain.order.entity.OrderRequest;
+import com.curihous.qbit.domain.order.port.TradingPort;
 import com.curihous.qbit.domain.user.entity.User;
 import com.curihous.qbit.infra.security.facade.UserSecurityFacade;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,39 +19,60 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@Tag(name = "Trading", description = "모의 주식 거래 관련 API입니다")
+@Tag(name = "Trading", description = "모의 주식 거래 관련 API입니다.")
 @RestController
 @RequestMapping("/trading")
 @RequiredArgsConstructor
 public class TradingController {
 
-    private final AlpacaOrderRequestService alpacaOrderRequestService;
+    private final TradingPort tradingPort;
     private final UserSecurityFacade userSecurityFacade;
 
-    @Operation(summary = "주문 생성", description = "Alpaca를 통해 모의 주식 주문을 생성합니다")
+    @Operation(summary = "주문 생성", description = "모의 주식 주문을 생성합니다")
     @PostMapping("/orders")
-    public ResponseEntity<OrderCreatedResponseDto> createOrder(@Valid @RequestBody CreateOrderRequest request) {
+    public ResponseEntity<OrderCreatedResponseDto> createOrder(@Valid @RequestBody CreateOrderRequestDto request) {
         User user = userSecurityFacade.getCurrentUser();
-        OrderRequest orderRequest = alpacaOrderRequestService.createOrder(user, request);
+        
+        TradingPort.CreateOrderCommand command = new TradingPort.CreateOrderCommand(
+            request.symbol(),
+            request.quantity(),
+            request.side(),
+            request.type(),
+            request.timeInForce(),
+            request.limitPrice(),
+            request.stopPrice(),
+            request.clientOrderId()
+        );
+        
+        OrderRequest orderRequest = tradingPort.createOrder(user, command);
         return ResponseEntity.ok(OrderCreatedResponseDto.from(orderRequest));
     }
 
     @Operation(summary = "주문 수정", description = "미체결 또는 부분 체결된 주문의 수량, 가격 등을 수정합니다")
     @PatchMapping("/orders/{orderId}")
-    public ResponseEntity<AlpacaOrderResponse> updateOrder(
+    public ResponseEntity<OrderUpdateResponseDto> updateOrder(
             @PathVariable Long orderId,
-            @Valid @RequestBody UpdateOrderRequest request
+            @Valid @RequestBody UpdateOrderRequestDto request
     ) {
         User user = userSecurityFacade.getCurrentUser();
-        AlpacaOrderResponse response = alpacaOrderRequestService.updateOrder(user, orderId, request);
-        return ResponseEntity.ok(response);
+        
+        TradingPort.UpdateOrderCommand command = new TradingPort.UpdateOrderCommand(
+            request.quantity(),
+            request.limitPrice(),
+            request.stopPrice(),
+            request.timeInForce(),
+            request.clientOrderId()
+        );
+        
+        TradingPort.OrderUpdateResult result = tradingPort.updateOrder(user, orderId, command);
+        return ResponseEntity.ok(OrderUpdateResponseDto.from(result));
     }
 
     @Operation(summary = "내 주문 목록 조회", description = "사용자의 모든 주문 내역을 조회합니다")
     @GetMapping("/orders")
     public ResponseEntity<List<OrderDetailResponseDto>> getMyOrders() {
         User user = userSecurityFacade.getCurrentUser();
-        List<OrderRequest> orders = alpacaOrderRequestService.getMyOrders(user); // TODO: 페이징 처리
+        List<OrderRequest> orders = tradingPort.getMyOrders(user); // TODO: 페이징 처리
         List<OrderDetailResponseDto> response = orders.stream()
                 .map(OrderDetailResponseDto::from)
                 .collect(Collectors.toList());
@@ -64,7 +85,7 @@ public class TradingController {
             @PathVariable Long orderId
     ) {
         User user = userSecurityFacade.getCurrentUser();
-        OrderRequest order = alpacaOrderRequestService.getOrder(user, orderId);
+        OrderRequest order = tradingPort.getOrder(user, orderId);
         return ResponseEntity.ok(OrderDetailResponseDto.from(order));
     }
 }

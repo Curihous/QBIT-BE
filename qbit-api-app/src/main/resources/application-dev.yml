@@ -46,6 +46,15 @@ alpaca:
     token-url: https://api.alpaca.markets/oauth/token
   paper-trading:
     base-url: https://paper-api.alpaca.markets
+  system:
+    api-key: ${ALPACA_SYSTEM_API_KEY}
+    secret-key: ${ALPACA_SYSTEM_SECRET_KEY}
+
+# Polygon API 설정
+polygon:
+  api:
+    key: ${POLYGON_API_KEY}
+    base-url: https://api.polygon.io
 
 # OAuth State 보안 설정
 oauth:
