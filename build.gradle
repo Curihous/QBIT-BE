@@ -48,6 +48,22 @@ subprojects {
             mavenBom "org.springframework.boot:spring-boot-dependencies:3.5.6"
             mavenBom "org.springframework.cloud:spring-cloud-dependencies:2025.0.0"
         }
+        
+        // Springdoc 버전 관리
+        dependencies {
+            dependency 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.13'
+            dependency 'org.springdoc:springdoc-openapi-starter-common:2.8.13'
+        }
+    }
+    
+    // Swagger 버전 강제
+    configurations.all {
+        resolutionStrategy.eachDependency {
+            if (requested.group == "io.swagger.core.v3") {
+                useVersion("2.2.27")
+                because("springdoc 2.8.13과 호환 버전으로 강제")
+            }
+        }
     }
 
     sourceCompatibility = JavaVersion.VERSION_17
