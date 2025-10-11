@@ -1,16 +1,15 @@
-package com.curihous.qbit.api.domain.stock.dto;
+package com.curihous.qbit.api.domain.stock.dto.response;
 
 import com.curihous.qbit.domain.stock.entity.Stock;
-import com.curihous.qbit.infra.alpaca.dto.response.AlpacaAssetResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
- * 종목 목록 조회 응답 DTO
+ * 종목 검색 응답 DTO
  * 
  * 사용 API:
- * - GET /stocks
+ * - GET /stocks/search
  */
-@Schema(description = "종목 목록 조회 응답")
+@Schema(description = "종목 검색 응답")
 public record StockSearchResponseDto(
     
     @Schema(description = "종목 코드", example = "AAPL")
@@ -29,7 +28,6 @@ public record StockSearchResponseDto(
     String logoUrl
 ) {
     
-    // Stock 엔티티를 StockSearchResponseDto로 변환 (DB 조회용)
     public static StockSearchResponseDto fromEntity(Stock stock) {
         return new StockSearchResponseDto(
                 stock.getSymbol(),
@@ -39,15 +37,5 @@ public record StockSearchResponseDto(
                 stock.getLogoUrl()
         );
     }
-    
-    // AlpacaAssetResponse를 StockSearchResponseDto로 변환 (API 조회용)
-    public static StockSearchResponseDto from(AlpacaAssetResponse alpacaAsset) {
-        return new StockSearchResponseDto(
-                alpacaAsset.symbol(),
-                alpacaAsset.name(),
-                alpacaAsset.exchange(),
-                alpacaAsset.tradable(),
-                null // 추후 Clearbit 통해 로고 추가
-        );
-    }
 }
+

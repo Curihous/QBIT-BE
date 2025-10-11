@@ -1,4 +1,4 @@
-package com.curihous.qbit.api.domain.trading.dto;
+package com.curihous.qbit.api.domain.trading.dto.response;
 
 import com.curihous.qbit.domain.order.entity.OrderRequest;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -9,12 +9,9 @@ import java.time.OffsetDateTime;
  * 주문 상세 조회 응답 DTO
  * 
  * 사용 API:
- * - GET /trading/orders (목록)
- * - GET /trading/orders/{orderId} (상세)
- * 
- * 주문 히스토리/상세 화면에 표시할 정보
+ * - GET /trading/orders
+ * - GET /trading/orders/{orderId}
  */
-@Schema(description = "주문 상세 조회 응답")
 public record OrderDetailResponseDto(
     
     @Schema(description = "주문 ID (내부 DB ID)", example = "12345")

@@ -70,7 +70,7 @@ alpaca:
     token-url: https://api.alpaca.markets/oauth/token
   paper-trading:
     base-url: https://paper-api.alpaca.markets
-
+    
 # OAuth State 보안 설정
 oauth:
   state:

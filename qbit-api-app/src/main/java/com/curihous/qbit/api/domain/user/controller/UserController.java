@@ -1,8 +1,8 @@
 package com.curihous.qbit.api.domain.user.controller;
 
-import com.curihous.qbit.api.domain.user.dto.*;
-import com.curihous.qbit.infra.security.facade.UserSecurityFacade;
+import com.curihous.qbit.api.domain.user.dto.response.UserResponseDto;
 import com.curihous.qbit.domain.user.entity.User;
+import com.curihous.qbit.infra.security.facade.UserSecurityFacade;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;

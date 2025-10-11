@@ -1,11 +1,11 @@
 package com.curihous.qbit.api.domain.stock.controller;
 
-import com.curihous.qbit.api.domain.stock.dto.StockDetailResponseDto;
-import com.curihous.qbit.api.domain.stock.dto.StockSearchResponseDto;
+import com.curihous.qbit.api.domain.stock.dto.response.StockDetailResponseDto;
+import com.curihous.qbit.api.domain.stock.dto.response.StockSearchResponseDto;
 import com.curihous.qbit.domain.stock.entity.Stock;
+import com.curihous.qbit.domain.stock.port.StockPort;
 import com.curihous.qbit.domain.stock.service.StockService;
 import com.curihous.qbit.domain.user.entity.User;
-import com.curihous.qbit.infra.alpaca.service.AlpacaStockService;
 import com.curihous.qbit.infra.security.facade.UserSecurityFacade;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -19,14 +19,14 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Slf4j
-@Tag(name = "Stock", description = "주식 종목 관련 API입니다")
+@Tag(name = "Stock", description = "주식 종목 관련 API입니다.")
 @RestController
 @RequestMapping("/stocks")
 @RequiredArgsConstructor
 public class StockController {
 
     private final StockService stockService;
-    private final AlpacaStockService alpacaStockService;
+    private final StockPort stockPort; 
     private final UserSecurityFacade userSecurityFacade;
 
     @Operation(
@@ -46,7 +46,7 @@ public class StockController {
             stocks.isEmpty() && keyword.matches("^[A-Z]{1,5}$")) {
             try {
                 User user = userSecurityFacade.getCurrentUser();
-                Stock stock = alpacaStockService.getOrFetchStock(user, keyword);
+                Stock stock = stockPort.getOrFetchStock(user, keyword);
                 
                 // 미국 주식만 허용 (코인 등 제외)
                 if ("us_equity".equalsIgnoreCase(stock.getAssetClass())) {
@@ -76,8 +76,8 @@ public class StockController {
             @PathVariable String symbol
     ) {
         User user = userSecurityFacade.getCurrentUser();
-        // Cache-Aside: DB 우선 → 없으면 Alpaca API 조회 → 저장
-        Stock stock = alpacaStockService.getOrFetchStock(user, symbol);
+        // Cache-Aside: DB 우선 → 없으면 Alpaca API API 조회 → 저장
+        Stock stock = stockPort.getOrFetchStock(user, symbol);
         return ResponseEntity.ok(StockDetailResponseDto.fromEntity(stock));
     }
 }

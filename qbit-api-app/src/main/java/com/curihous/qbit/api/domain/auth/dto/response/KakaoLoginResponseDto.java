@@ -1,11 +1,14 @@
-package com.curihous.qbit.api.domain.auth.dto;
+package com.curihous.qbit.api.domain.auth.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
  * 카카오 네이티브 앱 로그인 응답 DTO
+ * 
+ * 사용 API:
+ * - POST /auth/kakao/login
  */
-public record KakaoLoginResponse(
+public record KakaoLoginResponseDto(
     @Schema(description = "JWT 액세스 토큰")
     String accessToken,
     

@@ -10,8 +10,10 @@ import com.curihous.qbit.domain.alpaca.entity.AlpacaOAuthConnection;
 import com.curihous.qbit.domain.alpaca.service.AlpacaOAuthConnectionService;
 import com.curihous.qbit.domain.order.entity.OrderRequest;
 import com.curihous.qbit.domain.order.entity.*;
+import com.curihous.qbit.domain.order.port.TradingPort;
 import com.curihous.qbit.domain.order.repository.OrderRequestRepository;
 import com.curihous.qbit.domain.stock.entity.Stock;
+import com.curihous.qbit.domain.stock.port.StockPort;
 import com.curihous.qbit.domain.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,20 +23,26 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.List;
 
+/**
+ * Alpaca API를 통한 주식 거래(주문) 처리 Adapter
+ * (Hexagonal Architecture - Adapter)
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class AlpacaOrderRequestService {
+public class AlpacaOrderRequestService implements TradingPort {
 
     private final OrderRequestRepository orderRequestRepository;
     private final AlpacaTradingPort alpacaTradingPort;
     private final AlpacaOAuthConnectionService alpacaOAuthConnectionService;
-    private final AlpacaStockService alpacaStockService;
+    private final StockPort stockPort;
 
     // 주문 생성
     @Transactional
-    public OrderRequest createOrder(User user, CreateOrderRequest request) {
+    public OrderRequest createOrder(User user, CreateOrderCommand command) {
+        // Command를 Infra DTO로 변환
+        CreateOrderRequest request = createInfraRequest(command);
         // 사용자의 활성화된 Alpaca 연결 조회
         AlpacaOAuthConnection connection = alpacaOAuthConnectionService.getValidConnection(user.getId());
         String authorization = "Bearer " + connection.getAccessToken();
@@ -49,7 +57,7 @@ public class AlpacaOrderRequestService {
         }
 
         // 2. Stock 조회/생성 (DB에 없으면 Alpaca API로 가져옴)
-        Stock stock = alpacaStockService.getOrFetchStock(user, alpacaResponse.symbol());
+        Stock stock = stockPort.getOrFetchStock(user, alpacaResponse.symbol());
 
         // 3. OrderRequest 생성 + Stock 연결
         OrderRequest orderRequest = convertToEntity(alpacaResponse, user, stock);
@@ -57,12 +65,14 @@ public class AlpacaOrderRequestService {
     }
 
     // 내 주문 목록 조회
+    @Override
     @Transactional(readOnly = true)
     public List<OrderRequest> getMyOrders(User user) {
         return orderRequestRepository.findByUserOrderByAlpacaCreatedAtDesc(user); // 결과 없으면 빈 리스트 반환
     }
 
     // 주문 상세 조회
+    @Override
     @Transactional(readOnly = true)
     public OrderRequest getOrder(User user, Long orderId) {
         return orderRequestRepository.findByIdAndUser(orderId, user)
@@ -70,8 +80,17 @@ public class AlpacaOrderRequestService {
     }
 
     // 주문 수정
+    @Override
     @Transactional
-    public AlpacaOrderResponse updateOrder(User user, Long orderId, UpdateOrderRequest request) {
+    public OrderUpdateResult updateOrder(User user, Long orderId, UpdateOrderCommand command) {
+
+        UpdateOrderRequest request = new UpdateOrderRequest(
+            parseBigDecimal(command.quantity()),
+            command.timeInForce(),
+            parseBigDecimal(command.limitPrice()),
+            parseBigDecimal(command.stopPrice()),
+            command.clientOrderId()
+        );
         // 사용자의 활성화된 Alpaca 연결 조회
         AlpacaOAuthConnection connection = alpacaOAuthConnectionService.getValidConnection(user.getId());
         String authorization = "Bearer " + connection.getAccessToken();
@@ -100,7 +119,7 @@ public class AlpacaOrderRequestService {
             
             log.info("주문 수정 완료: 기존 주문 ID={}, Alpaca ID={}, 새 Alpaca 주문={}", orderId, alpacaOrderId, newOrderResponse.id());
             
-            return newOrderResponse;
+            return convertToUpdateResult(newOrderResponse);
         } catch (QbitException e) {
             throw e;
         } catch (Exception e) {
@@ -222,6 +241,61 @@ public class AlpacaOrderRequestService {
                 log.warn("알 수 없는 주문 상태: {}", status);
                 yield OrderStatus.NEW;
             }
+        };
+    }
+    
+    private OrderUpdateResult convertToUpdateResult(AlpacaOrderResponse response) {
+        return new OrderUpdateResult(
+            response.id(),
+            response.symbol(),
+            response.qty(),
+            response.filledQty(),
+            response.side(),
+            response.type(),
+            response.timeInForce(),
+            response.limitPrice(),
+            response.stopPrice(),
+            response.filledAvgPrice(),
+            response.status(),
+            response.clientOrderId(),
+            response.createdAt() != null ? response.createdAt().toString() : null,
+            response.submittedAt() != null ? response.submittedAt().toString() : null,
+            response.filledAt() != null ? response.filledAt().toString() : null,
+            response.canceledAt() != null ? response.canceledAt().toString() : null,
+            response.replacedAt() != null ? response.replacedAt().toString() : null,
+            response.replacedBy(),
+            response.replaces()
+        );
+    }
+    
+    // Command (String)를 Infra DTO (BigDecimal)로 변환하는 헬퍼 메서드
+    private CreateOrderRequest createInfraRequest(CreateOrderCommand command) {
+        BigDecimal qty = parseBigDecimal(command.quantity());
+        BigDecimal limitPrice = parseBigDecimal(command.limitPrice());
+        BigDecimal stopPrice = parseBigDecimal(command.stopPrice());
+        
+        // 주문 타입에 따라 Factory 메서드 사용
+        return switch (command.type()) {
+            case "market" -> CreateOrderRequest.market(command.symbol(), qty, command.side());
+            case "limit" -> {
+                CreateOrderRequest req = CreateOrderRequest.limit(command.symbol(), qty, command.side(), limitPrice);
+                if (command.timeInForce() != null) req.setTimeInForce(command.timeInForce());
+                if (command.clientOrderId() != null) req.setClientOrderId(command.clientOrderId());
+                yield req;
+            }
+            case "stop" -> {
+                CreateOrderRequest req = CreateOrderRequest.stop(command.symbol(), qty, command.side(), stopPrice);
+                if (command.timeInForce() != null) req.setTimeInForce(command.timeInForce());
+                if (command.clientOrderId() != null) req.setClientOrderId(command.clientOrderId());
+                yield req;
+            }
+            case "stop_limit" -> {
+                CreateOrderRequest req = CreateOrderRequest.stopLimit(command.symbol(), qty, command.side(), stopPrice, limitPrice);
+                if (command.timeInForce() != null) req.setTimeInForce(command.timeInForce());
+                if (command.clientOrderId() != null) req.setClientOrderId(command.clientOrderId());
+                yield req;
+            }
+            default -> throw new QbitException(ErrorCode.INVALID_ORDER_TYPE, "지원하지 않는 주문 유형입니다: " + command.type());
         };
     }
 }
