@@ -75,16 +75,7 @@ public class EncryptionService {
             Cipher cipher = Cipher.getInstance(TRANSFORMATION);
 
             // Base64 디코딩
-            byte[] encryptedWithIv;
-            try {
-                encryptedWithIv = Base64.getDecoder().decode(encryptedText);
-            } catch (IllegalArgumentException ex) {
-                // URL-safe Base64로 재시도 (-, _ 문자 포함된 경우)
-                String fixed = encryptedText.replace('-', '+').replace('_', '/');
-                int pad = (4 - (fixed.length() % 4)) % 4;
-                fixed = fixed + "=".repeat(pad);
-                encryptedWithIv = Base64.getDecoder().decode(fixed);
-            }
+            byte[] encryptedWithIv = Base64.getDecoder().decode(encryptedText);
 
             // IV와 암호화된 텍스트 분리
             byte[] iv = new byte[GCM_IV_LENGTH];
