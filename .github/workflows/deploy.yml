@@ -127,7 +127,6 @@ jobs:
             -e ALPACA_OAUTH_CLIENT_SECRET="${{ secrets.ALPACA_OAUTH_CLIENT_SECRET }}" \
             -e OAUTH_STATE_SECRET="${{ secrets.OAUTH_STATE_SECRET }}" \
             -e STOCK_SYNC_ON="${{ secrets.STOCK_SYNC_ON }}" \
-            -e POLYGON_API_KEY="${{ secrets.POLYGON_API_KEY }}" \
             -e INFO_APP_VERSION="${{ github.sha }}" \
             ${{ secrets.DOCKER_REPO }}:${{ github.sha }}
 
