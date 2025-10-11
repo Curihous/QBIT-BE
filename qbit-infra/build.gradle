@@ -16,9 +16,6 @@ dependencies {
     // Feign Client
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
     
-    // Swagger Annotations (경량, 프레임워크 독립적)
-    implementation 'io.swagger.core.v3:swagger-annotations:2.2.20'
-    
     // JWT
     implementation 'io.jsonwebtoken:jjwt-api:0.13.0'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.13.0'
