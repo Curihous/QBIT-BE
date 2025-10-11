@@ -23,7 +23,10 @@ public record StockSearchResponseDto(
     String exchange,
     
     @Schema(description = "거래 가능 여부", example = "true")
-    Boolean tradable
+    Boolean tradable,
+    
+    @Schema(description = "로고 이미지 URL (Clearbit)", example = "https://logo.clearbit.com/apple.com")
+    String logoUrl
 ) {
     
     // Stock 엔티티를 StockSearchResponseDto로 변환 (DB 조회용)
@@ -32,7 +35,8 @@ public record StockSearchResponseDto(
                 stock.getSymbol(),
                 stock.getStockName(),
                 stock.getExchange(),
-                stock.getTradable()
+                stock.getTradable(),
+                stock.getLogoUrl()
         );
     }
     
@@ -42,7 +46,8 @@ public record StockSearchResponseDto(
                 alpacaAsset.symbol(),
                 alpacaAsset.name(),
                 alpacaAsset.exchange(),
-                alpacaAsset.tradable()
+                alpacaAsset.tradable(),
+                null // 추후 Clearbit 통해 로고 추가
         );
     }
 }
