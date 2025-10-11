@@ -61,6 +61,9 @@ public class AlpacaStockService {
     // 신규 종목 저장 (DB에 없다는 것이 확인된 경우)
     @Transactional
     public Stock createStock(AlpacaAssetResponse assetResponse) {
+        // 회사명에서 도메인 자동 생성
+        String generatedDomain = Stock.generateDomainFromName(assetResponse.name());
+        
         Stock stock = Stock.builder()
                 .symbol(assetResponse.symbol())
                 .stockName(assetResponse.name())
@@ -72,7 +75,10 @@ public class AlpacaStockService {
                 .minOrderSize(assetResponse.minOrderSize())
                 .minTradeIncrement(assetResponse.minTradeIncrement())
                 .priceIncrement(assetResponse.priceIncrement())
+                .companyDomain(generatedDomain) // name 필드에서 자동 생성
                 .build();
+        
+        log.debug("종목 도메인 자동 생성: {} → {}", assetResponse.name(), generatedDomain);
         
         return stockRepository.save(stock);
     }
@@ -127,6 +133,13 @@ public class AlpacaStockService {
                                 asset.minTradeIncrement(),
                                 asset.priceIncrement()
                         );
+                        
+                        // 도메인이 없는 경우에만 자동 생성 (수동 설정한 도메인 보호)
+                        if (stock.getCompanyDomain() == null || stock.getCompanyDomain().isBlank()) {
+                            String generatedDomain = Stock.generateDomainFromName(asset.name());
+                            stock.setCompanyDomain(generatedDomain);
+                        }
+                        
                         stockRepository.save(stock);
                         updateCount++;
                     }

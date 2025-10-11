@@ -41,7 +41,10 @@ public record StockDetailResponseDto(
     String minTradeIncrement,
     
     @Schema(description = "가격 증분 (프론트엔드 가격 입력 폼 step 속성용)", example = "0.01")
-    String priceIncrement
+    String priceIncrement,
+    
+    @Schema(description = "로고 이미지 URL (Clearbit)", example = "https://logo.clearbit.com/apple.com")
+    String logoUrl
 ) {
     
     // Stock 엔티티를 StockDetailResponseDto로 변환 (DB 조회용)
@@ -56,7 +59,8 @@ public record StockDetailResponseDto(
                 stock.getFractionable(),
                 stock.getMinOrderSize(),
                 stock.getMinTradeIncrement(),
-                stock.getPriceIncrement()
+                stock.getPriceIncrement(),
+                stock.getLogoUrl()
         );
     }
     
@@ -72,7 +76,8 @@ public record StockDetailResponseDto(
                 alpacaAsset.fractionable(),
                 alpacaAsset.minOrderSize(),
                 alpacaAsset.minTradeIncrement(),
-                alpacaAsset.priceIncrement()
+                alpacaAsset.priceIncrement(),
+                null // 추후 Clearbit 통해 로고 추가
         );
     }
 }
