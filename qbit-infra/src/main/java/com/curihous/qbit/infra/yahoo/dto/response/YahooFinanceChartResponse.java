@@ -95,11 +95,13 @@ public class YahooFinanceChartResponse {
         private List<Long> volume;
     }
 
-    // 현재 가격 반환
+    // 현재 가격 반환 
     public BigDecimal getCurrentPrice() {
         if (chart != null && chart.result != null && !chart.result.isEmpty()) {
             Meta meta = chart.result.get(0).getMeta();
-            return meta != null ? meta.getRegularMarketPrice() : BigDecimal.ZERO;
+            return meta != null && meta.getRegularMarketPrice() != null 
+                ? meta.getRegularMarketPrice() 
+                : BigDecimal.ZERO;
         }
         return BigDecimal.ZERO;
     }
@@ -108,7 +110,9 @@ public class YahooFinanceChartResponse {
     public BigDecimal getPreviousClose() {
         if (chart != null && chart.result != null && !chart.result.isEmpty()) {
             Meta meta = chart.result.get(0).getMeta();
-            return meta != null ? meta.getPreviousClose() : BigDecimal.ZERO;
+            return meta != null && meta.getPreviousClose() != null 
+                ? meta.getPreviousClose() 
+                : BigDecimal.ZERO;
         }
         return BigDecimal.ZERO;
     }
