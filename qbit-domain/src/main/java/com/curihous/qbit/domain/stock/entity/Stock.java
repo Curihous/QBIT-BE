@@ -106,19 +106,25 @@ public class Stock extends BaseTimeEntity {
             return null;
         }
         
-        // 1. 회사 접미사 제거
+        // 1. 주식 타입 먼저 제거 (Common Stock, Ordinary Shares, Class A/B 등)
         String cleaned = companyName
-                .replaceAll("(?i),?\\s+(Inc\\.?|Corp\\.?|Corporation|Ltd\\.?|Limited|LLC|L\\.L\\.C\\.?|Co\\.?|Company|Group|Plc|AG)", "")
+                .replaceAll("(?i)\\s+(Common|Ordinary)\\s+(Stock|Shares)", "")
+                .replaceAll("(?i)\\s+Class\\s+[A-Z]", "")
                 .trim();
         
-        // 2. 특수문자 제거
+        // 2. 회사 접미사 제거 (Inc., Corp., Ltd., LLC, Co., Company 등)
+        cleaned = cleaned
+                .replaceAll("(?i),?\\s+(Inc\\.?|Corp\\.?|Corporation|Ltd\\.?|Limited|LLC|L\\.L\\.C\\.?|Co\\.?|Company|Group|Plc|PLC|AG)$", "")
+                .trim();
+        
+        // 3. 특수문자 제거
         cleaned = cleaned.replaceAll("[,.()'\"&]", "");
         
-        // 3. 첫 번째 단어만 추출 
+        // 4. 첫 번째 단어만 추출 
         String[] words = cleaned.split("\\s+");
         String firstWord = words.length > 0 ? words[0] : cleaned;
         
-        // 4. 소문자 변환 + .com 추가
+        // 5. 소문자 변환 + .com 추가
         return firstWord.toLowerCase() + ".com";
     }
 }
