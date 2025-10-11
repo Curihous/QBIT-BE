@@ -38,11 +38,13 @@ public class KakaoLoginService {
         // 1. 카카오 API로 사용자 정보 조회
         KakaoUserInfo kakaoUserInfo = kakaoAuthService.getUserInfo(kakaoAccessToken);
         
-        // 2. 사용자 저장 또는 조회
-        User user = getOrSaveKakaoUser(kakaoUserInfo);
+        // 2. 신규 여부 확인 (저장 전 존재 여부 체크)
+        // TODO: perf 개선. race condition 문제 방지
+        String email = kakaoUserInfo.getEmail();
+        boolean isNewUser = userRepository.findByEmail(email).isEmpty();
         
-        // 3. 신규 여부 확인 (생성 시간과 수정 시간이 같으면 신규)
-        boolean isNewUser = user.getCreatedAt().equals(user.getUpdatedAt());
+        // 3. 사용자 저장 또는 조회
+        User user = getOrSaveKakaoUser(kakaoUserInfo);
         
         log.info("사용자 처리 완료: userId={}, email={}, isNewUser={}", 
                 user.getId(), user.getEmail(), isNewUser);

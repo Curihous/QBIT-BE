@@ -35,15 +35,8 @@ public class AlpacaOrderRequestService {
     // 주문 생성
     @Transactional
     public OrderRequest createOrder(User user, CreateOrderRequest request) {
-        AlpacaOAuthConnection connection = alpacaOAuthConnectionService.findByUserId(user.getId())
-                .orElseThrow(() -> new QbitException(ErrorCode.UNAUTHORIZED, "Alpaca 계정이 연동되지 않았습니다"));
-
-        // 토큰 만료 사전 체크
-        if (connection.isTokenExpired()) {
-            throw new QbitException(ErrorCode.UNAUTHORIZED, 
-                "Alpaca 액세스 토큰이 만료되었습니다. 재인증이 필요합니다.");
-        }
-
+        // 사용자의 활성화된 Alpaca 연결 조회
+        AlpacaOAuthConnection connection = alpacaOAuthConnectionService.getValidConnection(user.getId());
         String authorization = "Bearer " + connection.getAccessToken();
 
         // 1. Alpaca 주문 생성
@@ -79,9 +72,8 @@ public class AlpacaOrderRequestService {
     // 주문 수정
     @Transactional
     public AlpacaOrderResponse updateOrder(User user, Long orderId, UpdateOrderRequest request) {
-        AlpacaOAuthConnection connection = alpacaOAuthConnectionService.findByUserId(user.getId())
-                .orElseThrow(() -> new QbitException(ErrorCode.UNAUTHORIZED, "Alpaca 계정이 연동되지 않았습니다"));
-
+        // 사용자의 활성화된 Alpaca 연결 조회
+        AlpacaOAuthConnection connection = alpacaOAuthConnectionService.getValidConnection(user.getId());
         String authorization = "Bearer " + connection.getAccessToken();
 
         try {

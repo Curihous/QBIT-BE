@@ -40,9 +40,8 @@ public class AlpacaStockService {
         // 2. 캐시 미스 → Alpaca API에서 조회
         log.info("DB에 종목 없음. Alpaca API로 조회: symbol={}", symbol);
         
-        AlpacaOAuthConnection connection = alpacaOAuthConnectionService.findByUserId(user.getId())
-                .orElseThrow(() -> new QbitException(ErrorCode.UNAUTHORIZED, "Alpaca 계정이 연동되지 않았습니다"));
-
+        // 시스템 계정 사용
+        AlpacaOAuthConnection connection = alpacaOAuthConnectionService.getValidConnection(1L);
         String authorization = "Bearer " + connection.getAccessToken();
 
         try {
@@ -89,9 +88,7 @@ public class AlpacaStockService {
         try {
             // 시스템 계정으로 Alpaca API 호출
             // TODO: 시스템 계정 DB에 추가(@PostConstruct)
-            AlpacaOAuthConnection systemConnection = alpacaOAuthConnectionService.findFirstActiveConnection()
-                    .orElseThrow(() -> new QbitException(ErrorCode.UNAUTHORIZED, "활성화된 Alpaca 계정이 없습니다. 배치 작업을 위해 최소 1개의 계정이 필요합니다."));
-            
+            AlpacaOAuthConnection systemConnection = alpacaOAuthConnectionService.getValidConnection(1L);
             String authorization = "Bearer " + systemConnection.getAccessToken();
             
             // Alpaca API에서 모든 미국 주식 조회 (NYSE + NASDAQ)
