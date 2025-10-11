@@ -33,7 +33,7 @@ public class StockController {
         summary = "미국 주식 검색",
         description = "종목명(name) 또는 심볼(symbol)로 검색합니다. DB에 없는 심볼은 Alpaca API에서 자동 조회 후 저장됩니다 (미국 주식만)."
     )
-    @GetMapping
+    @GetMapping("/search")
     public ResponseEntity<List<StockSearchResponseDto>> searchStocks(
             @Parameter(description = "검색어 (종목명 또는 심볼)", example = "Apple")
             @RequestParam(value = "q", required = false) String keyword

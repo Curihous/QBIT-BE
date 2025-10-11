@@ -30,7 +30,7 @@ public class AlpacaStockService {
     private final AlpacaTradingPort alpacaTradingPort;
     private final AlpacaOAuthConnectionService alpacaOAuthConnectionService;
 
-    @Value("${stock.sync.on-startup:false}")
+    @Value("${stock.sync.on:false}")
     private boolean syncOnStartup;  // 환경변수로 강제 동기화 제어
 
     @PostConstruct
@@ -38,19 +38,17 @@ public class AlpacaStockService {
         try {
             long stockCount = stockRepository.count();
             
-            // 1. DB가 거의 비어있으면 무조건 동기화
+            // 1. 첫 배포
             if (stockCount < 100) {
-                log.info("DB에 주식 데이터 부족 ({}개). 초기 동기화 시작...", stockCount);
                 syncAllUSStocks();
             } 
-            // 2. 환경변수로 강제 동기화 설정된 경우 (첫 배포 아니어도 실행)
+            // 1-2. 환경변수로 강제 동기화 설정된 경우 
             else if (syncOnStartup) {
                 log.info("강제 동기화 설정 활성화. 현재 {}개 종목 → 전체 동기화 시작", stockCount);
                 syncAllUSStocks();
             } 
-            // 3. 그 외에는 건너뜀
             else {
-                log.info("DB에 {}개 종목 존재. 초기 동기화 건너뜀 (강제 동기화: {})", stockCount, syncOnStartup);
+                log.info("DB 주식 동기화 건너뜀");
             }
         } catch (Exception e) {
             log.warn("초기 주식 동기화 실패 (서버는 정상 시작): {}", e.getMessage());
