@@ -1,12 +1,13 @@
-package websocket;
+package com.curihous.qbit.realtime;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class QbitWebSocketApplication {
+public class QbitRealtimeApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(QbitWebSocketApplication.class, args);
+        SpringApplication.run(QbitRealtimeApplication.class, args);
     }
 }
+

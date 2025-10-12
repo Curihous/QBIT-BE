@@ -1,0 +1,33 @@
+server:
+  port: ${REALTIME_SERVER_PORT_DEV}
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/qbit_dev
+    username: ${DB_USERNAME_DEV}
+    password: ${DB_PASSWORD_DEV}
+    driver-class-name: org.postgresql.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+
+# Finnhub API
+finnhub:
+  api:
+    key: ${FINNHUB_API_KEY}
+    base-url: https://finnhub.io/api/v1
+    websocket-url: wss://ws.finnhub.io
+
+# WebSocket
+websocket:
+  message-size-limit: 8192
+  buffer-size-limit: 8192
+
+logging:
+  level:
+    root: INFO
+    com.curihous.qbit: DEBUG
+    org.springframework.web.socket: DEBUG
+

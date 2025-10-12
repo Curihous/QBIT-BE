@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Slf4j
-@Tag(name = "Stock", description = "주식 종목 관련 API입니다.")
+@Tag(name = "Stock", description = "주식 종목 관련 API입니다.(DB + Alpaca API)")
 @RestController
 @RequestMapping("/stocks")
 @RequiredArgsConstructor

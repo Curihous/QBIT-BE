@@ -16,6 +16,9 @@ public record OrderCreatedResponseDto(
     
     @Schema(description = "종목 코드", example = "AAPL")
     String symbol,
+    
+    @Schema(description = "자산 클래스 (us_equity/crypto)", example = "us_equity", allowableValues = {"us_equity", "crypto"})
+    String assetClass,
 
     @Schema(description = "주문 방향 (buy/sell)", example = "buy")
     String side,
@@ -69,7 +72,7 @@ public record OrderCreatedResponseDto(
         String limitPrice
     ) {}
     
-    public static OrderCreatedResponseDto from(OrderRequest orderRequest) {
+    public static OrderCreatedResponseDto from(OrderRequest orderRequest, String assetClass) {
         LimitOrderInfo limitOrder = null;
         MarketOrderInfo marketOrder = null;
         StopOrderInfo stopOrder = null;
@@ -102,6 +105,7 @@ public record OrderCreatedResponseDto(
         
         return new OrderCreatedResponseDto(
                 orderRequest.getSymbol(),
+                assetClass,
                 orderRequest.getSide().name().toLowerCase(),
                 orderRequest.getQuantity().toString(),
                 orderRequest.getType().name().toLowerCase(),
