@@ -2,9 +2,7 @@ package com.curihous.qbit.api.domain.trading.controller;
 
 import com.curihous.qbit.api.domain.trading.dto.request.CreateOrderRequestDto;
 import com.curihous.qbit.api.domain.trading.dto.request.UpdateOrderRequestDto;
-import com.curihous.qbit.api.domain.trading.dto.response.OrderCreatedResponseDto;
-import com.curihous.qbit.api.domain.trading.dto.response.OrderDetailResponseDto;
-import com.curihous.qbit.api.domain.trading.dto.response.OrderUpdateResponseDto;
+import com.curihous.qbit.api.domain.trading.dto.response.*;
 import com.curihous.qbit.domain.order.entity.OrderRequest;
 import com.curihous.qbit.domain.order.port.TradingPort;
 import com.curihous.qbit.domain.user.entity.User;
@@ -88,4 +86,16 @@ public class TradingController {
         OrderRequest order = tradingPort.getOrder(user, orderId);
         return ResponseEntity.ok(OrderDetailResponseDto.from(order));
     }
+
+    @Operation(
+        summary = "주문 취소", 
+        description = "미체결 또는 부분 체결된 주문을 취소합니다. 이미 완전히 체결된 주문은 취소할 수 없습니다."
+    )
+    @DeleteMapping("/orders/{orderId}")
+    public ResponseEntity<Void> cancelOrder(@PathVariable Long orderId) {
+        User user = userSecurityFacade.getCurrentUser();
+        tradingPort.cancelOrder(user, orderId);
+        return ResponseEntity.ok().build();
+    }
+
 }

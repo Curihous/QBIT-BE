@@ -3,7 +3,6 @@ package com.curihous.qbit.domain.order.port;
 import com.curihous.qbit.domain.order.entity.OrderRequest;
 import com.curihous.qbit.domain.user.entity.User;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -23,6 +22,15 @@ public interface TradingPort {
     
     // 특정 주문 조회
     OrderRequest getOrder(User user, Long orderId);
+    
+    // 주문 취소
+    void cancelOrder(User user, Long orderId);
+    
+    // 포지션(보유 주식) 목록 조회
+    List<PositionInfo> getPositions(User user);
+    
+    // 계정 정보 조회
+    AccountInfo getAccountInfo(User user);
     
     record CreateOrderCommand(
         String symbol,           // 종목 심볼
@@ -63,6 +71,31 @@ public interface TradingPort {
         String replacedAt,           // 대체 시간
         String replacedBy,           // 대체된 주문 ID
         String replaces              // 대체하는 주문 ID
+    ) {}
+    
+    record PositionInfo(
+        String symbol,               // 종목 심볼
+        String qty,                  // 보유 수량
+        String avgEntryPrice,        // 평균 매수가
+        String marketValue,          // 시장 가치
+        String costBasis,            // 원가 기준
+        String unrealizedPl,         // 미실현 손익
+        String unrealizedPlpc,       // 미실현 손익률
+        String currentPrice,         // 현재 가격
+        String side                  // 포지션 방향 (long/short)
+    ) {}
+    
+    record AccountInfo(
+        String accountNumber,        // 계정 번호
+        String status,               // 계정 상태
+        String currency,             // 통화
+        String buyingPower,          // 매수 가능 금액
+        String cash,                 // 현금
+        String portfolioValue,       // 포트폴리오 가치
+        String equity,               // 자산 가치
+        String lastEquity,           // 전일 자산 가치
+        String longMarketValue,      // 롱 포지션 시장 가치
+        String shortMarketValue      // 숏 포지션 시장 가치
     ) {}
 }
 

@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+// Alpaca Trading API 클라이언트
 @FeignClient(
     name = "alpaca-trading-client",
     url = "https://paper-api.alpaca.markets",
