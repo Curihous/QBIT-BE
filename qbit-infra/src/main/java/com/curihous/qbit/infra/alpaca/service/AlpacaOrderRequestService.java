@@ -1,5 +1,6 @@
 package com.curihous.qbit.infra.alpaca.service;
 
+import com.curihous.qbit.domain.stock.entity.Stock;
 import com.curihous.qbit.infra.alpaca.port.AlpacaTradingPort;
 import com.curihous.qbit.infra.alpaca.dto.request.CreateOrderRequest;
 import com.curihous.qbit.infra.alpaca.dto.request.UpdateOrderRequest;
@@ -12,7 +13,6 @@ import com.curihous.qbit.domain.order.entity.OrderRequest;
 import com.curihous.qbit.domain.order.entity.*;
 import com.curihous.qbit.domain.order.port.TradingPort;
 import com.curihous.qbit.domain.order.repository.OrderRequestRepository;
-import com.curihous.qbit.domain.stock.entity.Stock;
 import com.curihous.qbit.domain.stock.port.StockPort;
 import com.curihous.qbit.domain.user.entity.User;
 import lombok.RequiredArgsConstructor;
@@ -364,27 +364,22 @@ public class AlpacaOrderRequestService implements TradingPort {
         BigDecimal stopPrice = parseBigDecimal(command.stopPrice());
         
         // 주문 타입에 따라 Factory 메서드 사용
-        return switch (command.type()) {
-            case "market" -> CreateOrderRequest.market(command.symbol(), qty, command.side());
-            case "limit" -> {
-                CreateOrderRequest req = CreateOrderRequest.limit(command.symbol(), qty, command.side(), limitPrice);
-                if (command.timeInForce() != null) req.setTimeInForce(command.timeInForce());
-                if (command.clientOrderId() != null) req.setClientOrderId(command.clientOrderId());
-                yield req;
-            }
-            case "stop" -> {
-                CreateOrderRequest req = CreateOrderRequest.stop(command.symbol(), qty, command.side(), stopPrice);
-                if (command.timeInForce() != null) req.setTimeInForce(command.timeInForce());
-                if (command.clientOrderId() != null) req.setClientOrderId(command.clientOrderId());
-                yield req;
-            }
-            case "stop_limit" -> {
-                CreateOrderRequest req = CreateOrderRequest.stopLimit(command.symbol(), qty, command.side(), stopPrice, limitPrice);
-                if (command.timeInForce() != null) req.setTimeInForce(command.timeInForce());
-                if (command.clientOrderId() != null) req.setClientOrderId(command.clientOrderId());
-                yield req;
-            }
+        CreateOrderRequest request = switch (command.type()) {
+            case "market" -> CreateOrderRequest.market(command.symbol(), command.assetClass(), qty, command.side());
+            case "limit" -> CreateOrderRequest.limit(command.symbol(), command.assetClass(), qty, command.side(), limitPrice);
+            case "stop" -> CreateOrderRequest.stop(command.symbol(), command.assetClass(), qty, command.side(), stopPrice);
+            case "stop_limit" -> CreateOrderRequest.stopLimit(command.symbol(), command.assetClass(), qty, command.side(), stopPrice, limitPrice);
             default -> throw new QbitException(ErrorCode.INVALID_ORDER_TYPE, "지원하지 않는 주문 유형입니다: " + command.type());
         };
+        
+        // 모든 주문 타입에 대해 timeInForce와 clientOrderId 설정
+        if (command.timeInForce() != null) {
+            request.setTimeInForce(command.timeInForce());
+        }
+        if (command.clientOrderId() != null) {
+            request.setClientOrderId(command.clientOrderId());
+        }
+        
+        return request;
     }
 }

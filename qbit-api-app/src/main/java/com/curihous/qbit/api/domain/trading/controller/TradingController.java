@@ -57,6 +57,7 @@ public class TradingController {
         
         TradingPort.CreateOrderCommand command = new TradingPort.CreateOrderCommand(
             request.symbol(),
+            stock.getAssetClass(), 
             request.quantity(),
             request.side(),
             request.type(),
