@@ -115,7 +115,7 @@ public class TradingController {
     public ResponseEntity<Void> cancelOrder(@PathVariable Long orderId) {
         User user = userSecurityFacade.getCurrentUser();
         tradingPort.cancelOrder(user, orderId);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
     
     // 자산 클래스 허용 여부 검증 헬퍼 메서드
