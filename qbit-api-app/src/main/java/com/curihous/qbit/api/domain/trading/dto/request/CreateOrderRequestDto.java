@@ -26,8 +26,7 @@ public record CreateOrderRequestDto(
     @Schema(description = "주문 유형", example = "market", allowableValues = {"market", "limit", "stop", "stop_limit"})
     String type,
     
-    @NotBlank
-    @Schema(description = "주문 유효기간", example = "day", allowableValues = {"day", "gtc", "ioc", "fok"})
+    @Schema(description = "주문 유효기간 (생략 시 자동: us_equity=day, crypto=gtc)", example = "day", allowableValues = {"day", "gtc", "ioc", "fok"})
     String timeInForce,
     
     @Schema(description = "지정가 (limit/stop_limit 시 필수)", example = "150.50")
