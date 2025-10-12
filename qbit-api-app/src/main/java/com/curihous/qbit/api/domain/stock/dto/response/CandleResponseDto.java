@@ -1,8 +1,9 @@
 package com.curihous.qbit.api.domain.stock.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-
 import java.util.List;
+
+import com.curihous.qbit.infra.finnhub.dto.response.FinnhubCandleResponse;
 
 /**
  * 차트 데이터 응답 DTO
@@ -44,7 +45,7 @@ public record CandleResponseDto(
         Long volume
     ) {}
     
-    public static CandleResponseDto from(String symbol, String resolution, com.curihous.qbit.infra.finnhub.dto.response.FinnhubCandleResponse finnhubCandle) {
+    public static CandleResponseDto from(String symbol, String resolution, FinnhubCandleResponse finnhubCandle) {
         List<CandleData> candles = List.of();
         
         if (finnhubCandle.status().equals("ok") && 

@@ -4,7 +4,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import com.curihous.qbit.infra.finnhub.dto.response.FinnhubQuoteResponse;
 
-
 /**
  * 실시간 시세 응답 DTO
  * 
@@ -36,7 +35,7 @@ public record QuoteResponseDto(
     @Schema(description = "전일 대비 변동률 (%)", example = "0.61")
     Double priceChangePercentage,
     
-    @Schema(description = "업데이트 시간 (Unix timestamp)", example = "1696887456000")
+    @Schema(description = "업데이트 시간 (Unix timestamp, 밀리초)", example = "1696887456000")
     Long timestamp
 ) {
     public static QuoteResponseDto from(String symbol, FinnhubQuoteResponse finnhubQuote) {
@@ -49,7 +48,7 @@ public record QuoteResponseDto(
             finnhubQuote.previousClose(),
             finnhubQuote.priceChange(),
             finnhubQuote.priceChangePercentage(),
-            System.currentTimeMillis() / 1000 // 현재 시간을 Unix timestamp로
+            System.currentTimeMillis() // 현재 시간 (밀리초)
         );
     }
 }
