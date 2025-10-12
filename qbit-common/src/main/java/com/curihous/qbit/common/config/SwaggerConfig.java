@@ -6,6 +6,7 @@ import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
+import org.springdoc.core.models.GroupedOpenApi;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -48,4 +49,54 @@ public class SwaggerConfig {
                 .addSecurityItem(securityRequirement)
                 .components(components);
     }
+    
+    // Swagger 태그 순서 커스터마이징
+    @Bean
+    public GroupedOpenApi authApi() {
+        return GroupedOpenApi.builder()
+                .group("인증")
+                .pathsToMatch("/auth/**")
+                .build();
+    }
+    
+    @Bean
+    public GroupedOpenApi userApi() {
+        return GroupedOpenApi.builder()
+                .group("사용자")
+                .pathsToMatch("/users/**")
+                .build();
+    }
+
+    @Bean
+    public GroupedOpenApi alpacaApi() {
+        return GroupedOpenApi.builder()
+                .group("Alpaca")
+                .pathsToMatch("/alpaca/**")
+                .build();
+    }
+
+    @Bean
+    public GroupedOpenApi stockApi() {
+        return GroupedOpenApi.builder()
+                .group("종목")
+                .pathsToMatch("/stock/**")
+                .build();
+    }
+
+    @Bean
+    public GroupedOpenApi indexApi() {
+        return GroupedOpenApi.builder()
+                .group("지수")
+                .pathsToMatch("/indices/**")
+                .build();
+    }
+    
+    @Bean
+    public GroupedOpenApi tradingApi() {
+        return GroupedOpenApi.builder()
+                .group("거래")
+                .pathsToMatch("/trading/**")
+                .build();
+    }
+    
 }

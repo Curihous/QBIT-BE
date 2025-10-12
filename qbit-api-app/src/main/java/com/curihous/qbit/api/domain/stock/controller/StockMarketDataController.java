@@ -11,7 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "Stock Market Data", description = "실시간 시장 데이터 API (Finnhub API) - 시세, 차트, 호가창")
+@Tag(name = "Stock - Realtime Market Data", description = "실시간 시장 데이터 API (Finnhub API) - 시세, 차트, 호가창")
 @RestController
 @RequestMapping("/stock")
 @RequiredArgsConstructor
