@@ -42,9 +42,9 @@ public class SwaggerConfig {
                         .description(appDescription)
                         .version(appVersion))
                 .servers(List.of(
-                        // TODO: 배포 이후 변경
-                        new Server().url("http://localhost:8080").description("로컬 개발 서버"),
-                        new Server().url("https://api.qbit.o-r.kr").description("운영 서버")
+                        new Server().url("https://api.qbit.o-r.kr").description("운영 서버"),
+                        new Server().url("http://localhost:8080").description("로컬 개발 서버")
+
                 ))
                 .addSecurityItem(securityRequirement)
                 .components(components);
@@ -79,7 +79,7 @@ public class SwaggerConfig {
     public GroupedOpenApi stockApi() {
         return GroupedOpenApi.builder()
                 .group("종목")
-                .pathsToMatch("/stock/**")
+                .pathsToMatch("/stocks/**")
                 .build();
     }
 
@@ -90,7 +90,7 @@ public class SwaggerConfig {
                 .pathsToMatch("/indices/**")
                 .build();
     }
-    
+
     @Bean
     public GroupedOpenApi tradingApi() {
         return GroupedOpenApi.builder()
@@ -99,4 +99,11 @@ public class SwaggerConfig {
                 .build();
     }
     
+    @Bean
+    public GroupedOpenApi portfolioApi() {
+        return GroupedOpenApi.builder()
+                .group("포트폴리오")
+                .pathsToMatch("/portfolios/**")
+                .build();
+    }
 }
