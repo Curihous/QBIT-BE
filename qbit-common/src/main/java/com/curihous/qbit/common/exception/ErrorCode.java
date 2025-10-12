@@ -27,6 +27,7 @@ public enum ErrorCode {
     INVALID_ORDER_PRICE(400, "유효하지 않은 주문 가격입니다."),
     INSUFFICIENT_BALANCE(400, "잔고가 부족합니다."),
     INVALID_TRADE_CYCLE(400, "유효하지 않은 거래 사이클입니다."),
+    ASSET_CLASS_NOT_SUPPORTED(403, "해당 자산 클래스는 현재 지원되지 않습니다."),
 
     // 지수 관련 에러 - Yahoo Finance API
     INDEX_NOT_FOUND(404, "해당 지수를 찾을 수 없습니다."),

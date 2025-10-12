@@ -75,11 +75,12 @@ alpaca:
 oauth:
   state:
     secret: ${OAUTH_STATE_SECRET}
-
-# 주식 동기화 설정
+# 주식 및 암호화폐 동기화 설정
 stock:
   sync:
-    on: ${STOCK_SYNC_ON}
+    on: ${STOCK_SYNC_ON}  # 강제 동기화
+    us-equity: ${STOCK_SYNC_US_EQUITY}  # 미국 주식 동기화 활성화
+    crypto: ${STOCK_SYNC_CRYPTO}  # 암호화폐 동기화 활성화
 
 management:
   endpoints:

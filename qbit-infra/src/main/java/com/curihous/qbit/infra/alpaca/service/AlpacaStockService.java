@@ -37,6 +37,12 @@ public class AlpacaStockService implements StockPort {
 
     @Value("${stock.sync.on:false}")
     private boolean syncOnStartup;  // 환경변수로 강제 동기화 제어
+    
+    @Value("${stock.sync.us-equity}")
+    private boolean syncUsEquity;  // 미국 주식 동기화 활성화 여부
+    
+    @Value("${stock.sync.crypto}")
+    private boolean syncCrypto;  // TODO: 개발 후 false로 변경.  암호화폐 동기화 활성화 여부
 
     @PostConstruct
     public void initStocks() {
@@ -45,18 +51,28 @@ public class AlpacaStockService implements StockPort {
             
             // 1. 첫 배포
             if (stockCount < 100) {
-                syncAllUSStocks();
+                if (syncUsEquity) {
+                    syncAllUSStocks();
+                }
+                if (syncCrypto) {
+                    syncCryptoAssets();
+                }
             } 
             // 1-2. 환경변수로 강제 동기화 설정된 경우 
             else if (syncOnStartup) {
                 log.info("강제 동기화 설정 활성화. 현재 {}개 종목 → 전체 동기화 시작", stockCount);
-                syncAllUSStocks();
+                if (syncUsEquity) {
+                    syncAllUSStocks();
+                }
+                if (syncCrypto) {
+                    syncCryptoAssets();
+                }
             } 
             else {
-                log.info("DB 주식 동기화 건너뜀");
+                log.info("DB 자산 동기화 건너뜀 (설정: us_equity={}, crypto={})", syncUsEquity, syncCrypto);
             }
         } catch (Exception e) {
-            log.warn("초기 주식 동기화 실패 (서버는 정상 시작): {}", e.getMessage());
+            log.warn("초기 자산 동기화 실패 (서버는 정상 시작): {}", e.getMessage());
         }
     }
 
@@ -121,6 +137,11 @@ public class AlpacaStockService implements StockPort {
     @Scheduled(cron = "0 0 7 1 * ?", zone = "Asia/Seoul")
     @Transactional
     public void syncAllUSStocks() {
+        if (!syncUsEquity) {
+            log.debug("미국 주식 동기화 비활성화됨 (stock.sync.us-equity=false)");
+            return;
+        }
+        
         log.info("미국 주식 동기화 시작 (NYSE + NASDAQ)");
         
         try {
@@ -187,6 +208,78 @@ public class AlpacaStockService implements StockPort {
         } catch (Exception e) {
             log.error("미국 주식 동기화 실패: {}", e.getMessage(), e);
             throw new QbitException(ErrorCode.EXTERNAL_API_ERROR, "주식 동기화에 실패했습니다: " + e.getMessage());
+        }
+    }
+
+    // 암호화폐 자산 동기화 (매일 7시)
+    @Scheduled(cron = "0 0 7 * * ?", zone = "Asia/Seoul")
+    @Transactional
+    public void syncCryptoAssets() {
+        if (!syncCrypto) {
+            log.debug("암호화폐 동기화 비활성화됨 (stock.sync.crypto=false)");
+            return;
+        }
+        
+        log.info("암호화폐 자산 동기화 시작 (BTC, ETH 등)");
+        
+        try {
+            // 시스템 계정으로 Alpaca API 호출
+            AlpacaOAuthConnection systemConnection = alpacaOAuthConnectionService.getValidConnection(1L);
+            String authorization = "Bearer " + systemConnection.getAccessToken();
+            
+            // Alpaca API에서 모든 암호화폐 조회
+            List<AlpacaAssetResponse> cryptoAssets = alpacaTradingPort.getAssets(
+                    authorization, "active", "crypto"
+            );
+            
+            log.info("Alpaca API로부터 {}개 암호화폐 조회 완료", cryptoAssets.size());
+            
+            int newCount = 0;
+            int updateCount = 0;
+            int failCount = 0;
+            
+            for (AlpacaAssetResponse asset : cryptoAssets) {
+                try {
+                    // 거래 가능한 자산만 저장
+                    if (!Boolean.TRUE.equals(asset.tradable())) {
+                        continue;
+                    }
+                    
+                    // DB에 있으면 업데이트, 없으면 신규 저장
+                    Optional<Stock> existing = stockRepository.findBySymbol(asset.symbol());
+                    if (existing.isEmpty()) {
+                        createStock(asset);
+                        newCount++;
+                    } else {
+                        Stock stock = existing.get();
+                        stock.updateFromAlpaca(
+                                asset.name(),
+                                asset.exchange(),
+                                asset.assetClass(),
+                                asset.status(),
+                                asset.tradable(),
+                                asset.fractionable(),
+                                asset.minOrderSize(),
+                                asset.minTradeIncrement(),
+                                asset.priceIncrement()
+                        );
+                        
+                        // 암호화폐는 회사 도메인이 없으므로 null로 유지
+                        stockRepository.save(stock);
+                        updateCount++;
+                    }
+                } catch (Exception e) {
+                    failCount++;
+                    log.warn("암호화폐 동기화 실패: symbol={}, error={}", asset.symbol(), e.getMessage());
+                }
+            }
+            
+            log.info("암호화폐 동기화 완료: 신규={}, 기존={}, 실패={}, 전체={}", 
+                    newCount, updateCount, failCount, cryptoAssets.size());
+            
+        } catch (Exception e) {
+            log.error("암호화폐 동기화 실패: {}", e.getMessage(), e);
+            throw new QbitException(ErrorCode.EXTERNAL_API_ERROR, "암호화폐 동기화에 실패했습니다: " + e.getMessage());
         }
     }
 
