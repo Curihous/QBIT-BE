@@ -2,6 +2,8 @@ package com.curihous.qbit.api.domain.stock.controller;
 
 import com.curihous.qbit.api.domain.stock.dto.response.StockDetailResponseDto;
 import com.curihous.qbit.api.domain.stock.dto.response.StockSearchResponseDto;
+import com.curihous.qbit.common.exception.ErrorCode;
+import com.curihous.qbit.common.exception.QbitException;
 import com.curihous.qbit.domain.stock.entity.Stock;
 import com.curihous.qbit.domain.stock.port.StockPort;
 import com.curihous.qbit.domain.stock.service.StockService;
@@ -12,6 +14,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,37 +31,67 @@ public class StockController {
     private final StockService stockService;
     private final StockPort stockPort; 
     private final UserSecurityFacade userSecurityFacade;
+    
+    @Value("${stock.sync.us-equity}")
+    private boolean allowUsEquity;
+    
+    @Value("${stock.sync.crypto}")
+    private boolean allowCrypto;
 
     @Operation(
-        summary = "미국 주식 검색",
-        description = "종목명(name) 또는 심볼(symbol)로 검색합니다. DB에 없는 심볼은 Alpaca API에서 자동 조회 후 저장됩니다 (미국 주식만)."
+        summary = "주식 및 암호화폐 검색",
+        description = "종목명(name) 또는 심볼(symbol)로 검색합니다. DB에 없는 심볼은 Alpaca API에서 자동 조회 후 저장됩니다. assetClass 파라미터로 필터링 가능합니다."
     )
     @GetMapping("/search")
     public ResponseEntity<List<StockSearchResponseDto>> searchStocks(
             @Parameter(description = "검색어 (종목명 또는 심볼)", example = "Apple")
-            @RequestParam(value = "q", required = false) String keyword
+            @RequestParam(value = "q", required = false) String keyword,
+            @Parameter(description = "자산 클래스 필터 (us_equity: 미국 주식, crypto: 암호화폐)", example = "us_equity")
+            @RequestParam(value = "assetClass", required = false) String assetClass
     ) { // TODO: 페이징 처리
         // 1. DB에서 먼저 검색 (name 또는 symbol)
         List<Stock> stocks = stockService.searchStocks(keyword);
         
-        // 2. DB에 없고, 검색어가 심볼 형식이면 (대문자 1-5자) Alpaca API 조회
+        // 2. DB에 없고, 검색어가 심볼 형식이면 Alpaca API 조회
         if (keyword != null && !keyword.isBlank() && 
-            stocks.isEmpty() && keyword.matches("^[A-Z]{1,5}$")) {
+            stocks.isEmpty() && keyword.matches("^[A-Z]{1,10}$")) {
             try {
                 User user = userSecurityFacade.getCurrentUser();
                 Stock stock = stockPort.getOrFetchStock(user, keyword);
                 
-                // 미국 주식만 허용 (코인 등 제외)
+                // 허용된 자산 클래스만 검색 결과에 포함
                 if ("us_equity".equalsIgnoreCase(stock.getAssetClass())) {
-                    stocks = List.of(stock);
+                    if (allowUsEquity) {
+                        stocks = List.of(stock);
+                    } else {
+                        log.info("미국 주식 거래 비활성화됨: symbol={}", keyword);
+                    }
+                } else if ("crypto".equalsIgnoreCase(stock.getAssetClass())) {
+                    if (allowCrypto) {
+                        stocks = List.of(stock);
+                    } else {
+                        log.info("암호화폐 거래 비활성화됨: symbol={}", keyword);
+                    }
                 } else {
-                    log.info("미국 주식 아님, 검색 결과 제외: symbol={}, class={}", 
+                    log.info("지원하지 않는 자산 클래스, 검색 결과 제외: symbol={}, class={}", 
                             keyword, stock.getAssetClass());
                 }
             } catch (Exception e) {
                 // Alpaca 조회 실패 시 빈 결과 반환 (프론트에서 예외 처리)
                 log.debug("Alpaca API 조회 실패: {}", keyword);
             }
+        }
+        
+        // 3. 허용되지 않은 자산 클래스 필터링
+        stocks = stocks.stream()
+                .filter(this::isAssetClassAllowed)
+                .collect(Collectors.toList());
+        
+        // 4. assetClass 파라미터로 추가 필터링 (선택)
+        if (assetClass != null && !assetClass.isBlank()) {
+            stocks = stocks.stream()
+                    .filter(stock -> assetClass.equalsIgnoreCase(stock.getAssetClass()))
+                    .collect(Collectors.toList());
         }
         
         List<StockSearchResponseDto> response = stocks.stream()
@@ -76,8 +109,36 @@ public class StockController {
             @PathVariable String symbol
     ) {
         User user = userSecurityFacade.getCurrentUser();
-        // Cache-Aside: DB 우선 → 없으면 Alpaca API API 조회 → 저장
+        // Cache-Aside: DB 우선 → 없으면 Alpaca API 조회 → 저장
         Stock stock = stockPort.getOrFetchStock(user, symbol);
+        
+        if (!isAssetClassAllowed(stock)) {
+            String assetClass = stock.getAssetClass();
+            log.warn("허용되지 않은 자산 클래스 접근 시도: symbol={}, assetClass={}", symbol, assetClass);
+            
+            if ("crypto".equalsIgnoreCase(assetClass)) {
+                throw new QbitException(ErrorCode.ASSET_CLASS_NOT_SUPPORTED, "암호화폐 거래는 현재 비활성화되어 있습니다.");
+            } else if ("us_equity".equalsIgnoreCase(assetClass)) {
+                throw new QbitException(ErrorCode.ASSET_CLASS_NOT_SUPPORTED, "미국 주식 거래는 현재 비활성화되어 있습니다.");
+            } else {
+                throw new QbitException(ErrorCode.ASSET_CLASS_NOT_SUPPORTED);
+            }
+        }
+        
         return ResponseEntity.ok(StockDetailResponseDto.fromEntity(stock));
+    }
+    
+    // 자산 클래스 허용 여부 체크 헬퍼 메서드
+    private boolean isAssetClassAllowed(Stock stock) {
+        String assetClass = stock.getAssetClass();
+        
+        if ("us_equity".equalsIgnoreCase(assetClass)) {
+            return allowUsEquity;
+        } else if ("crypto".equalsIgnoreCase(assetClass)) {
+            return allowCrypto;
+        }
+        
+        // 알 수 없는 자산 클래스는 기본적으로 허용하지 않음
+        return false;
     }
 }
