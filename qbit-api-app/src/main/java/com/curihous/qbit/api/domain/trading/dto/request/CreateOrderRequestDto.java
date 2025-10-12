@@ -34,9 +34,6 @@ public record CreateOrderRequestDto(
     String limitPrice,
     
     @Schema(description = "손절가 (stop/stop_limit 시 필수)", example = "145.00")
-    String stopPrice,
-    
-    @Schema(description = "클라이언트 주문 ID (선택)", example = "my-order-001")
-    String clientOrderId
+    String stopPrice
 ) {}
 
