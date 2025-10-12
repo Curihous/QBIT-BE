@@ -36,11 +36,8 @@ Thumbs.db
 
 # Docker
 Dockerfile
+Dockerfile.realtime
 .dockerignore
-
-# Documentation
-*.md
-docs/
 
 # Test files
 **/test/
@@ -49,6 +46,9 @@ docs/
 # Coverage reports
 build/reports/
 coverage/
+
+# GitHub
+.github/
 
 # Other build artifacts
 dist/

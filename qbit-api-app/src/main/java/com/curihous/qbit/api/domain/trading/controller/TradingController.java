@@ -68,7 +68,7 @@ public class TradingController {
         );
         
         OrderRequest orderRequest = tradingPort.createOrder(user, command);
-        return ResponseEntity.ok(OrderCreatedResponseDto.from(orderRequest));
+        return ResponseEntity.ok(OrderCreatedResponseDto.from(orderRequest, stock.getAssetClass()));
     }
 
     @Operation(summary = "주문 수정", description = "미체결 또는 부분 체결된 주문의 수량, 가격 등을 수정합니다.")
