@@ -3,7 +3,7 @@ plugins {
 }
 
 dependencies {
-    // Common Modules
+    // Modules
     implementation project(':qbit-common')
     implementation project(':qbit-domain')
     implementation project(':qbit-infra')
@@ -12,6 +12,15 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    
+    // WebSocket Client
+    implementation 'org.springframework:spring-websocket'
+    
+    // Swagger
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui'
+    
+    // JSON
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
     
     // Lombok
     compileOnly 'org.projectlombok:lombok'

@@ -1,0 +1,33 @@
+server:
+  port: ${REALTIME_SERVER_PORT_PROD}
+
+spring:
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME_PROD}
+    password: ${DATABASE_PASSWORD_PROD}
+    driver-class-name: org.postgresql.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: none  # 읽기 전용 (테이블 생성/수정 안 함)
+    show-sql: false
+
+# Finnhub API
+finnhub:
+  api:
+    key: ${FINNHUB_API_KEY}
+    base-url: https://finnhub.io/api/v1
+    websocket-url: wss://ws.finnhub.io
+
+# WebSocket
+websocket:
+  message-size-limit: 8192
+  buffer-size-limit: 8192
+
+logging:
+  level:
+    root: INFO
+    com.curihous.qbit: INFO
+    org.springframework.web.socket: WARN
+
