@@ -106,6 +106,17 @@ public class TradingController {
         OrderRequest order = tradingPort.getOrder(user, orderId);
         return ResponseEntity.ok(OrderDetailResponseDto.from(order));
     }
+
+    @Operation(
+        summary = "주문 취소", 
+        description = "미체결 또는 부분 체결된 주문을 취소합니다. 이미 완전히 체결된 주문은 취소할 수 없습니다."
+    )
+    @DeleteMapping("/orders/{orderId}")
+    public ResponseEntity<Void> cancelOrder(@PathVariable Long orderId) {
+        User user = userSecurityFacade.getCurrentUser();
+        tradingPort.cancelOrder(user, orderId);
+        return ResponseEntity.ok().build();
+    }
     
     // 자산 클래스 허용 여부 검증 헬퍼 메서드
     private void validateAssetClassAllowed(Stock stock) {
