@@ -41,16 +41,52 @@ public class FinnhubWebSocketManager implements WebSocketHandler {
 
     // Finnhub WebSocket에 연결
     private void connectToFinnhub() {
-        try {
-            String url = websocketUrl + "?token=" + apiKey;
-            WebSocketHttpHeaders headers = new WebSocketHttpHeaders();
+        int maxAttempts = 3;
+        int attempt = 0;
+        long backoffMs = 1000; // 초기 대기 시간 1초
+        
+        while (attempt < maxAttempts) {
+            attempt++;
             
-            finnhubSession = webSocketClient.doHandshake(this, headers, URI.create(url)).get();
-            log.info("Finnhub WebSocket 연결 완료: {}", url);
+            try {
+                String url = websocketUrl + "?token=" + apiKey;
+                WebSocketHttpHeaders headers = new WebSocketHttpHeaders();
+                
+                log.info("Finnhub WebSocket 연결 시도 {}/{}: {}", attempt, maxAttempts, url);
+                
+                // 타임아웃 설정 (10초)
+                java.util.concurrent.Future<WebSocketSession> future = 
+                    webSocketClient.doHandshake(this, headers, URI.create(url));
+                
+                finnhubSession = future.get(10, java.util.concurrent.TimeUnit.SECONDS);
+                
+                log.info("Finnhub WebSocket 연결 성공: {}", url);
+                return; // 연결 성공 시 즉시 반환
+                
+            } catch (java.util.concurrent.TimeoutException e) {
+                log.error("Finnhub WebSocket 연결 타임아웃 (시도 {}/{}): {}", attempt, maxAttempts, e.getMessage());
+            } catch (java.util.concurrent.ExecutionException e) {
+                log.error("Finnhub WebSocket 연결 실패 (시도 {}/{}): {}", attempt, maxAttempts, e.getMessage(), e);
+            } catch (InterruptedException e) {
+                log.error("Finnhub WebSocket 연결 중단됨 (시도 {}/{}): {}", attempt, maxAttempts, e.getMessage());
+                Thread.currentThread().interrupt(); // 인터럽트 상태 복원
+                return; // 중단 시 재시도 중지
+            }
             
-        } catch (Exception e) {
-            log.error("Finnhub WebSocket 연결 실패: {}", e.getMessage());
+            // 마지막 시도가 아니면 대기 후 재시도
+            if (attempt < maxAttempts) {
+                try {
+                    log.info("{}ms 후 재시도...", backoffMs);
+                    Thread.sleep(backoffMs);
+                    backoffMs *= 2; // 지수 백오프 (1초 → 2초 → 4초)
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
         }
+        
+        log.error("Finnhub WebSocket 연결 실패: 최대 재시도 횟수({})를 초과했습니다.", maxAttempts);
     }
 
     // 종목 실시간 체결 데이터 subscribe
