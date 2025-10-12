@@ -193,22 +193,50 @@ public class FinnhubWebSocketManager implements WebSocketHandler {
     // 특정 종목의 체결 데이터를 subscribers에게 브로드캐스트
     private void broadcastToSubscribers(String symbol, FinnhubTradeMessage.TradeData tradeData) {
         CopyOnWriteArraySet<WebSocketSession> subscribers = symbolSubscribers.get(symbol);
-        if (subscribers != null) {
-            try {
-                String broadcastMessage = objectMapper.writeValueAsString(tradeData);
-                
-                for (WebSocketSession subscriber : subscribers) {
+        if (subscribers == null || subscribers.isEmpty()) {
+            return;
+        }
+        
+        try {
+            String broadcastMessage = objectMapper.writeValueAsString(tradeData);
+            int removedCount = 0;
+            
+            // 각 subscriber에게 전송
+            for (WebSocketSession subscriber : subscribers) {
+                try {
                     if (subscriber.isOpen()) {
                         subscriber.sendMessage(new TextMessage(broadcastMessage));
+                    } else {
+                        // 닫힌 세션 제거
+                        subscribers.remove(subscriber);
+                        removedCount++;
+                        log.debug("닫힌 세션 제거: sessionId={}", subscriber.getId());
                     }
+                } catch (Exception e) {
+                    // 전송 실패 시 세션 정리
+                    log.warn("메시지 전송 실패 (세션 제거): sessionId={}, error={}", 
+                            subscriber.getId(), e.getMessage());
+                    try {
+                        subscriber.close();
+                    } catch (Exception closeEx) {
+                        // 이미 닫혔을 수 있음
+                    }
+                    subscribers.remove(subscriber);
+                    removedCount++;
                 }
-                
-                log.debug("체결 데이터 브로드캐스트: symbol={}, subscribers={}", 
-                        symbol, subscribers.size());
-                        
-            } catch (Exception e) {
-                log.error("브로드캐스트 실패: {}", e.getMessage());
             }
+            
+            // 정리된 세션 로깅
+            if (removedCount > 0) {
+                log.info("닫힌 세션 정리: symbol={}, removed={}, remaining={}", 
+                        symbol, removedCount, subscribers.size());
+            }
+            
+            log.debug("체결 데이터 브로드캐스트: symbol={}, active_subscribers={}", 
+                    symbol, subscribers.size());
+                    
+        } catch (Exception e) {
+            log.error("브로드캐스트 실패: symbol={}, error={}", symbol, e.getMessage());
         }
     }
 
