@@ -9,12 +9,12 @@ import org.springframework.context.annotation.Configuration;
 public class FinnhubFeignConfig {
 
     @Bean
-    public Logger.Level feignLoggerLevel() {
+    public Logger.Level finnhubFeignLoggerLevel() {
         return Logger.Level.BASIC;
     }
 
     @Bean
-    public RequestInterceptor requestInterceptor() {
+    public RequestInterceptor finnhubRequestInterceptor() {
         return requestTemplate -> {
             requestTemplate.header("User-Agent", "QBIT-Trading-App/1.0");
         };
