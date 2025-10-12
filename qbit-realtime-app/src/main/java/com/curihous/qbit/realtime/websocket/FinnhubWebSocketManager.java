@@ -23,8 +23,8 @@ public class FinnhubWebSocketManager implements WebSocketHandler {
     private final ObjectMapper objectMapper;
     private final Map<String, CopyOnWriteArraySet<WebSocketSession>> symbolSubscribers;
     
-    private WebSocketSession finnhubSession;
-    private WebSocketClient webSocketClient;
+    private volatile WebSocketSession finnhubSession;
+    private volatile WebSocketClient webSocketClient;
 
     public FinnhubWebSocketManager(String websocketUrl, String apiKey) {
         this.websocketUrl = websocketUrl;
