@@ -161,5 +161,12 @@ public class OrderRequest extends BaseTimeEntity {
     public void markAsReplaced(String replacedBy, OffsetDateTime replacedAt) {
         this.replacedBy = replacedBy;
         this.replacedAt = replacedAt;
+        this.status = OrderStatus.REPLACED;
+    }
+    
+    // 주문이 취소되었을 때 호출
+    public void markAsCanceled() {
+        this.status = OrderStatus.CANCELED;
+        this.canceledAt = OffsetDateTime.now();
     }
 }

@@ -4,7 +4,6 @@ import com.curihous.qbit.infra.alpaca.client.AlpacaOAuthClient;
 import com.curihous.qbit.infra.alpaca.client.AlpacaTradingClient;
 import com.curihous.qbit.infra.alpaca.dto.response.AlpacaAccountResponse;
 import com.curihous.qbit.infra.alpaca.dto.response.AlpacaTokenResponse;
-import com.curihous.qbit.infra.alpaca.dto.internal.AlpacaConnectionStatusDto;
 import com.curihous.qbit.common.exception.QbitException;
 import com.curihous.qbit.common.exception.ErrorCode;
 import com.curihous.qbit.domain.alpaca.entity.AlpacaOAuthConnection;
@@ -111,25 +110,6 @@ public class AlpacaOAuthService {
         if (connectionOpt.isPresent()) {
             alpacaOAuthConnectionService.disconnect(connectionOpt.get());
         }
-    }
-
-    // 연결 상태 확인
-    public AlpacaConnectionStatusDto getConnectionStatus(Long userId) {
-        Optional<AlpacaOAuthConnection> connectionOpt = alpacaOAuthConnectionService.findByUserId(userId);
-        
-        if (connectionOpt.isEmpty()) {
-            return new AlpacaConnectionStatusDto(
-                false, false, "NOT_CONNECTED", false
-            );
-        }
-        
-        AlpacaOAuthConnection connection = connectionOpt.get();
-        return new AlpacaConnectionStatusDto(
-            true,
-            connection.isPaperTrading(),
-            connection.getAlpacaConnectionStatus().name(),
-            connection.isTokenExpired()
-        );
     }
 
 }

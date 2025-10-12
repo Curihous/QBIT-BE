@@ -78,6 +78,95 @@ public class AlpacaOrderRequestService implements TradingPort {
         return orderRequestRepository.findByIdAndUser(orderId, user)
                 .orElseThrow(() -> new QbitException(ErrorCode.ORDER_REQUEST_NOT_FOUND, "주문을 찾을 수 없습니다"));
     }
+    
+    // 주문 취소
+    @Override
+    @Transactional
+    public void cancelOrder(User user, Long orderId) {
+        // 사용자의 활성화된 Alpaca 연결 조회
+        AlpacaOAuthConnection connection = alpacaOAuthConnectionService.getValidConnection(user.getId());
+        String authorization = "Bearer " + connection.getAccessToken();
+        
+        try {
+            // 1. 내부 ID로 기존 주문 DB에서 조회
+            OrderRequest orderRequest = orderRequestRepository.findByIdAndUser(orderId, user)
+                    .orElseThrow(() -> new QbitException(ErrorCode.ORDER_REQUEST_NOT_FOUND, "주문을 찾을 수 없습니다: " + orderId));
+            
+            String alpacaOrderId = orderRequest.getAlpacaOrderId();
+            
+            // 2. Alpaca API 호출 (주문 취소)
+            alpacaTradingPort.cancelOrder(authorization, alpacaOrderId);
+            
+            // 3. DB 상태 업데이트
+            orderRequest.markAsCanceled();
+            orderRequestRepository.save(orderRequest);
+            
+            log.info("주문 취소 완료: 내부 ID={}, Alpaca ID={}", orderId, alpacaOrderId);
+            
+        } catch (QbitException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Alpaca 주문 취소 실패: orderId={}, error={}", orderId, e.getMessage(), e);
+            throw new QbitException(ErrorCode.EXTERNAL_API_ERROR, "주문 취소에 실패했습니다: " + e.getMessage());
+        }
+    }
+    
+    // 포지션 조회
+    @Override
+    @Transactional(readOnly = true)
+    public List<TradingPort.PositionInfo> getPositions(User user) {
+        // 사용자의 활성화된 Alpaca 연결 조회
+        AlpacaOAuthConnection connection = alpacaOAuthConnectionService.getValidConnection(user.getId());
+        String authorization = "Bearer " + connection.getAccessToken();
+        
+        try {
+            var positions = alpacaTradingPort.getPositions(authorization);
+            return positions.stream()
+                    .map(pos -> new TradingPort.PositionInfo(
+                            pos.symbol(),
+                            pos.qty(),
+                            pos.avgEntryPrice(),
+                            pos.marketValue(),
+                            pos.costBasis(),
+                            pos.unrealizedPl(),
+                            pos.unrealizedPlpc(),
+                            pos.currentPrice(),
+                            pos.side()
+                    ))
+                    .toList();
+        } catch (Exception e) {
+            log.error("Alpaca 포지션 조회 실패: {}", e.getMessage(), e);
+            throw new QbitException(ErrorCode.EXTERNAL_API_ERROR, "포지션 조회에 실패했습니다: " + e.getMessage());
+        }
+    }
+    
+    // 계정 정보 조회
+    @Override
+    @Transactional(readOnly = true)
+    public TradingPort.AccountInfo getAccountInfo(User user) {
+        // 사용자의 활성화된 Alpaca 연결 조회
+        AlpacaOAuthConnection connection = alpacaOAuthConnectionService.getValidConnection(user.getId());
+        String authorization = "Bearer " + connection.getAccessToken();
+        
+        try {
+            var account = alpacaTradingPort.getAccount(authorization);
+            return new TradingPort.AccountInfo(
+                    account.accountNumber(),
+                    account.status(),
+                    account.currency(),
+                    account.buyingPower() != null ? account.buyingPower().toString() : null,
+                    account.cash() != null ? account.cash().toString() : null,
+                    account.portfolioValue() != null ? account.portfolioValue().toString() : null,
+                    account.equity() != null ? account.equity().toString() : null,
+                    account.lastEquity() != null ? account.lastEquity().toString() : null,
+                    account.longMarketValue() != null ? account.longMarketValue().toString() : null,
+                    account.shortMarketValue() != null ? account.shortMarketValue().toString() : null
+            );
+        } catch (Exception e) {
+            log.error("Alpaca 계정 정보 조회 실패: {}", e.getMessage(), e);
+            throw new QbitException(ErrorCode.EXTERNAL_API_ERROR, "계정 정보 조회에 실패했습니다: " + e.getMessage());
+        }
+    }
 
     // 주문 수정
     @Override
