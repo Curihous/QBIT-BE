@@ -75,6 +75,7 @@ alpaca:
 oauth:
   state:
     secret: ${OAUTH_STATE_SECRET}
+    
 # 주식 및 암호화폐 동기화 설정
 stock:
   sync:

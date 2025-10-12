@@ -34,6 +34,7 @@ public interface TradingPort {
     
     record CreateOrderCommand(
         String symbol,           // 종목 심볼
+        String assetClass,       // 자산 클래스 (us_equity, crypto)
         String quantity,         // 수량
         String side,             // 매수/매도 (buy/sell)
         String type,             // 주문 유형 (market/limit/stop/stop_limit)
