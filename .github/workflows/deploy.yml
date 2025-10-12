@@ -24,8 +24,11 @@ jobs:
         COMMIT_MSG=$(git log -1 --pretty=format:"%s")
         echo "commit_message=$COMMIT_MSG" >> $GITHUB_OUTPUT
         
-        VERSION=$(grep "version:" qbit-api-app/src/main/resources/application.yml | sed 's/.*version: *//' | sed 's/ *#.*//')
-        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        API_VERSION=$(grep "version:" qbit-api-app/src/main/resources/application.yml | sed 's/.*version: *//' | sed 's/ *#.*//')
+        echo "api_version=$API_VERSION" >> $GITHUB_OUTPUT
+        
+        REALTIME_VERSION=$(grep "version:" qbit-realtime-app/src/main/resources/application.yml | sed 's/.*version: *//' | sed 's/ *#.*//')
+        echo "realtime_version=$REALTIME_VERSION" >> $GITHUB_OUTPUT
 
     - name: Set up JDK 17
       uses: actions/setup-java@v4
@@ -186,7 +189,8 @@ jobs:
             **QBIT 백엔드 배포 알림**
             
             **상태:** ${{ job.status == 'success' && '✅ 성공' || '❌ 실패' }}
-            **버전:** v${{ steps.info.outputs.version }}
+            **API 버전:** v${{ steps.info.outputs.api_version }}
+            **Realtime 버전:** v${{ steps.info.outputs.realtime_version }}
             **브랜치:** ${{ github.ref_name }}
             **커밋 제목:** [${{ steps.info.outputs.commit_message }}](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
             **실행자:** ${{ github.actor }}
