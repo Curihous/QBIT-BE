@@ -19,9 +19,6 @@ public record UpdateOrderRequestDto(
     String stopPrice,
     
     @Schema(description = "수정할 주문 유효기간", example = "gtc")
-    String timeInForce,
-    
-    @Schema(description = "수정할 클라이언트 주문 ID", example = "my-order-002")
-    String clientOrderId
+    String timeInForce
 ) {}
 

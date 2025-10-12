@@ -23,6 +23,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -51,6 +52,9 @@ public class TradingController {
         Stock stock = stockPort.getOrFetchStock(user, request.symbol());
         validateAssetClassAllowed(stock);
         
+        // 클라이언트 주문 ID 자동 생성
+        String clientOrderId = generateClientOrderId(user.getId());
+        
         TradingPort.CreateOrderCommand command = new TradingPort.CreateOrderCommand(
             request.symbol(),
             request.quantity(),
@@ -59,7 +63,7 @@ public class TradingController {
             request.timeInForce(),
             request.limitPrice(),
             request.stopPrice(),
-            request.clientOrderId()
+            clientOrderId
         );
         
         OrderRequest orderRequest = tradingPort.createOrder(user, command);
@@ -79,7 +83,7 @@ public class TradingController {
             request.limitPrice(),
             request.stopPrice(),
             request.timeInForce(),
-            request.clientOrderId()
+            null  // 주문 수정 시 clientOrderId는 변경하지 않음
         );
         
         TradingPort.OrderUpdateResult result = tradingPort.updateOrder(user, orderId, command);
@@ -137,5 +141,14 @@ public class TradingController {
             log.warn("지원하지 않는 자산 클래스 거래 시도: symbol={}, assetClass={}", stock.getSymbol(), assetClass);
             throw new QbitException(ErrorCode.ASSET_CLASS_NOT_SUPPORTED);
         }
+    }
+    
+    // 클라이언트 주문 ID 자동 생성
+    private String generateClientOrderId(Long userId) {
+        // 형식: qbit-{userId}-{timestamp}-{random}
+        // 예시: qbit-123-1697123456789-a1b2c3d4
+        String timestamp = String.valueOf(System.currentTimeMillis());
+        String randomPart = UUID.randomUUID().toString().substring(0, 8);
+        return String.format("qbit-%d-%s-%s", userId, timestamp, randomPart);
     }
 }
