@@ -1,20 +1,13 @@
 package com.curihous.qbit.realtime.config;
 
-import com.curihous.qbit.realtime.websocket.FinnhubWebSocketManager;
-import org.springframework.beans.factory.annotation.Value;
+import com.curihous.qbit.realtime.websocket.BinanceWebSocketManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.client.WebSocketClient;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 
 @Configuration
-public class FinnhubWebSocketConfig {
-
-    @Value("${finnhub.api.websocket-url}")
-    private String websocketUrl;
-    
-    @Value("${finnhub.api.key}")
-    private String apiKey;
+public class BinanceWebSocketConfig {
 
     @Bean
     public WebSocketClient webSocketClient() {
@@ -22,8 +15,8 @@ public class FinnhubWebSocketConfig {
     }
 
     @Bean
-    public FinnhubWebSocketManager finnhubWebSocketManager(WebSocketClient webSocketClient) {
-        FinnhubWebSocketManager manager = new FinnhubWebSocketManager(websocketUrl, apiKey);
+    public BinanceWebSocketManager binanceWebSocketManager(WebSocketClient webSocketClient) {
+        BinanceWebSocketManager manager = new BinanceWebSocketManager();
         manager.initialize(webSocketClient);  
         return manager;
     }

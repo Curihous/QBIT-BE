@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
  */
 @Tag(name = "Portfolio", description = "포트폴리오 관리 API입니다.")
 @RestController
-@RequestMapping("/portfolio")
+@RequestMapping("/portfolios")
 @RequiredArgsConstructor
 public class PortfolioController {
 

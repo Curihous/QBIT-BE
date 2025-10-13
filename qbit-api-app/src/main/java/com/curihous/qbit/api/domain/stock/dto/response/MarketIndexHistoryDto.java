@@ -7,8 +7,7 @@ import java.math.BigDecimal;
 /**
  * 지수 과거 데이터 DTO (차트용)
  * 
- * 사용 API:
- * - GET /indices/{symbol}/history
+ * QBIT API: GET /indices/{symbol}/history
  */
 @Schema(description = "지수 과거 데이터 (차트용)")
 public record MarketIndexHistoryDto(

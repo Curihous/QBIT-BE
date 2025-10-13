@@ -71,6 +71,7 @@ subprojects {
 
     tasks.withType(JavaCompile).configureEach {
         options.encoding = 'UTF-8'
+        options.compilerArgs += ['-parameters']  // Spring Cache @Cacheable 파라미터 이름 인식
     }
 
     dependencies {

@@ -1,7 +1,7 @@
 package com.curihous.qbit.realtime.websocket;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.curihous.qbit.infra.finnhub.dto.websocket.FinnhubTradeMessage;
+import com.curihous.qbit.infra.binance.dto.websocket.BinanceTradeMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.*;
@@ -13,34 +13,42 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 
-// 실시간 체결 데이터를 수신하고 subscribers에게 브로드캐스트
+/**
+ * Binance WebSocket 매니저
+ * 실시간 체결 데이터를 수신하고 subscribers에게 브로드캐스트
+ * 
+ * 지원 방식: 멀티 스트림 (여러 암호화폐 동시 지원)
+ */
 @Slf4j
 @Component
-public class FinnhubWebSocketManager implements WebSocketHandler {
+public class BinanceWebSocketManager implements WebSocketHandler {
 
-    private final String websocketUrl;
-    private final String apiKey;
     private final ObjectMapper objectMapper;
     private final Map<String, CopyOnWriteArraySet<WebSocketSession>> symbolSubscribers;
+    private final Map<String, WebSocketSession> binanceSessions; // 심볼별 세션 관리
     
-    private volatile WebSocketSession finnhubSession;
     private volatile WebSocketClient webSocketClient;
 
-    public FinnhubWebSocketManager(String websocketUrl, String apiKey) {
-        this.websocketUrl = websocketUrl;
-        this.apiKey = apiKey;
+    public BinanceWebSocketManager() {
         this.objectMapper = new ObjectMapper();
         this.symbolSubscribers = new ConcurrentHashMap<>();
+        this.binanceSessions = new ConcurrentHashMap<>();
     }
 
     // WebSocket 연결 초기화
     public void initialize(WebSocketClient webSocketClient) {
         this.webSocketClient = webSocketClient;
-        connectToFinnhub();
+        // 초기 연결은 하지 않고, subscribe 요청 시 동적으로 연결
+        log.info("Binance WebSocket 매니저 초기화 완료");
     }
 
-    // Finnhub WebSocket에 연결
-    private void connectToFinnhub() {
+    // 특정 심볼에 대한 Binance WebSocket 연결
+    private void connectToBinance(String symbol) {
+        if (binanceSessions.containsKey(symbol)) {
+            log.debug("이미 연결된 심볼: {}", symbol);
+            return;
+        }
+
         int maxAttempts = 3;
         int attempt = 0;
         long backoffMs = 1000; // 초기 대기 시간 1초
@@ -49,28 +57,33 @@ public class FinnhubWebSocketManager implements WebSocketHandler {
             attempt++;
             
             try {
-                String url = websocketUrl + "?token=" + apiKey;
+                // Binance WebSocket URL 
+                String url = String.format("wss://stream.binance.com:9443/ws/%s@trade", symbol.toLowerCase());
                 WebSocketHttpHeaders headers = new WebSocketHttpHeaders();
                 
-                log.info("Finnhub WebSocket 연결 시도 {}/{}: {}", attempt, maxAttempts, url);
+                log.info("Binance WebSocket 연결 시도 {}/{}: symbol={}, url={}", attempt, maxAttempts, symbol, url);
                 
                 // 타임아웃 설정 (10초)
                 java.util.concurrent.Future<WebSocketSession> future = 
                     webSocketClient.doHandshake(this, headers, URI.create(url));
                 
-                finnhubSession = future.get(10, java.util.concurrent.TimeUnit.SECONDS);
+                WebSocketSession session = future.get(10, java.util.concurrent.TimeUnit.SECONDS);
+                binanceSessions.put(symbol, session);
                 
-                log.info("Finnhub WebSocket 연결 성공: {}", url);
-                return; // 연결 성공 시 즉시 반환
+                log.info("Binance WebSocket 연결 성공: symbol={}", symbol);
+                return;
                 
             } catch (java.util.concurrent.TimeoutException e) {
-                log.error("Finnhub WebSocket 연결 타임아웃 (시도 {}/{}): {}", attempt, maxAttempts, e.getMessage());
+                log.error("Binance WebSocket 연결 타임아웃 (시도 {}/{}): symbol={}, error={}", 
+                         attempt, maxAttempts, symbol, e.getMessage());
             } catch (java.util.concurrent.ExecutionException e) {
-                log.error("Finnhub WebSocket 연결 실패 (시도 {}/{}): {}", attempt, maxAttempts, e.getMessage(), e);
+                log.error("Binance WebSocket 연결 실패 (시도 {}/{}): symbol={}, error={}", 
+                         attempt, maxAttempts, symbol, e.getMessage(), e);
             } catch (InterruptedException e) {
-                log.error("Finnhub WebSocket 연결 중단됨 (시도 {}/{}): {}", attempt, maxAttempts, e.getMessage());
-                Thread.currentThread().interrupt(); // 인터럽트 상태 복원
-                return; // 중단 시 재시도 중지
+                log.error("Binance WebSocket 연결 중단됨 (시도 {}/{}): symbol={}, error={}", 
+                         attempt, maxAttempts, symbol, e.getMessage());
+                Thread.currentThread().interrupt();
+                return;
             }
             
             // 마지막 시도가 아니면 대기 후 재시도
@@ -86,15 +99,17 @@ public class FinnhubWebSocketManager implements WebSocketHandler {
             }
         }
         
-        log.error("Finnhub WebSocket 연결 실패: 최대 재시도 횟수({})를 초과했습니다.", maxAttempts);
+        log.error("Binance WebSocket 연결 실패: symbol={}, 최대 재시도 횟수({})를 초과했습니다.", symbol, maxAttempts);
     }
 
     // 종목 실시간 체결 데이터 subscribe
     public void subscribe(String symbol, WebSocketSession clientSession) {
         symbolSubscribers.computeIfAbsent(symbol, k -> new CopyOnWriteArraySet<>()).add(clientSession);
         
-        // Finnhub에 subscribe 요청 전송
-        subscribeToSymbol(symbol);
+        // 첫 번째 구독자라면 Binance WebSocket 연결
+        if (symbolSubscribers.get(symbol).size() == 1) {
+            connectToBinance(symbol);
+        }
         
         log.info("종목 subscribe 추가: symbol={}, subscribers={}", symbol, 
                 symbolSubscribers.get(symbol).size());
@@ -106,9 +121,9 @@ public class FinnhubWebSocketManager implements WebSocketHandler {
         if (subscribers != null) {
             subscribers.remove(clientSession);
             
-            // 마지막 subscriber가 해제되면 Finnhub에서도 subscribe 해제
+            // 마지막 subscriber가 해제되면 Binance 연결도 해제
             if (subscribers.isEmpty()) {
-                unsubscribeFromSymbol(symbol);
+                disconnectFromBinance(symbol);
                 symbolSubscribers.remove(symbol);
             }
         }
@@ -117,28 +132,15 @@ public class FinnhubWebSocketManager implements WebSocketHandler {
                 symbolSubscribers.get(symbol) != null ? symbolSubscribers.get(symbol).size() : 0);
     }
 
-    // Finnhub에 종목 subscribe 요청
-    private void subscribeToSymbol(String symbol) {
-        if (finnhubSession != null && finnhubSession.isOpen()) {
-            String subscribeMessage = String.format("{\"type\":\"subscribe\",\"symbol\":\"%s\"}", symbol);
+    // 특정 심볼의 Binance WebSocket 연결 해제
+    private void disconnectFromBinance(String symbol) {
+        WebSocketSession session = binanceSessions.remove(symbol);
+        if (session != null && session.isOpen()) {
             try {
-                finnhubSession.sendMessage(new TextMessage(subscribeMessage));
-                log.debug("Finnhub subscribe 요청 전송: {}", subscribeMessage);
+                session.close();
+                log.info("Binance WebSocket 연결 해제: symbol={}", symbol);
             } catch (Exception e) {
-                log.error("Finnhub subscribe 요청 실패: {}", e.getMessage());
-            }
-        }
-    }
-
-    // Finnhub에서 종목 subscribe 해제 요청
-    private void unsubscribeFromSymbol(String symbol) {
-        if (finnhubSession != null && finnhubSession.isOpen()) {
-            String unsubscribeMessage = String.format("{\"type\":\"unsubscribe\",\"symbol\":\"%s\"}", symbol);
-            try {
-                finnhubSession.sendMessage(new TextMessage(unsubscribeMessage));
-                log.debug("Finnhub unsubscribe 요청 전송: {}", unsubscribeMessage);
-            } catch (Exception e) {
-                log.error("Finnhub unsubscribe 요청 실패: {}", e.getMessage());
+                log.error("Binance WebSocket 연결 해제 실패: symbol={}, error={}", symbol, e.getMessage());
             }
         }
     }
@@ -151,54 +153,32 @@ public class FinnhubWebSocketManager implements WebSocketHandler {
     @Override
     public void handleMessage(WebSocketSession session, WebSocketMessage<?> message) {
         if (message instanceof TextMessage textMessage) {
-            handleFinnhubMessage(textMessage.getPayload());
+            handleBinanceMessage(textMessage.getPayload());
         }
     }
 
-    // Finnhub에서 받은 메시지 처리
-    private void handleFinnhubMessage(String message) {
+    // Binance에서 받은 메시지 처리
+    private void handleBinanceMessage(String message) {
         try {
-            FinnhubTradeMessage tradeMessage = objectMapper.readValue(message, FinnhubTradeMessage.class);
-            String messageType = tradeMessage.type();
+            BinanceTradeMessage tradeMessage = objectMapper.readValue(message, BinanceTradeMessage.class);
             
-            switch (messageType) {
-                case "trade" -> {
-                    if (tradeMessage.data() != null) {
-                        // 각 체결 데이터를 해당 종목 subscribers에게 브로드캐스트
-                        for (FinnhubTradeMessage.TradeData tradeData : tradeMessage.data()) {
-                            broadcastToSubscribers(tradeData.symbol(), tradeData);
-                        }
-                    }
-                }
-                case "ping" -> {
-
-                    log.debug("Finnhub ping 수신");
-                }
-                case "subscribe" -> {
-                    log.info("Finnhub 구독 확인: {}", message);
-                }
-                case "error" -> {
-                    log.error("Finnhub 에러 수신: {}", message);
-                }
-                default -> {
-                    log.warn("알 수 없는 Finnhub 메시지 타입: {}", messageType);
-                }
-            }
+            // Binance는 단일 거래 데이터를 직접 전송
+            broadcastToSubscribers(tradeMessage.getSymbol(), tradeMessage);
             
         } catch (Exception e) {
-            log.error("Finnhub 메시지 처리 실패: message={}, error={}", message, e.getMessage());
+            log.error("Binance 메시지 처리 실패: message={}, error={}", message, e.getMessage());
         }
     }
 
     // 특정 종목의 체결 데이터를 subscribers에게 브로드캐스트
-    private void broadcastToSubscribers(String symbol, FinnhubTradeMessage.TradeData tradeData) {
+    private void broadcastToSubscribers(String symbol, BinanceTradeMessage tradeMessage) {
         CopyOnWriteArraySet<WebSocketSession> subscribers = symbolSubscribers.get(symbol);
         if (subscribers == null || subscribers.isEmpty()) {
             return;
         }
         
         try {
-            String broadcastMessage = objectMapper.writeValueAsString(tradeData);
+            String broadcastMessage = objectMapper.writeValueAsString(tradeMessage);
             int removedCount = 0;
             
             // 각 subscriber에게 전송
@@ -244,10 +224,12 @@ public class FinnhubWebSocketManager implements WebSocketHandler {
     public void handleTransportError(WebSocketSession session, Throwable exception) {
         log.error("WebSocket 전송 오류: {}", exception.getMessage());
         
-        // 연결 재시도
-        if (session == finnhubSession) {
-            log.info("Finnhub WebSocket 재연결 시도...");
-            connectToFinnhub();
+        // 연결 재시도 - 해당 세션이 어떤 심볼인지 찾아서 재연결
+        String symbol = findSymbolBySession(session);
+        if (symbol != null) {
+            log.info("Binance WebSocket 재연결 시도: symbol={}", symbol);
+            binanceSessions.remove(symbol); // 기존 세션 제거
+            connectToBinance(symbol); // 재연결
         }
     }
 
@@ -255,11 +237,22 @@ public class FinnhubWebSocketManager implements WebSocketHandler {
     public void afterConnectionClosed(WebSocketSession session, CloseStatus closeStatus) {
         log.info("WebSocket 연결 종료: {}, status={}", session.getId(), closeStatus);
         
-        // Finnhub 세션이 종료되면 재연결
-        if (session == finnhubSession) {
-            log.info("Finnhub WebSocket 재연결 시도...");
-            connectToFinnhub();
+        // 해당 세션이 어떤 심볼인지 찾아서 재연결
+        String symbol = findSymbolBySession(session);
+        if (symbol != null) {
+            log.info("Binance WebSocket 재연결 시도: symbol={}", symbol);
+            binanceSessions.remove(symbol); // 기존 세션 제거
+            connectToBinance(symbol); // 재연결
         }
+    }
+
+    // 세션으로부터 심볼 찾기
+    private String findSymbolBySession(WebSocketSession session) {
+        return binanceSessions.entrySet().stream()
+            .filter(entry -> entry.getValue().equals(session))
+            .map(Map.Entry::getKey)
+            .findFirst()
+            .orElse(null);
     }
 
     @Override

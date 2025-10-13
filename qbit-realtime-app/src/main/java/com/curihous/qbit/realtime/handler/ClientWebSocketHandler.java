@@ -1,6 +1,6 @@
 package com.curihous.qbit.realtime.handler;
 
-import com.curihous.qbit.realtime.websocket.FinnhubWebSocketManager;
+import com.curihous.qbit.realtime.websocket.BinanceWebSocketManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -12,7 +12,7 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 @RequiredArgsConstructor
 public class ClientWebSocketHandler extends TextWebSocketHandler {
 
-    private final FinnhubWebSocketManager finnhubWebSocketManager;
+    private final BinanceWebSocketManager binanceWebSocketManager;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
@@ -20,7 +20,7 @@ public class ClientWebSocketHandler extends TextWebSocketHandler {
         String symbol = extractSymbolFromUri(uri);
         
         if (symbol != null) {
-            finnhubWebSocketManager.subscribe(symbol, session);
+            binanceWebSocketManager.subscribe(symbol, session);
             log.info("클라이언트 WebSocket 연결: symbol={}, sessionId={}", symbol, session.getId());
         } else {
             log.warn("잘못된 URI: {}", uri);
@@ -44,7 +44,7 @@ public class ClientWebSocketHandler extends TextWebSocketHandler {
         String symbol = extractSymbolFromUri(uri);
         
         if (symbol != null) {
-            finnhubWebSocketManager.unsubscribe(symbol, session);
+            binanceWebSocketManager.unsubscribe(symbol, session);
             log.info("클라이언트 WebSocket 연결 종료: symbol={}, sessionId={}, status={}", 
                     symbol, session.getId(), status);
         }

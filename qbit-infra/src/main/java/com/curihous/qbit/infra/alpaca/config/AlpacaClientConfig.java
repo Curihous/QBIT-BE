@@ -14,7 +14,7 @@ public class AlpacaClientConfig {
     @Value("${info.app.version}")
     private String appVersion;
 
-    @Bean
+    @Bean("alpacaFeignLoggerLevel")
     public Logger.Level feignLoggerLevel() {
         return Logger.Level.BASIC;
     }

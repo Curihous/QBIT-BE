@@ -2,16 +2,13 @@ package com.curihous.qbit.api.domain.stock.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-import com.curihous.qbit.infra.finnhub.dto.response.FinnhubQuoteResponse;
-
 /**
- * 실시간 시세 응답 DTO
+ * 암호화폐 실시간 시세 응답 DTO
  * 
- * 사용 API:
- * - GET /market/quote/{symbol}
+ * QBIT API: GET /stocks/quote/{symbol}
  */
 public record QuoteResponseDto(
-    @Schema(description = "종목 심볼", example = "AAPL")
+    @Schema(description = "종목 심볼", example = "BTCUSDT")
     String symbol,
     
     @Schema(description = "현재가", example = "172.25")
@@ -38,17 +35,10 @@ public record QuoteResponseDto(
     @Schema(description = "업데이트 시간 (Unix timestamp, 밀리초)", example = "1696887456000")
     Long timestamp
 ) {
-    public static QuoteResponseDto from(String symbol, FinnhubQuoteResponse finnhubQuote) {
-        return new QuoteResponseDto(
-            symbol,
-            finnhubQuote.currentPrice(),
-            finnhubQuote.highPrice(),
-            finnhubQuote.lowPrice(),
-            finnhubQuote.openPrice(),
-            finnhubQuote.previousClose(),
-            finnhubQuote.priceChange(),
-            finnhubQuote.priceChangePercentage(),
-            System.currentTimeMillis() // 현재 시간 (밀리초)
-        );
+    public static QuoteResponseDto of(String symbol, Double currentPrice, Double highPrice, 
+                                    Double lowPrice, Double openPrice, Double previousClose,
+                                    Double priceChange, Double priceChangePercentage, Long timestamp) {
+        return new QuoteResponseDto(symbol, currentPrice, highPrice, lowPrice, openPrice, 
+                                  previousClose, priceChange, priceChangePercentage, timestamp);
     }
 }

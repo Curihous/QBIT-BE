@@ -80,10 +80,3 @@ springdoc:
   api-docs:
     enabled: true
     path: /api-docs
-
-# Finnhub API
-finnhub:
-  api:
-    key: ${FINNHUB_API_KEY}
-    base-url: https://finnhub.io/api/v1
-    websocket-url: wss://ws.finnhub.io
