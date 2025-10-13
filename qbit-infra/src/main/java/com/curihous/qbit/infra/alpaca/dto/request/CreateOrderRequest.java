@@ -42,7 +42,7 @@ public class CreateOrderRequest {
     @NotNull
     @Positive(message = "주문 수량은 0보다 커야 합니다")
     @JsonProperty("qty")
-    private BigDecimal qty;
+    private BigDecimal quantity;
 
     @Schema(description = "주문 방향 (buy: 매수, sell: 매도)", example = "buy", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank
@@ -77,7 +77,7 @@ public class CreateOrderRequest {
     private CreateOrderRequest(
             @JsonProperty("symbol") String symbol,
             @JsonProperty("asset_class") String assetClass,
-            @JsonProperty("qty") BigDecimal qty,
+            @JsonProperty("qty") BigDecimal quantity,
             @JsonProperty("side") String side,
             @JsonProperty("type") String type,
             @JsonProperty("time_in_force") String timeInForce,
@@ -87,7 +87,7 @@ public class CreateOrderRequest {
     ) {
         this.symbol = symbol;
         this.assetClass = assetClass;
-        this.qty = qty;
+        this.quantity = quantity;
         this.side = side;
         this.type = type;
         this.timeInForce = timeInForce != null ? timeInForce : getDefaultTimeInForce(assetClass);
@@ -98,35 +98,35 @@ public class CreateOrderRequest {
     }
 
     // Factory 메서드: 시장가 주문
-    public static CreateOrderRequest market(String symbol, String assetClass, BigDecimal qty, String side) {
-        return new CreateOrderRequest(symbol, assetClass, qty, side, "market", null, null, null, null);
+    public static CreateOrderRequest market(String symbol, String assetClass, BigDecimal quantity, String side) {
+        return new CreateOrderRequest(symbol, assetClass, quantity, side, "market", null, null, null, null);
     }
 
     // Factory 메서드: 지정가 주문
-    public static CreateOrderRequest limit(String symbol, String assetClass, BigDecimal qty, String side, BigDecimal limitPrice) {
+    public static CreateOrderRequest limit(String symbol, String assetClass, BigDecimal quantity, String side, BigDecimal limitPrice) {
         if (limitPrice == null) {
             throw new QbitException(ErrorCode.INVALID_ORDER_PRICE, "지정가 주문은 limitPrice가 필수입니다");
         }
-        return new CreateOrderRequest(symbol, assetClass, qty, side, "limit", null, limitPrice, null, null);
+        return new CreateOrderRequest(symbol, assetClass, quantity, side, "limit", null, limitPrice, null, null);
     }
 
     // Factory 메서드: 손절 주문
-    public static CreateOrderRequest stop(String symbol, String assetClass, BigDecimal qty, String side, BigDecimal stopPrice) {
+    public static CreateOrderRequest stop(String symbol, String assetClass, BigDecimal quantity, String side, BigDecimal stopPrice) {
         if (stopPrice == null) {
             throw new QbitException(ErrorCode.INVALID_ORDER_PRICE, "손절 주문은 stopPrice가 필수입니다");
         }
-        return new CreateOrderRequest(symbol, assetClass, qty, side, "stop", null, null, stopPrice, null);
+        return new CreateOrderRequest(symbol, assetClass, quantity, side, "stop", null, null, stopPrice, null);
     }
 
     // Factory 메서드: 손절지정가 주문
-    public static CreateOrderRequest stopLimit(String symbol, String assetClass, BigDecimal qty, String side, BigDecimal stopPrice, BigDecimal limitPrice) {
+    public static CreateOrderRequest stopLimit(String symbol, String assetClass, BigDecimal quantity, String side, BigDecimal stopPrice, BigDecimal limitPrice) {
         if (stopPrice == null) {
             throw new QbitException(ErrorCode.INVALID_ORDER_PRICE, "손절지정가 주문은 stopPrice가 필수입니다");
         }
         if (limitPrice == null) {
             throw new QbitException(ErrorCode.INVALID_ORDER_PRICE, "손절지정가 주문은 limitPrice가 필수입니다");
         }
-        return new CreateOrderRequest(symbol, assetClass, qty, side, "stop_limit", null, limitPrice, stopPrice, null);
+        return new CreateOrderRequest(symbol, assetClass, quantity, side, "stop_limit", null, limitPrice, stopPrice, null);
     }
 
     // setter

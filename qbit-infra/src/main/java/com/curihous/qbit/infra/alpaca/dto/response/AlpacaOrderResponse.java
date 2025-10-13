@@ -59,11 +59,11 @@ public record AlpacaOrderResponse(
 
     @Schema(description = "주문 수량")
     @JsonProperty("qty")
-    String qty,
+    String quantity,
 
     @Schema(description = "체결된 수량")
     @JsonProperty("filled_qty")
-    String filledQty,
+    String filledQuantity,
 
     @Schema(description = "평균 체결가")
     @JsonProperty("filled_avg_price")

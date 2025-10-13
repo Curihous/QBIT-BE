@@ -33,7 +33,7 @@ public record AlpacaPositionResponse(
 
     @Schema(description = "보유 수량")
     @JsonProperty("qty")
-    String qty,
+    String quantity,
 
     @Schema(description = "포지션 방향 (long/short)")
     @JsonProperty("side")
@@ -77,6 +77,6 @@ public record AlpacaPositionResponse(
 
     @Schema(description = "거래 가능 수량")
     @JsonProperty("qty_available")
-    String qtyAvailable
+    String quantityAvailable
 ) {
 }

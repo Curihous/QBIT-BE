@@ -8,8 +8,7 @@ import java.time.OffsetDateTime;
 /**
  * 주문 생성 성공 응답 DTO
  * 
- * 사용 API:
- * - POST /trading/orders
+ * QBIT API: POST /trading/orders
  */
 @Schema(description = "주문 생성 성공 응답")
 public record OrderCreatedResponseDto(
@@ -24,7 +23,7 @@ public record OrderCreatedResponseDto(
     String side,
 
     @Schema(description = "주문 수량", example = "10.5")
-    String qty,
+    String quantity,
 
     @Schema(description = "주문 유형 (market/limit/stop/stop_limit)", example = "limit")
     String orderType,

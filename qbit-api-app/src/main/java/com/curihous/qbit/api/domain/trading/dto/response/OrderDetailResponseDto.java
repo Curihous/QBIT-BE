@@ -8,9 +8,8 @@ import java.time.OffsetDateTime;
 /**
  * 주문 상세 조회 응답 DTO
  * 
- * 사용 API:
- * - GET /trading/orders
- * - GET /trading/orders/{orderId}
+ * QBIT API: GET /trading/orders
+ * QBIT API: GET /trading/orders/{orderId}
  */
 public record OrderDetailResponseDto(
     
@@ -27,10 +26,10 @@ public record OrderDetailResponseDto(
     String side,
 
     @Schema(description = "주문 수량 (fractional shares 지원)", example = "15.25")
-    String qty,
+    String quantity,
     
     @Schema(description = "체결된 수량", example = "15.25")
-    String filledQty,
+    String filledQuantity,
     
     @Schema(description = "평균 체결가", example = "242.68")
     String filledAvgPrice,
