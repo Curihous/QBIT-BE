@@ -2,6 +2,7 @@ package com.curihous.qbit.infra.binance.websocket;
 
 import com.curihous.qbit.infra.binance.dto.websocket.BinanceTradeMessage;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -121,9 +122,57 @@ public class BinanceWebSocketManager {
         log.info("클라이언트 세션 추가: {}, 총 세션 수: {}", sessionId, clientSessions.size());
     }
 
-    //  
+    // 클라이언트 세션 제거
     public void removeClientSession(String sessionId) {
         clientSessions.remove(sessionId);
         log.info("클라이언트 세션 제거: {}, 총 세션 수: {}", sessionId, clientSessions.size());
+    }
+    
+    // BinanceWebSocketManager 종료
+    @PreDestroy
+    public void shutdown() {
+        log.info("BinanceWebSocketManager 종료 시작...");
+        
+        // WebSocket 세션 정리
+        if (binanceSession != null && binanceSession.isOpen()) {
+            try {
+                binanceSession.close();
+                log.info("Binance WebSocket 세션 종료 완료");
+            } catch (Exception e) {
+                log.error("Binance WebSocket 세션 종료 실패", e);
+            }
+        }
+        
+        // 클라이언트 세션 정리
+        clientSessions.values().forEach(session -> {
+            try {
+                if (session.isOpen()) {
+                    session.close();
+                }
+            } catch (Exception e) {
+                log.error("클라이언트 세션 종료 실패: {}", session.getId(), e);
+            }
+        });
+        clientSessions.clear();
+        
+        // ScheduledExecutorService 종료
+        scheduler.shutdown();
+        try {
+            if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
+                log.warn("ScheduledExecutorService가 5초 내에 종료되지 않아 강제 종료합니다.");
+                scheduler.shutdownNow();
+                
+                if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
+                    log.error("ScheduledExecutorService 강제 종료 실패");
+                }
+            }
+            log.info("ScheduledExecutorService 종료 완료");
+        } catch (InterruptedException e) {
+            log.error("ScheduledExecutorService 종료 중 인터럽트 발생", e);
+            scheduler.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+        
+        log.info("BinanceWebSocketManager 종료 완료");
     }
 }
