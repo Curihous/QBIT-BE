@@ -22,8 +22,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -94,13 +94,14 @@ public class TradingController {
         return ResponseEntity.ok(OrderUpdateResponseDto.from(result));
     }
 
-    @Operation(summary = "내 주문 목록 조회", description = "사용자의 모든 주문 내역을 조회합니다. (페이징 지원, 최신순 정렬)")
+    @Operation(summary = "내 주문 목록 조회", description = "사용자의 모든 주문 내역을 조회합니다. (페이징 지원)")
     @GetMapping("/orders")
     public ResponseEntity<PaginatedResponseDto<OrderDetailResponseDto>> getMyOrders(
-            @Parameter(description = "페이지 번호 (0부터 시작)", example = "0")
-            @PageableDefault(size = 20, sort = "alpacaCreatedAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
     ) {
         User user = userSecurityFacade.getCurrentUser();
+        Pageable pageable = PageRequest.of(page, size);
         Page<OrderRequest> ordersPage = tradingPort.getMyOrders(user, pageable);
         Page<OrderDetailResponseDto> responsePage = ordersPage.map(OrderDetailResponseDto::from);
         PaginatedResponseDto<OrderDetailResponseDto> response = PaginatedResponseDto.from(responsePage);

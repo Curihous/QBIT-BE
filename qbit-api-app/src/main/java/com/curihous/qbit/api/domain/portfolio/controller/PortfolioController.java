@@ -10,11 +10,12 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -38,10 +39,11 @@ public class PortfolioController {
     )
     @GetMapping("/positions")
     public ResponseEntity<PaginatedResponseDto<PositionResponseDto>> getPositions(
-            @Parameter(description = "페이지 번호 (0부터 시작)", example = "0")
-            @PageableDefault(size = 20) Pageable pageable
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "10") int size
     ) {
         User user = userSecurityFacade.getCurrentUser();
+        Pageable pageable = PageRequest.of(page, size);
         Page<TradingPort.PositionInfo> positionsPage = tradingPort.getPositions(user, pageable);
         Page<PositionResponseDto> responsePage = positionsPage.map(PositionResponseDto::from);
         PaginatedResponseDto<PositionResponseDto> response = PaginatedResponseDto.from(responsePage);

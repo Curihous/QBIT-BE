@@ -13,6 +13,8 @@ public record PaginatedResponseDto<T>(
     
     int totalPages,
     
+    boolean hasNext,
+    
     List<T> content
 ) {
     public static <T> PaginatedResponseDto<T> from(Page<T> page) {
@@ -21,6 +23,7 @@ public record PaginatedResponseDto<T>(
             page.getSize(),
             page.getTotalElements(),
             page.getTotalPages(),
+            page.hasNext(),
             page.getContent()
         );
     }
