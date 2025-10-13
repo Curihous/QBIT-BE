@@ -39,7 +39,7 @@ public class PortfolioController {
     @GetMapping("/positions")
     public ResponseEntity<PaginatedResponseDto<PositionResponseDto>> getPositions(
             @Parameter(description = "페이지 번호 (0부터 시작)", example = "0")
-            @PageableDefault(size = 20, sort = "symbol") Pageable pageable
+            @PageableDefault(size = 20) Pageable pageable
     ) {
         User user = userSecurityFacade.getCurrentUser();
         Page<TradingPort.PositionInfo> positionsPage = tradingPort.getPositions(user, pageable);
