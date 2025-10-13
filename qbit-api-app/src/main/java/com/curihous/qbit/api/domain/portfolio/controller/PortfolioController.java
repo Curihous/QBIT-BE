@@ -1,19 +1,21 @@
 package com.curihous.qbit.api.domain.portfolio.controller;
 
 import com.curihous.qbit.api.domain.portfolio.dto.response.PositionResponseDto;
+import com.curihous.qbit.common.dto.PaginatedResponseDto;
 import com.curihous.qbit.domain.order.port.TradingPort;
 import com.curihous.qbit.domain.user.entity.User;
 import com.curihous.qbit.infra.security.facade.UserSecurityFacade;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * 포트폴리오 관리 API
@@ -32,15 +34,17 @@ public class PortfolioController {
 
     @Operation(
         summary = "보유 포지션 조회", 
-        description = "현재 보유 중인 주식 포지션 목록을 조회합니다.(DB에 저장된 포지션 데이터 기반)"
+        description = "현재 보유 중인 주식 포지션 목록을 조회합니다.(DB에 저장된 포지션 데이터 기반, 페이징 지원)"
     )
     @GetMapping("/positions")
-    public ResponseEntity<List<PositionResponseDto>> getPositions() {
+    public ResponseEntity<PaginatedResponseDto<PositionResponseDto>> getPositions(
+            @Parameter(description = "페이지 번호 (0부터 시작)", example = "0")
+            @PageableDefault(size = 20) Pageable pageable
+    ) {
         User user = userSecurityFacade.getCurrentUser();
-        List<TradingPort.PositionInfo> positions = tradingPort.getPositions(user);
-        List<PositionResponseDto> response = positions.stream()
-                .map(PositionResponseDto::from)
-                .collect(Collectors.toList());
+        Page<TradingPort.PositionInfo> positionsPage = tradingPort.getPositions(user, pageable);
+        Page<PositionResponseDto> responsePage = positionsPage.map(PositionResponseDto::from);
+        PaginatedResponseDto<PositionResponseDto> response = PaginatedResponseDto.from(responsePage);
         return ResponseEntity.ok(response);
     }
 }

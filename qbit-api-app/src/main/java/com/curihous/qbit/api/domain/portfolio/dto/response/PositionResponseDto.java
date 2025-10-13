@@ -6,15 +6,14 @@ import io.swagger.v3.oas.annotations.media.Schema;
 /**
  * 포트폴리오 포지션 정보 응답 DTO
  * 
- * 사용 API:
- * - GET /portfolio/positions
+ * QBIT API: GET /portfolio/positions
  */
 public record PositionResponseDto(
     @Schema(description = "종목 심볼", example = "AAPL")
     String symbol,
     
     @Schema(description = "보유 수량", example = "10")
-    String qty,
+    String quantity,
     
     @Schema(description = "평균 매수가", example = "150.25")
     String avgEntryPrice,
@@ -40,7 +39,7 @@ public record PositionResponseDto(
     public static PositionResponseDto from(TradingPort.PositionInfo position) {
         return new PositionResponseDto(
             position.symbol(),
-            position.qty(),
+            position.quantity(),
             position.avgEntryPrice(),
             position.marketValue(),
             position.costBasis(),
