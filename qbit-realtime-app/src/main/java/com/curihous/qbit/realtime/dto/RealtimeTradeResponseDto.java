@@ -1,37 +1,37 @@
 package com.curihous.qbit.realtime.dto;
 
-import com.curihous.qbit.infra.finnhub.dto.websocket.FinnhubTradeMessage;
+import com.curihous.qbit.infra.binance.dto.websocket.BinanceTradeMessage;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
  * 실시간 체결 데이터 응답 DTO (WebSocket)
  * 
  * 사용 API:
- * - ws://{server}:{port}/ws/market/AAPL
+ * - ws://{server}:{port}/ws/market/{symbol}
  * 
- * Finnhub WebSocket에서 받은 실시간 체결 데이터를 클라이언트에 전달
+ * Binance WebSocket에서 받은 실시간 체결 데이터를 클라이언트에 전달
  */
 @Schema(description = "실시간 체결 데이터")
 public record RealtimeTradeResponseDto(
     @Schema(description = "체결가격", example = "264.23")
     Double price,
     
-    @Schema(description = "종목 심볼", example = "AAPL")
+    @Schema(description = "종목 심볼", example = "BTCUSDT")
     String symbol,
     
     @Schema(description = "체결시간 (Unix timestamp)", example = "1582649824000")
     Long timestamp,
     
     @Schema(description = "체결수량", example = "100")
-    Long volume
+    Double volume
 ) {
     
-    public static RealtimeTradeResponseDto from(FinnhubTradeMessage.TradeData tradeData) {
+    public static RealtimeTradeResponseDto from(BinanceTradeMessage tradeMessage) {
         return new RealtimeTradeResponseDto(
-            tradeData.price(),
-            tradeData.symbol(),
-            tradeData.timestamp(),
-            tradeData.volume()
+            Double.parseDouble(tradeMessage.getPrice()),
+            tradeMessage.getSymbol(),
+            tradeMessage.getTradeTime(),
+            Double.parseDouble(tradeMessage.getQuantity())
         );
     }
 }

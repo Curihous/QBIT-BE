@@ -143,7 +143,6 @@ jobs:
             -e STOCK_SYNC_ON="${{ secrets.STOCK_SYNC_ON }}" \
             -e STOCK_SYNC_US_EQUITY="${{ secrets.STOCK_SYNC_US_EQUITY }}" \
             -e STOCK_SYNC_CRYPTO="${{ secrets.STOCK_SYNC_CRYPTO }}" \
-            -e FINNHUB_API_KEY="${{ secrets.FINNHUB_API_KEY }}" \
             -e INFO_APP_VERSION="${{ github.sha }}" \
             ${{ secrets.DOCKER_REPO }}:${{ github.sha }}
 
@@ -170,7 +169,6 @@ jobs:
             -p 8081:8081 \
             -e SPRING_PROFILES_ACTIVE=prod \
             -e REALTIME_SERVER_PORT_PROD=8081 \
-            -e FINNHUB_API_KEY="${{ secrets.FINNHUB_API_KEY }}" \
             -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
             -e DATABASE_USERNAME_PROD="${{ secrets.DATABASE_USERNAME_PROD }}" \
             -e DATABASE_PASSWORD_PROD="${{ secrets.DATABASE_PASSWORD_PROD }}" \
