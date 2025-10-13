@@ -6,8 +6,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 /**
  * 주문 수정 응답 DTO
  * 
- * 사용 API:
- * - PATCH /trading/orders/{orderId}
+ * QBIT API: PATCH /trading/orders/{orderId}
  */
 public record OrderUpdateResponseDto(
     @Schema(description = "Alpaca 주문 ID")
@@ -17,10 +16,10 @@ public record OrderUpdateResponseDto(
     String symbol,
     
     @Schema(description = "주문 수량")
-    String qty,
+    String quantity,
     
     @Schema(description = "체결 수량")
-    String filledQty,
+    String filledQuantity,
     
     @Schema(description = "매수/매도")
     String side,
@@ -71,8 +70,8 @@ public record OrderUpdateResponseDto(
         return new OrderUpdateResponseDto(
             result.alpacaOrderId(),
             result.symbol(),
-            result.qty(),
-            result.filledQty(),
+            result.quantity(),
+            result.filledQuantity(),
             result.side(),
             result.type(),
             result.timeInForce(),

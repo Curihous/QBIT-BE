@@ -55,8 +55,8 @@ public interface TradingPort {
     record OrderUpdateResult(
         String alpacaOrderId,        // Alpaca 주문 ID
         String symbol,               // 종목 심볼
-        String qty,                  // 수량
-        String filledQty,            // 체결된 수량
+        String quantity,              // 수량
+        String filledQuantity,       // 체결된 수량
         String side,                 // 매수/매도
         String type,                 // 주문 유형
         String timeInForce,          // 주문 유효기간
@@ -76,7 +76,7 @@ public interface TradingPort {
     
     record PositionInfo(
         String symbol,               // 종목 심볼
-        String qty,                  // 보유 수량
+        String quantity,             // 보유 수량
         String avgEntryPrice,        // 평균 매수가
         String marketValue,          // 시장 가치
         String costBasis,            // 원가 기준

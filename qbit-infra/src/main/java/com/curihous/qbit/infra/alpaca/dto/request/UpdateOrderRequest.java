@@ -15,7 +15,7 @@ import java.math.BigDecimal;
 public record UpdateOrderRequest(
     @Schema(description = "수정할 주문 수량 (기존과 다른 값)", example = "15.25")
     @JsonProperty("qty")
-    BigDecimal qty,
+    BigDecimal quantity,
 
     @Schema(description = "수정할 주문 유효기간 (day: 당일, gtc: 체결될 때까지, ioc: 즉시 체결 또는 취소, fok: 전량 체결 또는 취소)", example = "gtc")
     @JsonProperty("time_in_force")

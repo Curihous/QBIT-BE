@@ -124,7 +124,7 @@ public class AlpacaOrderRequestService implements TradingPort {
             return positions.stream()
                     .map(pos -> new TradingPort.PositionInfo(
                             pos.symbol(),
-                            pos.qty(),
+                            pos.quantity(),
                             pos.avgEntryPrice(),
                             pos.marketValue(),
                             pos.costBasis(),
@@ -263,8 +263,8 @@ public class AlpacaOrderRequestService implements TradingPort {
         return OrderRequest.builder()
                 .alpacaOrderId(response.id())
                 .symbol(response.symbol())
-                .quantity(parseBigDecimal(response.qty()))
-                .filledQuantity(parseBigDecimal(response.filledQty()))
+                .quantity(parseBigDecimal(response.quantity()))
+                .filledQuantity(parseBigDecimal(response.filledQuantity()))
                 .side(OrderSide.valueOf(response.side().toUpperCase()))
                 .type(convertOrderType(response.type()))
                 .timeInForce(TimeInForce.valueOf(response.timeInForce().toUpperCase()))
@@ -337,8 +337,8 @@ public class AlpacaOrderRequestService implements TradingPort {
         return new OrderUpdateResult(
             response.id(),
             response.symbol(),
-            response.qty(),
-            response.filledQty(),
+            response.quantity(),
+            response.filledQuantity(),
             response.side(),
             response.type(),
             response.timeInForce(),
@@ -359,16 +359,16 @@ public class AlpacaOrderRequestService implements TradingPort {
     
     // Command (String)를 Infra DTO (BigDecimal)로 변환하는 헬퍼 메서드
     private CreateOrderRequest createInfraRequest(CreateOrderCommand command) {
-        BigDecimal qty = parseBigDecimal(command.quantity());
+        BigDecimal quantity = parseBigDecimal(command.quantity());
         BigDecimal limitPrice = parseBigDecimal(command.limitPrice());
         BigDecimal stopPrice = parseBigDecimal(command.stopPrice());
         
         // 주문 타입에 따라 Factory 메서드 사용
         CreateOrderRequest request = switch (command.type()) {
-            case "market" -> CreateOrderRequest.market(command.symbol(), command.assetClass(), qty, command.side());
-            case "limit" -> CreateOrderRequest.limit(command.symbol(), command.assetClass(), qty, command.side(), limitPrice);
-            case "stop" -> CreateOrderRequest.stop(command.symbol(), command.assetClass(), qty, command.side(), stopPrice);
-            case "stop_limit" -> CreateOrderRequest.stopLimit(command.symbol(), command.assetClass(), qty, command.side(), stopPrice, limitPrice);
+            case "market" -> CreateOrderRequest.market(command.symbol(), command.assetClass(), quantity, command.side());
+            case "limit" -> CreateOrderRequest.limit(command.symbol(), command.assetClass(), quantity, command.side(), limitPrice);
+            case "stop" -> CreateOrderRequest.stop(command.symbol(), command.assetClass(), quantity, command.side(), stopPrice);
+            case "stop_limit" -> CreateOrderRequest.stopLimit(command.symbol(), command.assetClass(), quantity, command.side(), stopPrice, limitPrice);
             default -> throw new QbitException(ErrorCode.INVALID_ORDER_TYPE, "지원하지 않는 주문 유형입니다: " + command.type());
         };
         
