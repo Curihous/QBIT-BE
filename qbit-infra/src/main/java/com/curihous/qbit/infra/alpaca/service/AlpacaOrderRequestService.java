@@ -17,6 +17,9 @@ import com.curihous.qbit.domain.stock.port.StockPort;
 import com.curihous.qbit.domain.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -64,11 +67,11 @@ public class AlpacaOrderRequestService implements TradingPort {
         return orderRequestRepository.save(orderRequest);
     }
 
-    // 내 주문 목록 조회
+    // 내 주문 목록 조회 
     @Override
     @Transactional(readOnly = true)
-    public List<OrderRequest> getMyOrders(User user) {
-        return orderRequestRepository.findByUserOrderByAlpacaCreatedAtDesc(user); // 결과 없으면 빈 리스트 반환
+    public Page<OrderRequest> getMyOrders(User user, Pageable pageable) {
+        return orderRequestRepository.findByUser(user, pageable);
     }
 
     // 주문 상세 조회
@@ -114,14 +117,14 @@ public class AlpacaOrderRequestService implements TradingPort {
     // 포지션 조회
     @Override
     @Transactional(readOnly = true)
-    public List<TradingPort.PositionInfo> getPositions(User user) {
+    public Page<TradingPort.PositionInfo> getPositions(User user, Pageable pageable) {
         // 사용자의 활성화된 Alpaca 연결 조회
         AlpacaOAuthConnection connection = alpacaOAuthConnectionService.getValidConnection(user.getId());
         String authorization = "Bearer " + connection.getAccessToken();
         
         try {
             var positions = alpacaTradingPort.getPositions(authorization);
-            return positions.stream()
+            List<TradingPort.PositionInfo> positionInfoList = positions.stream()
                     .map(pos -> new TradingPort.PositionInfo(
                             pos.symbol(),
                             pos.quantity(),
@@ -134,6 +137,13 @@ public class AlpacaOrderRequestService implements TradingPort {
                             pos.side()
                     ))
                     .toList();
+            
+            // 페이징 처리
+            int start = (int) pageable.getOffset();
+            int end = Math.min((start + pageable.getPageSize()), positionInfoList.size());
+            
+            List<TradingPort.PositionInfo> pagedPositions = positionInfoList.subList(start, end);
+            return new PageImpl<>(pagedPositions, pageable, positionInfoList.size());
         } catch (Exception e) {
             log.error("Alpaca 포지션 조회 실패: {}", e.getMessage(), e);
             throw new QbitException(ErrorCode.EXTERNAL_API_ERROR, "포지션 조회에 실패했습니다: " + e.getMessage());

@@ -5,6 +5,7 @@ import com.curihous.qbit.api.domain.trading.dto.request.UpdateOrderRequestDto;
 import com.curihous.qbit.api.domain.trading.dto.response.OrderCreatedResponseDto;
 import com.curihous.qbit.api.domain.trading.dto.response.OrderDetailResponseDto;
 import com.curihous.qbit.api.domain.trading.dto.response.OrderUpdateResponseDto;
+import com.curihous.qbit.common.dto.PaginatedResponseDto;
 import com.curihous.qbit.common.exception.ErrorCode;
 import com.curihous.qbit.common.exception.QbitException;
 import com.curihous.qbit.domain.order.entity.OrderRequest;
@@ -14,17 +15,19 @@ import com.curihous.qbit.domain.stock.port.StockPort;
 import com.curihous.qbit.domain.user.entity.User;
 import com.curihous.qbit.infra.security.facade.UserSecurityFacade;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Tag(name = "Trading", description = "모의 주식 거래 관련 API입니다.")
@@ -91,14 +94,16 @@ public class TradingController {
         return ResponseEntity.ok(OrderUpdateResponseDto.from(result));
     }
 
-    @Operation(summary = "내 주문 목록 조회", description = "사용자의 모든 주문 내역을 조회합니다.")
+    @Operation(summary = "내 주문 목록 조회", description = "사용자의 모든 주문 내역을 조회합니다. (페이징 지원, 최신순 정렬)")
     @GetMapping("/orders")
-    public ResponseEntity<List<OrderDetailResponseDto>> getMyOrders() {
+    public ResponseEntity<PaginatedResponseDto<OrderDetailResponseDto>> getMyOrders(
+            @Parameter(description = "페이지 번호 (0부터 시작)", example = "0")
+            @PageableDefault(size = 20, sort = "alpacaCreatedAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable
+    ) {
         User user = userSecurityFacade.getCurrentUser();
-        List<OrderRequest> orders = tradingPort.getMyOrders(user); // TODO: 페이징 처리
-        List<OrderDetailResponseDto> response = orders.stream()
-                .map(OrderDetailResponseDto::from)
-                .collect(Collectors.toList());
+        Page<OrderRequest> ordersPage = tradingPort.getMyOrders(user, pageable);
+        Page<OrderDetailResponseDto> responsePage = ordersPage.map(OrderDetailResponseDto::from);
+        PaginatedResponseDto<OrderDetailResponseDto> response = PaginatedResponseDto.from(responsePage);
         return ResponseEntity.ok(response);
     }
 

@@ -2,6 +2,8 @@ package com.curihous.qbit.domain.order.port;
 
 import com.curihous.qbit.domain.order.entity.OrderRequest;
 import com.curihous.qbit.domain.user.entity.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
@@ -17,8 +19,8 @@ public interface TradingPort {
     // 주문 수정
     OrderUpdateResult updateOrder(User user, Long orderId, UpdateOrderCommand request);
     
-    // 내 주문 목록 조회
-    List<OrderRequest> getMyOrders(User user);
+    // 내 주문 목록 조회 
+    Page<OrderRequest> getMyOrders(User user, Pageable pageable);
     
     // 특정 주문 조회
     OrderRequest getOrder(User user, Long orderId);
@@ -26,8 +28,8 @@ public interface TradingPort {
     // 주문 취소
     void cancelOrder(User user, Long orderId);
     
-    // 포지션(보유 주식) 목록 조회
-    List<PositionInfo> getPositions(User user);
+    // 포지션(보유 주식) 목록 조회 
+    Page<PositionInfo> getPositions(User user, Pageable pageable);
     
     // 계정 정보 조회
     AccountInfo getAccountInfo(User user);
