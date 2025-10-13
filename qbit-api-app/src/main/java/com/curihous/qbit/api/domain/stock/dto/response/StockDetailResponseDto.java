@@ -6,8 +6,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 /**
  * 종목 상세 조회 응답 DTO
  * 
- * 사용 API:
- * - GET /stocks/{symbol}
+ * QBIT API: GET /stocks/{symbol}
  */
 @Schema(description = "종목 상세 조회 응답")
 public record StockDetailResponseDto(

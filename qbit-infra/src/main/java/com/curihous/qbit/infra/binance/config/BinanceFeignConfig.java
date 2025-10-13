@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit;
 public class BinanceFeignConfig {
 
     // Feign 로깅 레벨 설정
-    @Bean
+    @Bean("binanceFeignLoggerLevel")
     public Logger.Level feignLoggerLevel() {
         return Logger.Level.BASIC;
     }

@@ -9,8 +9,7 @@ import java.time.LocalDateTime;
 /**
  * 해외 주요 지수 상세 DTO
  * 
- * 사용 API:
- * - GET /indices/{symbol}
+ * QBIT API: GET /indices/{symbol}
  */
 @Schema(description = "해외 주요 지수 상세 정보")
 public record MarketIndexResponseDto(

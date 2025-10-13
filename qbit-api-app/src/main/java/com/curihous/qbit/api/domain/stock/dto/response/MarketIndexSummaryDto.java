@@ -8,8 +8,7 @@ import java.math.BigDecimal;
 /**
  * 해외 주요 지수 요약 DTO
  * 
- * 사용 API:
- * - GET /indices
+ * QBIT API: GET /indices
  */
 @Schema(description = "해외 주요 지수 요약 정보 (홈 화면용)")
 public record MarketIndexSummaryDto(
