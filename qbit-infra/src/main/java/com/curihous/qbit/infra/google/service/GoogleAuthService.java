@@ -58,6 +58,13 @@ public class GoogleAuthService {
                 throw new QbitException(ErrorCode.OAUTH2_LOGIN_FAILED);
             }
             
+            // 이메일 검증 상태 확인
+            Boolean emailVerified = payload.getEmailVerified();
+            if (emailVerified == null || !emailVerified) {
+                log.error("구글 사용자 이메일이 검증되지 않았습니다.");
+                throw new QbitException(ErrorCode.OAUTH2_LOGIN_FAILED);
+            }
+            
             if (name == null || name.isEmpty()) {
                 log.error("구글 사용자 정보에서 이름이 없습니다.");
                 throw new QbitException(ErrorCode.OAUTH2_LOGIN_FAILED);
