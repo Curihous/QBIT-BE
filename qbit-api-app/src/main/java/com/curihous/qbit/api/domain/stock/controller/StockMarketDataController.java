@@ -81,7 +81,7 @@ public class StockMarketDataController {
 
     @Operation(
         summary = "암호화폐 호가창 조회", 
-        description = "암호화폐의 실시간 매수/매도 호가 정보를 조회합니다."
+        description = "암호화폐의 매수/매도 호가 정보를 조회합니다.(일회성 조회, 사용자가 페이지 로딩 후 즉시 데이터 확인용)"
     )
     @GetMapping("/orderbook/{symbol}")
     public ResponseEntity<OrderBookResponseDto> getCryptoOrderBook(
