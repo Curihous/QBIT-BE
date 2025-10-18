@@ -72,6 +72,14 @@ public class BinanceWebSocketManager implements WebSocketHandler {
         this.webSocketClient = webSocketClient;
         log.info("Binance WebSocket 매니저 초기화 완료 (depth levels={}, speed={})", DEPTH_LEVELS, DEPTH_UPDATE_SPEED);
     }
+    
+    // 심볼 정규화 (대소문자 일관성 보장)
+    private String normalizeSymbol(String symbol) {
+        if (symbol == null) {
+            return null;
+        }
+        return symbol.toUpperCase(java.util.Locale.ROOT);
+    }
 
     // 특정 심볼의 체결 데이터에 대한 Binance WebSocket 연결
     private void connectToTradeStream(String symbol) {
@@ -169,62 +177,66 @@ public class BinanceWebSocketManager implements WebSocketHandler {
 
     // 종목 실시간 체결 데이터 subscribe
     public void subscribeToTrade(String symbol, WebSocketSession clientSession) {
-        tradeSubscribers.computeIfAbsent(symbol, k -> new CopyOnWriteArraySet<>()).add(clientSession);
+        String normalizedSymbol = normalizeSymbol(symbol);
+        tradeSubscribers.computeIfAbsent(normalizedSymbol, k -> new CopyOnWriteArraySet<>()).add(clientSession);
         
         // 첫 번째 구독자라면 Binance WebSocket 연결
-        if (tradeSubscribers.get(symbol).size() == 1) {
-            connectToTradeStream(symbol);
+        if (tradeSubscribers.get(normalizedSymbol).size() == 1) {
+            connectToTradeStream(normalizedSymbol);
         }
         
-        log.info("체결 데이터 subscribe 추가: symbol={}, subscribers={}", symbol, 
-                tradeSubscribers.get(symbol).size());
+        log.info("체결 데이터 subscribe 추가: symbol={}, subscribers={}", normalizedSymbol, 
+                tradeSubscribers.get(normalizedSymbol).size());
     }
 
     // 종목 실시간 호가창 데이터 subscribe
     public void subscribeToDepth(String symbol, WebSocketSession clientSession) {
-        depthSubscribers.computeIfAbsent(symbol, k -> new CopyOnWriteArraySet<>()).add(clientSession);
+        String normalizedSymbol = normalizeSymbol(symbol);
+        depthSubscribers.computeIfAbsent(normalizedSymbol, k -> new CopyOnWriteArraySet<>()).add(clientSession);
         
         // 첫 번째 구독자라면 Binance WebSocket 연결
-        if (depthSubscribers.get(symbol).size() == 1) {
-            connectToDepthStream(symbol);
+        if (depthSubscribers.get(normalizedSymbol).size() == 1) {
+            connectToDepthStream(normalizedSymbol);
         }
         
-        log.info("호가창 데이터 subscribe 추가: symbol={}, subscribers={}", symbol, 
-                depthSubscribers.get(symbol).size());
+        log.info("호가창 데이터 subscribe 추가: symbol={}, subscribers={}", normalizedSymbol, 
+                depthSubscribers.get(normalizedSymbol).size());
     }
 
     // 종목 체결 데이터 subscribe 해제
     public void unsubscribeFromTrade(String symbol, WebSocketSession clientSession) {
-        CopyOnWriteArraySet<WebSocketSession> subscribers = tradeSubscribers.get(symbol);
+        String normalizedSymbol = normalizeSymbol(symbol);
+        CopyOnWriteArraySet<WebSocketSession> subscribers = tradeSubscribers.get(normalizedSymbol);
         if (subscribers != null) {
             subscribers.remove(clientSession);
             
             // 마지막 subscriber가 해제되면 Binance 연결도 해제
             if (subscribers.isEmpty()) {
-                disconnectFromTradeStream(symbol);
-                tradeSubscribers.remove(symbol);
+                disconnectFromTradeStream(normalizedSymbol);
+                tradeSubscribers.remove(normalizedSymbol);
             }
         }
         
-        log.info("체결 데이터 subscribe 해제: symbol={}, subscribers={}", symbol, 
-                tradeSubscribers.get(symbol) != null ? tradeSubscribers.get(symbol).size() : 0);
+        log.info("체결 데이터 subscribe 해제: symbol={}, subscribers={}", normalizedSymbol, 
+                tradeSubscribers.get(normalizedSymbol) != null ? tradeSubscribers.get(normalizedSymbol).size() : 0);
     }
 
     // 종목 호가창 데이터 subscribe 해제
     public void unsubscribeFromDepth(String symbol, WebSocketSession clientSession) {
-        CopyOnWriteArraySet<WebSocketSession> subscribers = depthSubscribers.get(symbol);
+        String normalizedSymbol = normalizeSymbol(symbol);
+        CopyOnWriteArraySet<WebSocketSession> subscribers = depthSubscribers.get(normalizedSymbol);
         if (subscribers != null) {
             subscribers.remove(clientSession);
             
             // 마지막 subscriber가 해제되면 Binance 연결도 해제
             if (subscribers.isEmpty()) {
-                disconnectFromDepthStream(symbol);
-                depthSubscribers.remove(symbol);
+                disconnectFromDepthStream(normalizedSymbol);
+                depthSubscribers.remove(normalizedSymbol);
             }
         }
         
-        log.info("호가창 데이터 subscribe 해제: symbol={}, subscribers={}", symbol, 
-                depthSubscribers.get(symbol) != null ? depthSubscribers.get(symbol).size() : 0);
+        log.info("호가창 데이터 subscribe 해제: symbol={}, subscribers={}", normalizedSymbol, 
+                depthSubscribers.get(normalizedSymbol) != null ? depthSubscribers.get(normalizedSymbol).size() : 0);
     }
 
     // 특정 심볼의 체결 스트림 연결 해제
@@ -302,7 +314,8 @@ public class BinanceWebSocketManager implements WebSocketHandler {
 
     // 특정 종목의 체결 데이터를 subscribers에게 브로드캐스트
     private void broadcastTradeData(String symbol, BinanceTradeMessage tradeMessage) {
-        CopyOnWriteArraySet<WebSocketSession> subscribers = tradeSubscribers.get(symbol);
+        String normalizedSymbol = normalizeSymbol(symbol);
+        CopyOnWriteArraySet<WebSocketSession> subscribers = tradeSubscribers.get(normalizedSymbol);
         if (subscribers == null || subscribers.isEmpty()) {
             return;
         }
@@ -339,27 +352,28 @@ public class BinanceWebSocketManager implements WebSocketHandler {
             // 정리된 세션 로깅
             if (removedCount > 0) {
                 log.info("닫힌 세션 정리: symbol={}, removed={}, remaining={}", 
-                        symbol, removedCount, subscribers.size());
+                        normalizedSymbol, removedCount, subscribers.size());
             }
             
             log.debug("체결 데이터 브로드캐스트: symbol={}, active_subscribers={}", 
-                    symbol, subscribers.size());
+                    normalizedSymbol, subscribers.size());
                     
         } catch (Exception e) {
-            log.error("체결 데이터 브로드캐스트 실패: symbol={}, error={}", symbol, e.getMessage());
+            log.error("체결 데이터 브로드캐스트 실패: symbol={}, error={}", normalizedSymbol, e.getMessage());
         }
     }
     
     // 특정 종목의 호가창 데이터를 subscribers에게 브로드캐스트
     private void broadcastDepthData(String symbol, com.curihous.qbit.infra.binance.dto.websocket.BinanceDepthMessage depthMessage) {
-        CopyOnWriteArraySet<WebSocketSession> subscribers = depthSubscribers.get(symbol);
+        String normalizedSymbol = normalizeSymbol(symbol);
+        CopyOnWriteArraySet<WebSocketSession> subscribers = depthSubscribers.get(normalizedSymbol);
         if (subscribers == null || subscribers.isEmpty()) {
             return;
         }
         
         try {
             com.curihous.qbit.realtime.dto.RealtimeDepthResponseDto responseDto = 
-                com.curihous.qbit.realtime.dto.RealtimeDepthResponseDto.from(symbol, depthMessage);
+                com.curihous.qbit.realtime.dto.RealtimeDepthResponseDto.from(normalizedSymbol, depthMessage);
             String broadcastMessage = objectMapper.writeValueAsString(responseDto);
             int removedCount = 0;
             
@@ -391,14 +405,14 @@ public class BinanceWebSocketManager implements WebSocketHandler {
             // 정리된 세션 로깅
             if (removedCount > 0) {
                 log.info("닫힌 세션 정리: symbol={}, removed={}, remaining={}", 
-                        symbol, removedCount, subscribers.size());
+                        normalizedSymbol, removedCount, subscribers.size());
             }
             
             log.debug("호가창 데이터 브로드캐스트: symbol={}, active_subscribers={}", 
-                    symbol, subscribers.size());
+                    normalizedSymbol, subscribers.size());
                     
         } catch (Exception e) {
-            log.error("호가창 데이터 브로드캐스트 실패: symbol={}, error={}", symbol, e.getMessage());
+            log.error("호가창 데이터 브로드캐스트 실패: symbol={}, error={}", normalizedSymbol, e.getMessage());
         }
     }
 

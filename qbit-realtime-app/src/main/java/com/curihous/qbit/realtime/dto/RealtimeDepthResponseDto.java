@@ -3,6 +3,9 @@ package com.curihous.qbit.realtime.dto;
 import com.curihous.qbit.infra.binance.dto.websocket.BinanceDepthMessage;
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import java.math.BigDecimal;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -34,33 +37,48 @@ public record RealtimeDepthResponseDto(
     @Schema(description = "호가창 레벨")
     public record OrderBookLevel(
         @Schema(description = "가격", example = "43250.50")
-        Double price,
+        BigDecimal price,
         
         @Schema(description = "수량", example = "1.5")
-        Double quantity
+        BigDecimal quantity
     ) {
         
         public static OrderBookLevel from(java.util.List<String> priceQuantity) {
             if (priceQuantity == null || priceQuantity.size() < 2) {
                 return null;
             }
-            return new OrderBookLevel(
-                Double.parseDouble(priceQuantity.get(0)), // 가격
-                Double.parseDouble(priceQuantity.get(1))  // 수량
-            );
+            try {
+                return new OrderBookLevel(
+                    new BigDecimal(priceQuantity.get(0)), // 가격
+                    new BigDecimal(priceQuantity.get(1))  // 수량
+                );
+            } catch (NumberFormatException ex) {
+                return null;
+            }
         }
     }
     
     public static RealtimeDepthResponseDto from(String symbol, BinanceDepthMessage depthMessage) {
-        List<OrderBookLevel> bids = depthMessage.getBids().stream()
+        // null-safety: null인 경우 빈 리스트로 처리
+        List<OrderBookLevel> bids = (depthMessage.getBids() == null 
+            ? Collections.<java.util.List<String>>emptyList() 
+            : depthMessage.getBids())
+            .stream()
             .map(OrderBookLevel::from)
             .filter(level -> level != null)
             .collect(Collectors.toList());
         
-        List<OrderBookLevel> asks = depthMessage.getAsks().stream()
+        List<OrderBookLevel> asks = (depthMessage.getAsks() == null 
+            ? Collections.<java.util.List<String>>emptyList() 
+            : depthMessage.getAsks())
+            .stream()
             .map(OrderBookLevel::from)
             .filter(level -> level != null)
             .collect(Collectors.toList());
+        
+        // 정렬 보장: 매수 내림차순(가격 높은 순), 매도 오름차순(가격 낮은 순)
+        bids.sort(Comparator.comparing(OrderBookLevel::price).reversed());
+        asks.sort(Comparator.comparing(OrderBookLevel::price));
         
         return new RealtimeDepthResponseDto(
             symbol,
