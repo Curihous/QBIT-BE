@@ -65,6 +65,11 @@ jwt:
 encryption:
   secret-key: ${ENCRYPTION_SECRET_KEY}
 
+# Google OAuth2 설정
+oauth2:
+  google:
+    client-id: ${GOOGLE_OAUTH_CLIENT_ID}
+
 # Alpaca OAuth 설정
 alpaca:
   oauth:
