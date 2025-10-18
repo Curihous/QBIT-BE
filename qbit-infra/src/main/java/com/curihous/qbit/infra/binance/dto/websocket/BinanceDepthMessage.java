@@ -17,9 +17,11 @@ public class BinanceDepthMessage {
     @JsonProperty("lastUpdateId")
     private Long lastUpdateId;
     
+    @JsonProperty("E")
+    private Long eventTime;
+    
     @JsonProperty("bids")
     private List<List<String>> bids;
-    
 
     @JsonProperty("asks")
     private List<List<String>> asks;
