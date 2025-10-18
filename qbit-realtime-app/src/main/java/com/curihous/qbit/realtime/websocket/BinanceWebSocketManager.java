@@ -118,10 +118,9 @@ public class BinanceWebSocketManager implements WebSocketHandler {
                     attempt, maxAttempts, symbol, streamType, url);
                 
                 // 타임아웃 설정 (10초)
-                java.util.concurrent.Future<WebSocketSession> future = 
-                    webSocketClient.doHandshake(this, headers, URI.create(url));
-                
-                WebSocketSession session = future.get(10, java.util.concurrent.TimeUnit.SECONDS);
+                WebSocketSession session = webSocketClient
+                    .execute(this, headers, URI.create(url))
+                    .get(10, java.util.concurrent.TimeUnit.SECONDS);
                 
                 // 스트림 타입에 따라 적절한 맵에 저장
                 if (streamType == StreamType.TRADE) {
@@ -419,42 +418,44 @@ public class BinanceWebSocketManager implements WebSocketHandler {
     @Override
     public void handleTransportError(WebSocketSession session, Throwable exception) {
         log.error("WebSocket 전송 오류: {}", exception.getMessage());
-        
-        // 세션 정보 가져오기
-        StreamInfo info = sessionToInfo.get(session);
-        if (info != null) {
-            log.info("Binance WebSocket 재연결 시도: symbol={}, type={}", info.symbol(), info.type());
-            
-            // 기존 세션 제거
-            sessionToInfo.remove(session);
-            if (info.type() == StreamType.TRADE) {
-                tradeSessions.remove(info.symbol());
-                connectToTradeStream(info.symbol());
-            } else {
-                depthSessions.remove(info.symbol());
-                connectToDepthStream(info.symbol());
-            }
-        }
+        handleDisconnectionAndReconnect(session);
     }
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus closeStatus) {
         log.info("WebSocket 연결 종료: {}, status={}", session.getId(), closeStatus);
-        
-        // 세션 정보 가져오기
+        handleDisconnectionAndReconnect(session);
+    }
+    
+    // 연결 해제 및 재연결 처리
+    private void handleDisconnectionAndReconnect(WebSocketSession session) {
         StreamInfo info = sessionToInfo.get(session);
-        if (info != null) {
-            log.info("Binance WebSocket 재연결 시도: symbol={}, type={}", info.symbol(), info.type());
-            
-            // 기존 세션 제거
-            sessionToInfo.remove(session);
-            if (info.type() == StreamType.TRADE) {
-                tradeSessions.remove(info.symbol());
+        if (info == null) {
+            return;
+        }
+        
+        // 기존 세션 제거
+        sessionToInfo.remove(session);
+        
+        boolean isTrade = info.type() == StreamType.TRADE;
+        Map<String, WebSocketSession> sessions = isTrade ? tradeSessions : depthSessions;
+        Map<String, CopyOnWriteArraySet<WebSocketSession>> subscribers = isTrade ? tradeSubscribers : depthSubscribers;
+        String streamTypeName = isTrade ? "체결" : "호가창";
+        
+        sessions.remove(info.symbol());
+        
+        // 구독자가 있을 때만 재연결
+        CopyOnWriteArraySet<WebSocketSession> activeSubscribers = subscribers.get(info.symbol());
+        if (activeSubscribers != null && !activeSubscribers.isEmpty()) {
+            log.info("Binance {} 스트림 재연결 시도: symbol={}, subscribers={}", 
+                streamTypeName, info.symbol(), activeSubscribers.size());
+            if (isTrade) {
                 connectToTradeStream(info.symbol());
             } else {
-                depthSessions.remove(info.symbol());
                 connectToDepthStream(info.symbol());
             }
+        } else {
+            log.info("구독자가 없어 재연결하지 않음: symbol={}, type={}", info.symbol(), info.type());
         }
     }
 

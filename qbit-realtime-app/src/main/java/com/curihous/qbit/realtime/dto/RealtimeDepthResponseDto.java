@@ -80,12 +80,17 @@ public record RealtimeDepthResponseDto(
         bids.sort(Comparator.comparing(OrderBookLevel::price).reversed());
         asks.sort(Comparator.comparing(OrderBookLevel::price));
         
+        // eventTime을 우선적으로 사용, null이면 현재 시간으로 fallback
+        Long timestamp = depthMessage.getEventTime() != null 
+            ? depthMessage.getEventTime() 
+            : System.currentTimeMillis();
+        
         return new RealtimeDepthResponseDto(
             symbol,
             depthMessage.getLastUpdateId(),
             bids,
             asks,
-            System.currentTimeMillis()
+            timestamp
         );
     }
 }
