@@ -16,7 +16,6 @@ public record StockSearchResponseDto(
     
     @Schema(description = "종목명", example = "Apple Inc.")
     String name,
-
     
     @Schema(description = "자산 클래스", example = "us_equity", allowableValues = {"us_equity", "crypto"})
     String assetClass,

@@ -1,5 +1,5 @@
 dependencies {
-    // Common Module
+    // Module
     implementation project(':qbit-common')
     
     // Spring Boot

@@ -1,6 +1,7 @@
 package com.curihous.qbit.api.domain.stock.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -25,10 +26,10 @@ public record OrderBookResponseDto(
     @Schema(description = "호가 레벨")
     public record OrderBookLevel(
         @Schema(description = "가격", example = "27123.5")
-        String price,
+        BigDecimal price,
         
         @Schema(description = "수량", example = "0.002")
-        String quantity
+        BigDecimal quantity
     ) {}
     
     public static OrderBookResponseDto of(String symbol, List<OrderBookLevel> asks, 

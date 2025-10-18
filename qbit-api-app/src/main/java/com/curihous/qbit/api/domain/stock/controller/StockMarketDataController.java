@@ -4,6 +4,9 @@ import com.curihous.qbit.api.domain.stock.dto.response.QuoteResponseDto;
 import com.curihous.qbit.api.domain.stock.dto.response.CandleResponseDto;
 import com.curihous.qbit.api.domain.stock.dto.response.OrderBookResponseDto;
 import com.curihous.qbit.infra.binance.service.BinanceMarketService;
+import java.math.BigDecimal;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -81,7 +84,7 @@ public class StockMarketDataController {
 
     @Operation(
         summary = "암호화폐 호가창 조회", 
-        description = "암호화폐의 실시간 매수/매도 호가 정보를 조회합니다."
+        description = "암호화폐의 매수/매도 호가 정보를 조회합니다.(일회성 조회, 사용자가 페이지 로딩 후 즉시 데이터 확인용)"
     )
     @GetMapping("/orderbook/{symbol}")
     public ResponseEntity<OrderBookResponseDto> getCryptoOrderBook(
@@ -90,15 +93,47 @@ public class StockMarketDataController {
     ) {
         var binanceOrderBook = binanceMarketService.getOrderBook(symbol);
         
-        List<OrderBookResponseDto.OrderBookLevel> asks = binanceOrderBook.getAsks().stream()
-            .map(ask -> new OrderBookResponseDto.OrderBookLevel(ask.get(0), ask.get(1)))
-            .toList();
-            
-        List<OrderBookResponseDto.OrderBookLevel> bids = binanceOrderBook.getBids().stream()
-            .map(bid -> new OrderBookResponseDto.OrderBookLevel(bid.get(0), bid.get(1)))
+        // 매도 호가 (가격 낮은 순)
+        List<OrderBookResponseDto.OrderBookLevel> asks = convertToOrderBookLevels(binanceOrderBook.getAsks())
+            .stream()
+            .sorted(Comparator.comparing(OrderBookResponseDto.OrderBookLevel::price))
             .toList();
         
-        OrderBookResponseDto orderBook = OrderBookResponseDto.of(symbol, asks, bids, binanceOrderBook.getLastUpdateId());
-        return ResponseEntity.ok(orderBook);
+        // 매수 호가 (가격 높은 순)
+        List<OrderBookResponseDto.OrderBookLevel> bids = convertToOrderBookLevels(binanceOrderBook.getBids())
+            .stream()
+            .sorted(Comparator.comparing(OrderBookResponseDto.OrderBookLevel::price).reversed())
+            .toList();
+        
+        return ResponseEntity.ok(OrderBookResponseDto.of(symbol, asks, bids, binanceOrderBook.getLastUpdateId()));
+    }
+
+    
+    // =======================================================
+    // 호가 변환 헬퍼 메서드
+    // =======================================================
+    private List<OrderBookResponseDto.OrderBookLevel> convertToOrderBookLevels(List<List<String>> rawLevels) {
+        if (rawLevels == null) {
+            return Collections.emptyList();
+        }
+        
+        return rawLevels.stream()
+            .map(this::convertToOrderBookLevel)
+            .filter(level -> level != null)
+            .toList();
+    }
+    
+    private OrderBookResponseDto.OrderBookLevel convertToOrderBookLevel(List<String> level) {
+        try {
+            if (level == null || level.size() < 2) {
+                return null;
+            }
+            return new OrderBookResponseDto.OrderBookLevel(
+                new BigDecimal(level.get(0)),
+                new BigDecimal(level.get(1))
+            );
+        } catch (NumberFormatException | IndexOutOfBoundsException e) {
+            return null;
+        }
     }
 }
