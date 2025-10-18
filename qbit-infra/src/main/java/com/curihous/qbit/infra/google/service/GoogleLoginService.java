@@ -39,7 +39,7 @@ public class GoogleLoginService {
         GoogleUserInfo googleUserInfo = googleAuthService.getUserInfo(googleIdToken);
         
         // 2. 신규 여부 확인 (저장 전 존재 여부 체크)
-        String email = googleUserInfo.getEmail();
+        String email = googleUserInfo.email();
         boolean isNewUser = userRepository.findByEmail(email).isEmpty();
         
         // 3. 사용자 저장 또는 조회
@@ -78,8 +78,8 @@ public class GoogleLoginService {
 
     // TODO: 사용자 개인정보를 담은 개발 로그 삭제
     private User getOrSaveGoogleUser(GoogleUserInfo googleUserInfo) {
-        String email = googleUserInfo.getEmail();
-        String nickname = googleUserInfo.getNickname();
+        String email = googleUserInfo.email();
+        String nickname = googleUserInfo.name();
         
         log.info("구글 사용자 정보 파싱 결과: email={}, nickname={}", email, nickname);
         
