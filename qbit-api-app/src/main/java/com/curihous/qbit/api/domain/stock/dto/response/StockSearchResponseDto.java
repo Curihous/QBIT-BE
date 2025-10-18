@@ -16,9 +16,10 @@ public record StockSearchResponseDto(
     
     @Schema(description = "종목명", example = "Apple Inc.")
     String name,
+
     
-    @Schema(description = "거래소", example = "NASDAQ")
-    String exchange,
+    @Schema(description = "자산 클래스", example = "us_equity", allowableValues = {"us_equity", "crypto"})
+    String assetClass,
     
     @Schema(description = "거래 가능 여부", example = "true")
     Boolean tradable,
@@ -31,7 +32,7 @@ public record StockSearchResponseDto(
         return new StockSearchResponseDto(
                 stock.getSymbol(),
                 stock.getStockName(),
-                stock.getExchange(),
+                stock.getAssetClass(),
                 stock.getTradable(),
                 stock.getLogoUrl()
         );
