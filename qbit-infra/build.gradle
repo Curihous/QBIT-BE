@@ -30,6 +30,10 @@ dependencies {
     // JSON
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     
+    // Google API Client Library
+    implementation 'com.google.api-client:google-api-client:2.2.0'
+    implementation 'com.google.auth:google-auth-library-oauth2-http:1.19.0'
+    
     // Lombok
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
