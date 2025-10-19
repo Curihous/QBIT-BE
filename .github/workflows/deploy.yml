@@ -167,12 +167,12 @@ jobs:
           docker run -d \
             --name qbit-realtime \
             --restart unless-stopped \
+            --network qbit-net \
             -p 8081:8081 \
             -e SPRING_PROFILES_ACTIVE=prod \
-            -e REALTIME_SERVER_PORT_PROD=8081 \
-            -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
-            -e DATABASE_USERNAME_PROD="${{ secrets.DATABASE_USERNAME_PROD }}" \
-            -e DATABASE_PASSWORD_PROD="${{ secrets.DATABASE_PASSWORD_PROD }}" \
+            -e REDIS_HOST_PROD=qbit-redis \
+            -e REDIS_PORT_PROD=6379 \
+            -e REDIS_PASSWORD_PROD="${{ secrets.REDIS_PASSWORD_PROD }}" \
             ${{ secrets.DOCKER_REPO_REALTIME }}:${{ github.sha }}
 
           # 3) 사용하지 않는 이미지 정리

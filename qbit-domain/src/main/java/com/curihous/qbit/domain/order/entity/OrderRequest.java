@@ -169,4 +169,36 @@ public class OrderRequest extends BaseTimeEntity {
         this.status = OrderStatus.CANCELED;
         this.canceledAt = OffsetDateTime.now();
     }
+    
+    // 주문 상태 업데이트 
+    public void updateStatus(OrderStatus newStatus) {
+        this.status = newStatus;
+    }
+    
+    // 체결 정보 업데이트 (부분 체결, 완전 체결)
+    public void updateFilledInfo(BigDecimal filledQty, BigDecimal filledAvgPrice, OffsetDateTime filledAt) {
+        this.filledQuantity = filledQty;
+        this.filledAvgPrice = filledAvgPrice;
+        
+        if (filledAt != null) {
+            this.filledAt = filledAt;
+        }
+        
+        // 체결 상태에 따라 상태 자동 업데이트
+        if (filledQty.compareTo(this.quantity) >= 0) {
+            this.status = OrderStatus.FILLED;
+        } else if (filledQty.compareTo(BigDecimal.ZERO) > 0) {
+            this.status = OrderStatus.PARTIALLY_FILLED;
+        }
+    }
+    
+    // 주문 거부 처리
+    public void markAsRejected() {
+        this.status = OrderStatus.REJECTED;
+    }
+    
+    // 주문 만료 처리
+    public void markAsExpired() {
+        this.status = OrderStatus.EXPIRED;
+    }
 }
