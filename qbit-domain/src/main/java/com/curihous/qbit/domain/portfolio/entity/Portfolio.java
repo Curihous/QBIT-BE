@@ -41,4 +41,15 @@ public class Portfolio extends BaseTimeEntity {
         this.user = user;
         this.stock = stock;
     }
+    
+    // 포트폴리오 업데이트 (매수/매도 시)
+    public void updateQuantityAndPrice(Integer newQuantity, BigDecimal newAveragePurchasePrice) {
+        this.quantity = newQuantity;
+        this.averagePurchasePrice = newAveragePurchasePrice;
+    }
+    
+    // 수량만 업데이트 (부분 매도 시)
+    public void updateQuantity(Integer newQuantity) {
+        this.quantity = newQuantity;
+    }
 }

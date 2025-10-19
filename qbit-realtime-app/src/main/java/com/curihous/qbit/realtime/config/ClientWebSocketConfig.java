@@ -8,6 +8,7 @@ import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
 
+// 프론트엔드와의 WebSocket 연결
 @Configuration
 @EnableWebSocket
 @RequiredArgsConstructor
