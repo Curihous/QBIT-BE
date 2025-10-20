@@ -35,8 +35,8 @@ public class RedisStreamsConfig {
                                         TradeUpdateConsumer tradeUpdateConsumer) {
         
         // Consumer Group 생성 (이미 있으면 무시)
-        try {
-            connectionFactory.getConnection().streamCommands()
+        try (var connection = connectionFactory.getConnection()) {
+            connection.streamCommands()
                     .xGroupCreate(STREAM_KEY.getBytes(), CONSUMER_GROUP, ReadOffset.from("0-0"), true);
             log.info("Redis Streams Consumer Group 생성: group={}, stream={}", CONSUMER_GROUP, STREAM_KEY);
         } catch (Exception e) {
