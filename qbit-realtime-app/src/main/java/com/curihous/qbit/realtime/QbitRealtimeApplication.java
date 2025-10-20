@@ -9,7 +9,7 @@ import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfigurat
     scanBasePackages = {
         "com.curihous.qbit.realtime",
         "com.curihous.qbit.common",
-        "com.curihous.qbit.infra"
+        "com.curihous.qbit.infra.security"
     },
     exclude = {
         DataSourceAutoConfiguration.class,
