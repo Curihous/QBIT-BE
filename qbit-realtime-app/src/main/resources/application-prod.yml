@@ -25,6 +25,10 @@ jwt:
     access: ${JWT_ACCESS_SECRET}
     refresh: ${JWT_REFRESH_SECRET}
 
+# Encryption 
+encryption:
+  secret-key: ${ENCRYPTION_SECRET_KEY}
+
 logging:
   level:
     root: INFO
