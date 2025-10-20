@@ -11,7 +11,7 @@ import org.springframework.security.web.SecurityFilterChain;
 public class RealtimeSecurityConfig {
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain realtimeFilterChain(HttpSecurity http) throws Exception {
         http
             .authorizeHttpRequests(authz -> authz
                 .requestMatchers("/ws/**").permitAll()

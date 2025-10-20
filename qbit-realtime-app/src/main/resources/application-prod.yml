@@ -19,6 +19,12 @@ websocket:
   message-size-limit: 8192
   buffer-size-limit: 8192
 
+# JWT
+jwt:
+  secret:
+    access: ${JWT_ACCESS_SECRET}
+    refresh: ${JWT_REFRESH_SECRET}
+
 logging:
   level:
     root: INFO

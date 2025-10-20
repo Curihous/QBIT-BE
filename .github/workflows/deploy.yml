@@ -175,6 +175,8 @@ jobs:
             -e REDIS_HOST_PROD=${{ secrets.HOST}} \
             -e REDIS_PORT_PROD=6379 \
             -e REDIS_PASSWORD_PROD="${{ secrets.REDIS_PASSWORD_PROD }}" \
+            -e JWT_ACCESS_SECRET="${{ secrets.JWT_ACCESS_SECRET }}" \
+            -e JWT_REFRESH_SECRET="${{ secrets.JWT_REFRESH_SECRET }}" \
             ${{ secrets.DOCKER_REPO_REALTIME }}:${{ github.sha }}
 
           # 3) 사용하지 않는 이미지 정리
