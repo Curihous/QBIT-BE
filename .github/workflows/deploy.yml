@@ -99,6 +99,7 @@ jobs:
               docker run -d --name qbit-redis \
                 --restart unless-stopped \
                 --network qbit-net \
+                -p 6379:6379 \
                 -v ${DATA_VOL:-qbit-redis-data}:/data \
                 redis:7-alpine redis-server \
                   --appendonly yes \
@@ -113,6 +114,7 @@ jobs:
             docker run -d --name qbit-redis \
               --restart unless-stopped \
               --network qbit-net \
+              -p 6379:6379 \
               -v qbit-redis-data:/data \
               redis:7-alpine redis-server \
                 --appendonly yes \
@@ -167,10 +169,9 @@ jobs:
           docker run -d \
             --name qbit-realtime \
             --restart unless-stopped \
-            --network qbit-net \
             -p 8081:8081 \
             -e SPRING_PROFILES_ACTIVE=prod \
-            -e REDIS_HOST_PROD=qbit-redis \
+            -e REDIS_HOST_PROD=${{ secrets.HOST}} \
             -e REDIS_PORT_PROD=6379 \
             -e REDIS_PASSWORD_PROD="${{ secrets.REDIS_PASSWORD_PROD }}" \
             ${{ secrets.DOCKER_REPO_REALTIME }}:${{ github.sha }}

@@ -1,3 +1,6 @@
+server:
+  port: ${REALTIME_SERVER_PORT_DEV}
+
 spring:
   data:
     redis:
@@ -11,13 +14,14 @@ spring:
           max-idle: 8
           min-idle: 0
 
-server:
-  port: 8082
+# WebSocket
+websocket:
+  message-size-limit: 8192
+  buffer-size-limit: 8192
 
 logging:
   level:
+    root: INFO
     com.curihous.qbit: DEBUG
-    org.springframework.web: DEBUG
-    org.springframework.data.redis: DEBUG
     org.springframework.web.socket: DEBUG
 
