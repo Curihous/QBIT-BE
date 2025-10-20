@@ -2,16 +2,17 @@ server:
   port: ${REALTIME_SERVER_PORT_DEV}
 
 spring:
-  datasource:
-    url: jdbc:postgresql://localhost:5432/qbit_dev
-    username: ${DB_USERNAME_DEV}
-    password: ${DB_PASSWORD_DEV}
-    driver-class-name: org.postgresql.Driver
-  
-  jpa:
-    hibernate:
-      ddl-auto: none
-    show-sql: false
+  data:
+    redis:
+      host: ${REDIS_HOST_DEV}
+      port: ${REDIS_PORT_DEV}
+      password: ${REDIS_PASSWORD_DEV}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
 
 # WebSocket
 websocket:

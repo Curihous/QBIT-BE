@@ -12,10 +12,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 // 헥사고날 아키텍처: Infrastructure → Domain 변환
+@Slf4j
 @Tag(name = "Stock - Realtime Market Data", description = "실시간 시장 데이터 API (Binance API) - 시세, 차트, 호가창")
 @RestController
 @RequestMapping("/stocks")
@@ -28,15 +30,15 @@ public class StockMarketDataController {
         summary = "암호화폐 실시간 시세 조회", 
         description = "암호화폐의 현재가, 고가, 저가, 시가, 전일가 등 실시간 시세 정보를 조회합니다. (Binance API)"
     )
-    @GetMapping("/quote/{symbol}")
+    @GetMapping("/quote/{binanceSymbol}")
     public ResponseEntity<QuoteResponseDto> getQuote(
-        @Parameter(description = "종목 심볼", example = "BTCUSDT")
-        @PathVariable String symbol
+        @Parameter(description = "Binance 심볼", example = "BTCUSDT")
+        @PathVariable String binanceSymbol
     ) {
-        var binanceTicker = binanceMarketService.get24hrTicker(symbol);
+        var binanceTicker = binanceMarketService.get24hrTicker(binanceSymbol);
         
         QuoteResponseDto quote = QuoteResponseDto.of(
-            symbol,
+            binanceSymbol,
             Double.parseDouble(binanceTicker.getLastPrice()),
             Double.parseDouble(binanceTicker.getHighPrice()),
             Double.parseDouble(binanceTicker.getLowPrice()),
@@ -54,10 +56,10 @@ public class StockMarketDataController {
         summary = "암호화폐 차트 데이터 조회", 
         description = "암호화폐의 OHLCV 캔들 데이터를 조회합니다. (Binance API - 1분봉, 5분봉, 1시간봉, 일봉 등)"
     )
-    @GetMapping("/candle/{symbol}")
+    @GetMapping("/candle/{binanceSymbol}")
     public ResponseEntity<CandleResponseDto> getCandle(
-        @Parameter(description = "종목 심볼", example = "BTCUSDT")
-        @PathVariable String symbol,
+        @Parameter(description = "Binance 심볼", example = "BTCUSDT")
+        @PathVariable String binanceSymbol,
         @Parameter(description = "차트 해상도 (1m, 5m, 15m, 30m, 1h, 4h, 1d, 1w, 1M)", example = "1d")
         @RequestParam(defaultValue = "1d") String interval,
         @Parameter(description = "시작 시간 (Unix timestamp)", example = "1696800000")
@@ -65,7 +67,7 @@ public class StockMarketDataController {
         @Parameter(description = "종료 시간 (Unix timestamp)", example = "1696886400")
         @RequestParam long endTime
     ) {
-        var binanceKlines = binanceMarketService.getKlines(symbol, interval, startTime, endTime);
+        var binanceKlines = binanceMarketService.getKlines(binanceSymbol, interval, startTime, endTime);
         
         List<CandleResponseDto.CandleData> candles = binanceKlines.stream()
             .map(kline -> new CandleResponseDto.CandleData(
@@ -78,7 +80,7 @@ public class StockMarketDataController {
             ))
             .toList();
         
-        CandleResponseDto candle = CandleResponseDto.of(symbol, interval, candles);
+        CandleResponseDto candle = CandleResponseDto.of(binanceSymbol, interval, candles);
         return ResponseEntity.ok(candle);
     }
 
@@ -86,12 +88,12 @@ public class StockMarketDataController {
         summary = "암호화폐 호가창 조회", 
         description = "암호화폐의 매수/매도 호가 정보를 조회합니다.(일회성 조회, 사용자가 페이지 로딩 후 즉시 데이터 확인용)"
     )
-    @GetMapping("/orderbook/{symbol}")
+    @GetMapping("/orderbook/{binanceSymbol}")
     public ResponseEntity<OrderBookResponseDto> getCryptoOrderBook(
-        @Parameter(description = "암호화폐 심볼", example = "BTCUSDT")
-        @PathVariable String symbol
+        @Parameter(description = "Binance 심볼", example = "BTCUSDT")
+        @PathVariable String binanceSymbol
     ) {
-        var binanceOrderBook = binanceMarketService.getOrderBook(symbol);
+        var binanceOrderBook = binanceMarketService.getOrderBook(binanceSymbol);
         
         // 매도 호가 (가격 낮은 순)
         List<OrderBookResponseDto.OrderBookLevel> asks = convertToOrderBookLevels(binanceOrderBook.getAsks())
@@ -105,7 +107,7 @@ public class StockMarketDataController {
             .sorted(Comparator.comparing(OrderBookResponseDto.OrderBookLevel::price).reversed())
             .toList();
         
-        return ResponseEntity.ok(OrderBookResponseDto.of(symbol, asks, bids, binanceOrderBook.getLastUpdateId()));
+        return ResponseEntity.ok(OrderBookResponseDto.of(binanceSymbol, asks, bids, binanceOrderBook.getLastUpdateId()));
     }
 
     

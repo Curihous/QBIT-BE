@@ -99,6 +99,7 @@ jobs:
               docker run -d --name qbit-redis \
                 --restart unless-stopped \
                 --network qbit-net \
+                -p 6379:6379 \
                 -v ${DATA_VOL:-qbit-redis-data}:/data \
                 redis:7-alpine redis-server \
                   --appendonly yes \
@@ -113,6 +114,7 @@ jobs:
             docker run -d --name qbit-redis \
               --restart unless-stopped \
               --network qbit-net \
+              -p 6379:6379 \
               -v qbit-redis-data:/data \
               redis:7-alpine redis-server \
                 --appendonly yes \
@@ -169,10 +171,9 @@ jobs:
             --restart unless-stopped \
             -p 8081:8081 \
             -e SPRING_PROFILES_ACTIVE=prod \
-            -e REALTIME_SERVER_PORT_PROD=8081 \
-            -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
-            -e DATABASE_USERNAME_PROD="${{ secrets.DATABASE_USERNAME_PROD }}" \
-            -e DATABASE_PASSWORD_PROD="${{ secrets.DATABASE_PASSWORD_PROD }}" \
+            -e REDIS_HOST_PROD=${{ secrets.HOST}} \
+            -e REDIS_PORT_PROD=6379 \
+            -e REDIS_PASSWORD_PROD="${{ secrets.REDIS_PASSWORD_PROD }}" \
             ${{ secrets.DOCKER_REPO_REALTIME }}:${{ github.sha }}
 
           # 3) 사용하지 않는 이미지 정리

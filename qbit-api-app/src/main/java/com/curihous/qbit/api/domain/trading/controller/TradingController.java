@@ -8,6 +8,7 @@ import com.curihous.qbit.api.domain.trading.dto.response.OrderUpdateResponseDto;
 import com.curihous.qbit.common.dto.PaginatedResponseDto;
 import com.curihous.qbit.common.exception.ErrorCode;
 import com.curihous.qbit.common.exception.QbitException;
+import com.curihous.qbit.common.util.CryptoSymbolConverter;
 import com.curihous.qbit.domain.order.entity.OrderRequest;
 import com.curihous.qbit.domain.order.port.TradingPort;
 import com.curihous.qbit.domain.stock.entity.Stock;
@@ -15,7 +16,6 @@ import com.curihous.qbit.domain.stock.port.StockPort;
 import com.curihous.qbit.domain.user.entity.User;
 import com.curihous.qbit.infra.security.facade.UserSecurityFacade;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +25,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -48,12 +49,23 @@ public class TradingController {
 
     @Operation(summary = "주문 생성", description = "Alpaca API를 통해 모의 주식 주문을 생성합니다.")
     @PostMapping("/orders")
+    @Transactional
     public ResponseEntity<OrderCreatedResponseDto> createOrder(@Valid @RequestBody CreateOrderRequestDto request) {
         User user = userSecurityFacade.getCurrentUser();
         
         // 자산 클래스 허용 여부 체크
         Stock stock = stockPort.getOrFetchStock(user, request.symbol());
         validateAssetClassAllowed(stock);
+        
+        // Binance 심볼 자동 변환 (DB에 없는 경우만)
+        if (stock.getBinanceSymbol() == null || stock.getBinanceSymbol().isBlank()) {
+            String binanceSymbol = CryptoSymbolConverter.convertToBinance(stock.getSymbol(), stock.getAssetClass());
+            if (binanceSymbol != null) {
+                stock.setBinanceSymbol(binanceSymbol);
+                log.info("Binance 심볼 자동 변환: {} ({}) → {}", 
+                        stock.getSymbol(), stock.getAssetClass(), binanceSymbol);
+            }
+        }
         
         // 클라이언트 주문 ID 자동 생성
         String clientOrderId = generateClientOrderId(user.getId());

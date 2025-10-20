@@ -21,8 +21,8 @@ public class Portfolio extends BaseTimeEntity {
     @Column(name = "portfolio_id")
     private Long id;
 
-    @Column(name = "quantity", nullable = false)
-    private Integer quantity;
+    @Column(name = "quantity", nullable = false, precision = 20, scale = 8)
+    private BigDecimal quantity;
 
     @Column(name = "average_purchase_price", nullable = false, precision = 20, scale = 8)
     private BigDecimal averagePurchasePrice;
@@ -35,10 +35,21 @@ public class Portfolio extends BaseTimeEntity {
     @JoinColumn(name = "stock_id", nullable = false)
     private Stock stock;
 
-    public Portfolio(Integer quantity, BigDecimal averagePurchasePrice, User user, Stock stock) {
+    public Portfolio(BigDecimal quantity, BigDecimal averagePurchasePrice, User user, Stock stock) {
         this.quantity = quantity;
         this.averagePurchasePrice = averagePurchasePrice;
         this.user = user;
         this.stock = stock;
+    }
+    
+    // 포트폴리오 업데이트 (매수/매도 시)
+    public void updateQuantityAndPrice(BigDecimal newQuantity, BigDecimal newAveragePurchasePrice) {
+        this.quantity = newQuantity;
+        this.averagePurchasePrice = newAveragePurchasePrice;
+    }
+    
+    // 수량만 업데이트 (부분 매도 시)
+    public void updateQuantity(BigDecimal newQuantity) {
+        this.quantity = newQuantity;
     }
 }

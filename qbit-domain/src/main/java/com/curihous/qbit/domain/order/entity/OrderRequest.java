@@ -98,6 +98,14 @@ public class OrderRequest extends BaseTimeEntity {
     // 취소 시간
     @Column(name = "canceled_at")
     private OffsetDateTime canceledAt;
+    
+    // 거부 시간
+    @Column(name = "rejected_at")
+    private OffsetDateTime rejectedAt;
+    
+    // 만료 시간
+    @Column(name = "expired_at")
+    private OffsetDateTime expiredAt;
 
     // === 주문 수정 추적 필드 ===
     
@@ -131,7 +139,7 @@ public class OrderRequest extends BaseTimeEntity {
                         OrderSide side, OrderType type, TimeInForce timeInForce, BigDecimal limitPrice,
                         BigDecimal stopPrice, BigDecimal filledAvgPrice, OrderStatus status, String clientOrderId, 
                         OffsetDateTime alpacaCreatedAt, OffsetDateTime submittedAt,
-                        OffsetDateTime filledAt, OffsetDateTime canceledAt,
+                        OffsetDateTime filledAt, OffsetDateTime canceledAt, OffsetDateTime rejectedAt, OffsetDateTime expiredAt,
                         OffsetDateTime replacedAt, String replacedBy, String replaces,
                         Stock stock, User user) {
         this.alpacaOrderId = alpacaOrderId;
@@ -150,6 +158,8 @@ public class OrderRequest extends BaseTimeEntity {
         this.submittedAt = submittedAt;
         this.filledAt = filledAt;
         this.canceledAt = canceledAt;
+        this.rejectedAt = rejectedAt;
+        this.expiredAt = expiredAt;
         this.replacedAt = replacedAt;
         this.replacedBy = replacedBy;
         this.replaces = replaces;
@@ -168,5 +178,39 @@ public class OrderRequest extends BaseTimeEntity {
     public void markAsCanceled() {
         this.status = OrderStatus.CANCELED;
         this.canceledAt = OffsetDateTime.now();
+    }
+    
+    // 주문 상태 업데이트 
+    public void updateStatus(OrderStatus newStatus) {
+        this.status = newStatus;
+    }
+    
+    // 체결 정보 업데이트 (부분 체결, 완전 체결)
+    public void updateFilledInfo(BigDecimal filledQty, BigDecimal filledAvgPrice, OffsetDateTime filledAt) {
+        this.filledQuantity = filledQty;
+        this.filledAvgPrice = filledAvgPrice;
+        
+        if (filledAt != null) {
+            this.filledAt = filledAt;
+        }
+        
+        // 체결 상태에 따라 상태 자동 업데이트
+        if (filledQty.compareTo(this.quantity) >= 0) {
+            this.status = OrderStatus.FILLED;
+        } else if (filledQty.compareTo(BigDecimal.ZERO) > 0) {
+            this.status = OrderStatus.PARTIALLY_FILLED;
+        }
+    }
+    
+    // 주문 거부 처리
+    public void markAsRejected() {
+        this.status = OrderStatus.REJECTED;
+        this.rejectedAt = OffsetDateTime.now();
+    }
+    
+    // 주문 만료 처리
+    public void markAsExpired() {
+        this.status = OrderStatus.EXPIRED;
+        this.expiredAt = OffsetDateTime.now();
     }
 }

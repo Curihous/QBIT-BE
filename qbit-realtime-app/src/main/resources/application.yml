@@ -1,9 +1,14 @@
 spring:
   profiles:
     active: ${SPRING_PROFILES_ACTIVE}
+  
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
 
 info:
   app:
     name: QBIT-REALTIME
-    version: 2.1.0 # TODO: develop->deploy PR 시 수정
+    version: 2.3.0 # TODO: develop->deploy PR 시 수정
     description: QBIT 실시간 데이터 스트리밍 서버

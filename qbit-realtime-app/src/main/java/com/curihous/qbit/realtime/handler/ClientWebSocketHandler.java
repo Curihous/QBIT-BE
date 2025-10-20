@@ -17,11 +17,11 @@ public class ClientWebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
         String uri = session.getUri().toString();
-        String symbol = extractSymbolFromUri(uri);
+        String binanceSymbol = extractSymbolFromUri(uri);
         
-        if (symbol != null) {
-            binanceWebSocketManager.subscribeToTrade(symbol, session);
-            log.info("클라이언트 체결 데이터 WebSocket 연결: symbol={}, sessionId={}", symbol, session.getId());
+        if (binanceSymbol != null) {
+            binanceWebSocketManager.subscribeToTrade(binanceSymbol, session);
+            log.info("클라이언트 체결 데이터 WebSocket 연결: binanceSymbol={}, sessionId={}", binanceSymbol, session.getId());
         } else {
             log.warn("잘못된 URI: {}", uri);
             session.close(CloseStatus.BAD_DATA);
@@ -41,12 +41,12 @@ public class ClientWebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
         String uri = session.getUri().toString();
-        String symbol = extractSymbolFromUri(uri);
+        String binanceSymbol = extractSymbolFromUri(uri);
         
-        if (symbol != null) {
-            binanceWebSocketManager.unsubscribeFromTrade(symbol, session);
-            log.info("클라이언트 체결 데이터 WebSocket 연결 종료: symbol={}, sessionId={}, status={}", 
-                    symbol, session.getId(), status);
+        if (binanceSymbol != null) {
+            binanceWebSocketManager.unsubscribeFromTrade(binanceSymbol, session);
+            log.info("클라이언트 체결 데이터 WebSocket 연결 종료: binanceSymbol={}, sessionId={}, status={}", 
+                    binanceSymbol, session.getId(), status);
         }
     }
 
