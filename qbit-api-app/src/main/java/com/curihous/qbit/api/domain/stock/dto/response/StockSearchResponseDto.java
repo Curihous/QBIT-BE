@@ -24,7 +24,10 @@ public record StockSearchResponseDto(
     Boolean tradable,
     
     @Schema(description = "로고 이미지 URL (Clearbit)", example = "https://logo.clearbit.com/apple.com")
-    String logoUrl
+    String logoUrl,
+    
+    @Schema(description = "Binance 심볼 (암호화폐만, 차트/호가 데이터용)", example = "BTCUSDT")
+    String binanceSymbol
 ) {
     
     public static StockSearchResponseDto fromEntity(Stock stock) {
@@ -33,7 +36,8 @@ public record StockSearchResponseDto(
                 stock.getStockName(),
                 stock.getAssetClass(),
                 stock.getTradable(),
-                stock.getLogoUrl()
+                stock.getLogoUrl(),
+                stock.getBinanceSymbol()
         );
     }
 }

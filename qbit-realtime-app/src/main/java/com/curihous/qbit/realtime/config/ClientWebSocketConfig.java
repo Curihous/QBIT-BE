@@ -20,11 +20,11 @@ public class ClientWebSocketConfig implements WebSocketConfigurer {
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         // 실시간 체결 데이터
-        registry.addHandler(clientWebSocketHandler, "/ws/market/{symbol}")
+        registry.addHandler(clientWebSocketHandler, "/ws/market/{binanceSymbol}")
                 .setAllowedOriginPatterns("*");
         
         // 실시간 호가창 데이터
-        registry.addHandler(clientDepthWebSocketHandler, "/ws/depth/{symbol}")
+        registry.addHandler(clientDepthWebSocketHandler, "/ws/depth/{binanceSymbol}")
                 .setAllowedOriginPatterns("*");
     }
 }

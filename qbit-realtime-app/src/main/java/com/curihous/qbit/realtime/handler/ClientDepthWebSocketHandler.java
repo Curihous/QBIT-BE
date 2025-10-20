@@ -23,11 +23,11 @@ public class ClientDepthWebSocketHandler extends TextWebSocketHandler {
         }
         
         String uri = session.getUri().toString();
-        String symbol = extractSymbolFromUri(uri);
+        String binanceSymbol = extractSymbolFromUri(uri);
         
-        if (symbol != null) {
-            binanceWebSocketManager.subscribeToDepth(symbol, session);
-            log.info("클라이언트 호가창 WebSocket 연결: symbol={}, sessionId={}", symbol, session.getId());
+        if (binanceSymbol != null) {
+            binanceWebSocketManager.subscribeToDepth(binanceSymbol, session);
+            log.info("클라이언트 호가창 WebSocket 연결: binanceSymbol={}, sessionId={}", binanceSymbol, session.getId());
         } else {
             log.warn("잘못된 URI: {}", uri);
             session.close(CloseStatus.BAD_DATA);
@@ -52,12 +52,12 @@ public class ClientDepthWebSocketHandler extends TextWebSocketHandler {
         }
         
         String uri = session.getUri().toString();
-        String symbol = extractSymbolFromUri(uri);
+        String binanceSymbol = extractSymbolFromUri(uri);
         
-        if (symbol != null) {
-            binanceWebSocketManager.unsubscribeFromDepth(symbol, session);
-            log.info("클라이언트 호가창 WebSocket 연결 종료: symbol={}, sessionId={}, status={}", 
-                    symbol, session.getId(), status);
+        if (binanceSymbol != null) {
+            binanceWebSocketManager.unsubscribeFromDepth(binanceSymbol, session);
+            log.info("클라이언트 호가창 WebSocket 연결 종료: binanceSymbol={}, sessionId={}, status={}", 
+                    binanceSymbol, session.getId(), status);
         }
     }
 

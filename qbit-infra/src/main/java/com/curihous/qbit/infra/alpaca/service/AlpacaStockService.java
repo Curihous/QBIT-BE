@@ -4,6 +4,7 @@ import com.curihous.qbit.infra.alpaca.port.AlpacaTradingPort;
 import com.curihous.qbit.infra.alpaca.dto.response.AlpacaAssetResponse;
 import com.curihous.qbit.common.exception.ErrorCode;
 import com.curihous.qbit.common.exception.QbitException;
+import com.curihous.qbit.common.util.CryptoSymbolConverter;
 import com.curihous.qbit.domain.alpaca.entity.AlpacaOAuthConnection;
 import com.curihous.qbit.domain.alpaca.service.AlpacaOAuthConnectionService;
 import com.curihous.qbit.domain.stock.entity.Stock;
@@ -112,6 +113,17 @@ public class AlpacaStockService implements StockPort {
         // 회사명에서 도메인 자동 생성
         String generatedDomain = Stock.generateDomainFromName(assetResponse.name());
         
+        // assetClass 기반 Binance 심볼 자동 변환
+        String binanceSymbol = CryptoSymbolConverter.convertToBinance(
+            assetResponse.symbol(), 
+            assetResponse.assetClass()
+        );
+        
+        if (binanceSymbol != null) {
+            log.debug("Binance 심볼 자동 생성: {} ({}) → {}", 
+                    assetResponse.symbol(), assetResponse.assetClass(), binanceSymbol);
+        }
+        
         Stock stock = Stock.builder()
                 .symbol(assetResponse.symbol())
                 .stockName(assetResponse.name())
@@ -123,8 +135,8 @@ public class AlpacaStockService implements StockPort {
                 .minOrderSize(assetResponse.minOrderSize())
                 .minTradeIncrement(assetResponse.minTradeIncrement())
                 .priceIncrement(assetResponse.priceIncrement())
-                .companyDomain(generatedDomain) // name 필드에서 자동 생성
-                .binanceSymbol(null) // 주문 시점에 설정
+                .companyDomain(generatedDomain)
+                .binanceSymbol(binanceSymbol)
                 .build();
         
         log.debug("종목 도메인 자동 생성: {} → {}", assetResponse.name(), generatedDomain);
@@ -269,6 +281,19 @@ public class AlpacaStockService implements StockPort {
                         if (stock.getCompanyDomain() == null || stock.getCompanyDomain().isBlank()) {
                             String generatedDomain = Stock.generateDomainFromName(asset.name());
                             stock.setCompanyDomain(generatedDomain);
+                        }
+                        
+                        // Binance 심볼 없는 경우에 생성
+                        if (stock.getBinanceSymbol() == null || stock.getBinanceSymbol().isBlank()) {
+                            String binanceSymbol = CryptoSymbolConverter.convertToBinance(
+                                asset.symbol(), 
+                                asset.assetClass()
+                            );
+                            if (binanceSymbol != null) {
+                                stock.setBinanceSymbol(binanceSymbol);
+                                log.debug("Binance 심볼 자동 생성: {} ({}) → {}", 
+                                        asset.symbol(), asset.assetClass(), binanceSymbol);
+                            }
                         }
                         
                         stockRepository.save(stock);
