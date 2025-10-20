@@ -171,6 +171,7 @@ jobs:
             --restart unless-stopped \
             -p 8081:8081 \
             -e SPRING_PROFILES_ACTIVE=prod \
+            -e REALTIME_SERVER_PORT_PROD="${{ secrets.REALTIME_SERVER_PORT_PROD }}" \
             -e REDIS_HOST_PROD=${{ secrets.HOST}} \
             -e REDIS_PORT_PROD=6379 \
             -e REDIS_PASSWORD_PROD="${{ secrets.REDIS_PASSWORD_PROD }}" \

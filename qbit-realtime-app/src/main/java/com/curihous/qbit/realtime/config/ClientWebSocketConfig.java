@@ -8,7 +8,9 @@ import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
 
-// 프론트엔드와의 WebSocket 연결 설정
+/**
+ * Raw WebSocket 설정 (Binance 실시간 데이터용)
+ */
 @Configuration
 @EnableWebSocket
 @RequiredArgsConstructor
@@ -19,12 +21,13 @@ public class ClientWebSocketConfig implements WebSocketConfigurer {
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        // 실시간 체결 데이터
+        // 실시간 체결 데이터 (인증 불필요)
         registry.addHandler(clientWebSocketHandler, "/ws/market/{binanceSymbol}")
                 .setAllowedOriginPatterns("*");
         
-        // 실시간 호가창 데이터
+        // 실시간 호가창 데이터 (인증 불필요)
         registry.addHandler(clientDepthWebSocketHandler, "/ws/depth/{binanceSymbol}")
                 .setAllowedOriginPatterns("*");
     }
 }
+
