@@ -12,10 +12,10 @@ import java.util.List;
 public interface TradeExecutionRepository extends JpaRepository<TradeExecution, Long> {
     
     // 특정 사용자의 특정 종목에 대한 특정 기간 내 모든 체결 내역 조회
-    @Query("SELECT te FROM TradeExecution te " +
-           "JOIN FETCH te.orderRequest or " +
+    @Query("SELECT DISTINCT te FROM TradeExecution te " +
+           "JOIN FETCH te.orderRequest orderReq " +
            "WHERE te.user = :user " +
-           "AND or.symbol = :symbol " +
+           "AND orderReq.symbol = :symbol " +
            "AND te.executedAt >= :startDate " +
            "AND (:endDate IS NULL OR te.executedAt <= :endDate) " +
            "ORDER BY te.executedAt ASC")
