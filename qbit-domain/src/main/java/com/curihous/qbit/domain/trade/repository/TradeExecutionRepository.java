@@ -13,7 +13,8 @@ public interface TradeExecutionRepository extends JpaRepository<TradeExecution, 
     
     // 특정 사용자의 특정 종목에 대한 특정 기간 내 모든 체결 내역 조회
     @Query("SELECT DISTINCT te FROM TradeExecution te " +
-           "JOIN FETCH te.orderRequest orderReq " +
+           "JOIN te.orderRequest orderReq " +
+           "JOIN FETCH te.orderRequest " +
            "WHERE te.user = :user " +
            "AND orderReq.symbol = :symbol " +
            "AND te.executedAt >= :startDate " +
