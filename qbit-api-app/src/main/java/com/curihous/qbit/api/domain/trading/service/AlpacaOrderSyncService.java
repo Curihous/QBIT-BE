@@ -124,7 +124,20 @@ public class AlpacaOrderSyncService {
             log.info("주문 상태 업데이트: orderId={}, oldStatus={}, newStatus={}", 
                     order.getId(), order.getStatus(), newStatus);
             
-            order.updateStatus(newStatus);
+            switch (newStatus) {
+                case CANCELED: // canceledAt 타임스탬프 누락 방지 위해 상태별 switch문 사용
+                    order.markAsCanceled();
+                    break;
+                case REJECTED:
+                    order.markAsRejected();
+                    break;
+                case EXPIRED:
+                    order.markAsExpired();
+                    break;
+                default:
+                    order.updateStatus(newStatus);
+                    break;
+            }
             
             // 체결 정보가 있으면 업데이트
             if (event.getFilledQuantity() != null && !event.getFilledQuantity().isEmpty()) {
