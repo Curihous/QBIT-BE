@@ -124,8 +124,9 @@ public class AlpacaOrderSyncService {
             log.info("주문 상태 업데이트: orderId={}, oldStatus={}, newStatus={}", 
                     order.getId(), order.getStatus(), newStatus);
             
+            // canceledAt, rejectedAt, expiredAt 타임스탬프 누락 방지를 위해 상태별 switch문 사용
             switch (newStatus) {
-                case CANCELED: // canceledAt 타임스탬프 누락 방지 위해 상태별 switch문 사용
+                case CANCELED:
                     order.markAsCanceled();
                     break;
                 case REJECTED:

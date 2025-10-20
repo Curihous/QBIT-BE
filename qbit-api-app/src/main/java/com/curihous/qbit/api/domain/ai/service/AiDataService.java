@@ -148,7 +148,7 @@ public class AiDataService {
                     .toEpochMilli())
                 .side(execution.getOrderRequest().getSide().name())  // "BUY" or "SELL"
                 .price(execution.getExecutedPrice())
-                .quantity(java.math.BigDecimal.valueOf(execution.getExecutedQuantity()))
+                .quantity(execution.getExecutedQuantity())
                 .build())
                 .collect(Collectors.toList());
     }
