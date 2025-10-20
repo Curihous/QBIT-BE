@@ -14,6 +14,7 @@ import org.springframework.data.redis.stream.StreamMessageListenerContainer;
 import org.springframework.data.redis.stream.Subscription;
 
 import java.time.Duration;
+import java.util.UUID;
 
 /**
  * Redis Streams 설정
@@ -25,7 +26,8 @@ public class RedisStreamsConfig {
 
     private static final String STREAM_KEY = "trade-updates";
     private static final String CONSUMER_GROUP = "qbit-api-group";
-    private static final String CONSUMER_NAME = "qbit-api-consumer";
+    // 인스턴스별 고유한 consumer name (배포 안정성 대응)
+    private final String consumerName = "qbit-api-consumer-" + UUID.randomUUID().toString().substring(0, 8);
     
     @Bean
     public StreamMessageListenerContainer<String, ObjectRecord<String, TradeUpdateEvent>> 
@@ -54,7 +56,7 @@ public class RedisStreamsConfig {
         
         // Consumer 등록
         Subscription subscription = container.receive(
-                Consumer.from(CONSUMER_GROUP, CONSUMER_NAME),
+                Consumer.from(CONSUMER_GROUP, consumerName),
                 StreamOffset.create(STREAM_KEY, ReadOffset.lastConsumed()),
                 tradeUpdateConsumer
         );
@@ -62,7 +64,7 @@ public class RedisStreamsConfig {
         container.start();
         
         log.info("Redis Streams Listener 시작: stream={}, group={}, consumer={}", 
-                STREAM_KEY, CONSUMER_GROUP, CONSUMER_NAME);
+                STREAM_KEY, CONSUMER_GROUP, consumerName);
         
         return container;
     }
