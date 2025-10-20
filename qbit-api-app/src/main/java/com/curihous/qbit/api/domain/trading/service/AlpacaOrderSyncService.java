@@ -179,7 +179,7 @@ public class AlpacaOrderSyncService {
                     : LocalDateTime.now();
             
             TradeExecution execution = new TradeExecution(
-                    quantity.intValue(),
+                    quantity,
                     price,
                     executedAtLocal,
                     order,
@@ -273,7 +273,7 @@ public class AlpacaOrderSyncService {
         if (portfolioOpt.isPresent()) {
             Portfolio portfolio = portfolioOpt.get();
             
-            BigDecimal currentQty = new BigDecimal(portfolio.getQuantity());
+            BigDecimal currentQty = portfolio.getQuantity();
             BigDecimal currentAvgPrice = portfolio.getAveragePurchasePrice();
             
             BigDecimal currentTotalCost = currentQty.multiply(currentAvgPrice);
@@ -283,13 +283,13 @@ public class AlpacaOrderSyncService {
             BigDecimal newTotalQty = currentQty.add(quantity);
             BigDecimal newAvgPrice = totalCost.divide(newTotalQty, 8, RoundingMode.HALF_UP);
 
-            portfolio.updateQuantityAndPrice(newTotalQty.intValue(), newAvgPrice);
+            portfolio.updateQuantityAndPrice(newTotalQty, newAvgPrice);
             portfolioRepository.save(portfolio);
             
             log.info("매수 - Portfolio 업데이트: userId={}, symbol={}, qty={}→{}, avgPrice={}→{}", 
                     user.getId(), stock.getSymbol(), currentQty, newTotalQty, currentAvgPrice, newAvgPrice);
         } else {
-            Portfolio newPortfolio = new Portfolio(quantity.intValue(), price, user, stock);
+            Portfolio newPortfolio = new Portfolio(quantity, price, user, stock);
             portfolioRepository.save(newPortfolio);
             
             log.info("매수 - Portfolio 신규 생성: userId={}, symbol={}, qty={}, avgPrice={}", 
@@ -305,7 +305,7 @@ public class AlpacaOrderSyncService {
         }
         
         Portfolio portfolio = portfolioOpt.get();
-        BigDecimal currentQty = new BigDecimal(portfolio.getQuantity());
+        BigDecimal currentQty = portfolio.getQuantity();
         BigDecimal remainingQty = currentQty.subtract(quantity);
         
         if (remainingQty.compareTo(BigDecimal.ZERO) < 0) {
@@ -319,7 +319,7 @@ public class AlpacaOrderSyncService {
             log.info("매도 - Portfolio 삭제 (전량 매도): userId={}, symbol={}, qty={}", 
                     user.getId(), stock.getSymbol(), currentQty);
         } else {
-            portfolio.updateQuantity(remainingQty.intValue());
+            portfolio.updateQuantity(remainingQty);
             portfolioRepository.save(portfolio);
             log.info("매도 - Portfolio 업데이트: userId={}, symbol={}, qty={}→{}", 
                     user.getId(), stock.getSymbol(), currentQty, remainingQty);
@@ -373,7 +373,8 @@ public class AlpacaOrderSyncService {
         TradeCycle cycle = activeCycleOpt.get();
         
         Optional<Portfolio> portfolioOpt = portfolioRepository.findByUserAndStock(user, stock);
-        boolean isFullSell = portfolioOpt.isEmpty() || portfolioOpt.get().getQuantity() == 0;
+        boolean isFullSell = portfolioOpt.isEmpty() || 
+            portfolioOpt.get().getQuantity().compareTo(BigDecimal.ZERO) == 0;
         
         if (isFullSell) {
             LocalDateTime filledAtLocal = filledAt != null 
