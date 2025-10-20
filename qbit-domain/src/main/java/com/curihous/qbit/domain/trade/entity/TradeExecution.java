@@ -21,8 +21,8 @@ public class TradeExecution {
     @Column(name = "trade_execution_id")
     private Long id;
 
-    @Column(name = "executed_quantity", nullable = false)
-    private Integer executedQuantity;
+    @Column(name = "executed_quantity", nullable = false, precision = 20, scale = 8)
+    private BigDecimal executedQuantity;
 
     @Column(name = "executed_price", nullable = false, precision = 20, scale = 8)
     private BigDecimal executedPrice;
@@ -38,7 +38,7 @@ public class TradeExecution {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    public TradeExecution(Integer executedQuantity, BigDecimal executedPrice, LocalDateTime executedAt,
+    public TradeExecution(BigDecimal executedQuantity, BigDecimal executedPrice, LocalDateTime executedAt,
                           OrderRequest orderRequest, User user) {
         this.executedQuantity = executedQuantity;
         this.executedPrice = executedPrice;
