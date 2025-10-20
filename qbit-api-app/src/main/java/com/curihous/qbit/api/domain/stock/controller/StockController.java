@@ -53,8 +53,9 @@ public class StockController {
         List<Stock> stocks = stockService.searchStocks(keyword);
         
         // 2. DB에 없고, 검색어가 심볼 형식이면 Alpaca API 조회
+        // 주식: AAPL, TSLA / 코인: BTC/USD, GRT/USDC
         if (keyword != null && !keyword.isBlank() && 
-            stocks.isEmpty() && keyword.matches("^[A-Z]{1,10}$")) {
+            stocks.isEmpty() && keyword.matches("^[A-Z0-9]{1,10}(/[A-Z]{3,4})?$")) {
             try {
                 User user = userSecurityFacade.getCurrentUser();
                 Stock stock = stockPort.getOrFetchStock(user, keyword);
@@ -104,9 +105,10 @@ public class StockController {
         summary = "특정 종목 상세 조회",
         description = "종목의 상세 정보를 조회합니다. DB에 없으면 Alpaca API에서 조회 후 자동 저장됩니다."
     )
-    @GetMapping("/{symbol}")
+    @GetMapping("/detail")
     public ResponseEntity<StockDetailResponseDto> getStock(
-            @PathVariable String symbol
+            @Parameter
+            @RequestParam(value = "symbol") String symbol
     ) {
         User user = userSecurityFacade.getCurrentUser();
         // Cache-Aside: DB 우선 → 없으면 Alpaca API 조회 → 저장
