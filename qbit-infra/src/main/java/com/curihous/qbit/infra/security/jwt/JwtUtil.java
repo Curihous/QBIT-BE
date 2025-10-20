@@ -31,9 +31,13 @@ public class JwtUtil {
         try {
             byte[] keyBytes = Decoders.BASE64.decode(accessSecret);
             this.accessKey = Keys.hmacShaKeyFor(keyBytes);
+            
             keyBytes = Decoders.BASE64.decode(refreshSecret);
             this.refreshKey = Keys.hmacShaKeyFor(keyBytes);
+            
+            log.info("JWT Secret 로드 완료");
         } catch (Exception e) {
+            log.error("JWT Secret 설정 오류: {}", e.getMessage());
             throw new QbitException(ErrorCode.JWT_GENERATION_FAILED);
         }
     }
@@ -79,20 +83,24 @@ public class JwtUtil {
     public void validateAccessToken(String accessToken) {
         try {
             Jwts.parser().setSigningKey(accessKey).build().parseClaimsJws(accessToken);
-        } catch (SecurityException | MalformedJwtException | UnsupportedJwtException | IllegalArgumentException e) {
+        } catch (io.jsonwebtoken.security.SignatureException e) {
+            log.error("JWT 서명 검증 실패 - Secret Key 불일치");
             throw new QbitException(ErrorCode.INVALID_TOKEN);
         } catch (ExpiredJwtException e) {
             throw new QbitException(ErrorCode.EXPIRED_ACCESS_TOKEN);
+        } catch (JwtException | IllegalArgumentException e) {
+            log.error("JWT 검증 실패: {}", e.getMessage());
+            throw new QbitException(ErrorCode.INVALID_TOKEN);
         }
     }
 
     public void validateRefreshToken(String refreshToken) {
         try {
             Jwts.parser().setSigningKey(refreshKey).build().parseClaimsJws(refreshToken);
-        } catch (SecurityException | MalformedJwtException | UnsupportedJwtException | IllegalArgumentException e) {
-            throw new QbitException(ErrorCode.INVALID_REFRESH_TOKEN);
         } catch (ExpiredJwtException e) {
             throw new QbitException(ErrorCode.EXPIRED_REFRESH_TOKEN);
+        } catch (JwtException | IllegalArgumentException e) {
+            throw new QbitException(ErrorCode.INVALID_REFRESH_TOKEN);
         }
     }
 
@@ -144,8 +152,11 @@ public class JwtUtil {
             return claims.getExpiration().before(new Date());
         } catch (ExpiredJwtException e) {
             return true;
+        } catch (io.jsonwebtoken.security.SignatureException e) {
+            log.error("JWT 서명 검증 실패 - Secret Key 불일치");
+            throw new QbitException(ErrorCode.JWT_VALIDATION_FAILED);
         } catch (JwtException | IllegalArgumentException e) {
-            log.error("JWT validation failed: {}", e.getMessage(), e);
+            log.error("JWT 검증 실패: {}", e.getMessage());
             throw new QbitException(ErrorCode.JWT_VALIDATION_FAILED);
         }
     }
