@@ -1,10 +1,12 @@
 package com.curihous.qbit.infra.alpaca.service;
 
 import com.curihous.qbit.domain.stock.entity.Stock;
+import com.curihous.qbit.domain.stock.repository.StockRepository;
 import com.curihous.qbit.infra.alpaca.port.AlpacaTradingPort;
 import com.curihous.qbit.infra.alpaca.dto.request.CreateOrderRequest;
 import com.curihous.qbit.infra.alpaca.dto.request.UpdateOrderRequest;
 import com.curihous.qbit.infra.alpaca.dto.response.AlpacaOrderResponse;
+import com.curihous.qbit.infra.binance.client.BinanceClient;
 import com.curihous.qbit.common.exception.ErrorCode;
 import com.curihous.qbit.common.exception.QbitException;
 import com.curihous.qbit.domain.alpaca.entity.AlpacaOAuthConnection;
@@ -37,9 +39,11 @@ import java.util.List;
 public class AlpacaOrderRequestService implements TradingPort {
 
     private final OrderRequestRepository orderRequestRepository;
+    private final StockRepository stockRepository;
     private final AlpacaTradingPort alpacaTradingPort;
     private final AlpacaOAuthConnectionService alpacaOAuthConnectionService;
     private final StockPort stockPort;
+    private final BinanceClient binanceClient;
 
     // 주문 생성
     @Transactional
@@ -61,6 +65,9 @@ public class AlpacaOrderRequestService implements TradingPort {
 
         // 2. Stock 조회/생성 (DB에 없으면 Alpaca API로 가져옴)
         Stock stock = stockPort.getOrFetchStock(user, alpacaResponse.symbol());
+        
+        // 2-1. Binance 심볼 업데이트 (AI서버로 tradeCycle 차트 데이트 보낼 때 연결짓기 위함)
+        updateBinanceSymbolIfNeeded(stock, command);
 
         // 3. OrderRequest 생성 + Stock 연결
         OrderRequest orderRequest = convertToEntity(alpacaResponse, user, stock);
@@ -391,5 +398,66 @@ public class AlpacaOrderRequestService implements TradingPort {
         }
         
         return request;
+    }
+    
+    /**
+     * Stock에 Binance 심볼이 없으면 자동으로 설정
+     * - crypto: Binance API로 심볼 존재 여부 확인
+     * - us_equity: null (Binance에서 거래 불가)
+     */
+    @Transactional
+    public void updateBinanceSymbolIfNeeded(Stock stock, CreateOrderCommand command) {
+        // 이미 Binance 심볼이 있으면 스킵
+        if (stock.getBinanceSymbol() != null && !stock.getBinanceSymbol().isBlank()) {
+            return;
+        }
+        
+        // crypto가 아니면 스킵 (주식은 Binance 거래 불가)
+        if (!"crypto".equalsIgnoreCase(command.assetClass())) {
+            return;
+        }
+        
+        try {
+            // Alpaca 심볼을 Binance 형식으로 변환
+            String binanceSymbol = convertToBinanceSymbol(command.symbol());
+            
+            // Binance API로 심볼 존재 여부 확인 (24시간 통계 조회)
+            binanceClient.get24hrTicker(binanceSymbol);
+            
+            // 정상 조회되면 저장
+            stock.setBinanceSymbol(binanceSymbol);
+            stockRepository.save(stock);
+            
+            log.info("Binance 심볼 업데이트 완료: {} → {}", stock.getSymbol(), binanceSymbol);
+            
+        } catch (Exception e) {
+            // Binance에 없는 심볼이면 로그만 남기고 계속 진행
+            log.warn("Binance 심볼 조회 실패 (거래 불가 종목일 수 있음): symbol={}, error={}", 
+                    command.symbol(), e.getMessage());
+        }
+    }
+    
+    /**
+     * Alpaca 심볼을 Binance 심볼로 변환
+     * BTCUSD → BTCUSDT
+     * ETHUSD → ETHUSDT
+     */
+    private String convertToBinanceSymbol(String alpacaSymbol) {
+        if (alpacaSymbol == null) {
+            return null;
+        }
+        
+        // USD로 끝나면 USDT로 변경
+        if (alpacaSymbol.endsWith("USD")) {
+            return alpacaSymbol.replace("USD", "USDT");
+        }
+        
+        // 이미 USDT로 끝나면 그대로
+        if (alpacaSymbol.endsWith("USDT")) {
+            return alpacaSymbol;
+        }
+        
+        // 기타 형식은 USDT 추가
+        return alpacaSymbol + "USDT";
     }
 }

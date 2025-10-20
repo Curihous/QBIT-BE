@@ -124,6 +124,7 @@ public class AlpacaStockService implements StockPort {
                 .minTradeIncrement(assetResponse.minTradeIncrement())
                 .priceIncrement(assetResponse.priceIncrement())
                 .companyDomain(generatedDomain) // name 필드에서 자동 생성
+                .binanceSymbol(null) // 주문 시점에 설정
                 .build();
         
         log.debug("종목 도메인 자동 생성: {} → {}", assetResponse.name(), generatedDomain);
@@ -264,7 +265,12 @@ public class AlpacaStockService implements StockPort {
                                 asset.priceIncrement()
                         );
                         
-                        // 암호화폐는 회사 도메인이 없으므로 null로 유지
+                        // 도메인이 없는 경우에만 자동 생성 (수동 설정한 도메인 보호)
+                        if (stock.getCompanyDomain() == null || stock.getCompanyDomain().isBlank()) {
+                            String generatedDomain = Stock.generateDomainFromName(asset.name());
+                            stock.setCompanyDomain(generatedDomain);
+                        }
+                        
                         stockRepository.save(stock);
                         updateCount++;
                     }

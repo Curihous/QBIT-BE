@@ -53,12 +53,17 @@ public class Stock extends BaseTimeEntity {
     // === 기업 도메인 (Clearbit 로고 API용)===
     @Column(name = "company_domain")
     private String companyDomain;
+    
+    // === Binance 심볼 (차트 데이터용) ===
+    @Column(name = "binance_symbol")
+    private String binanceSymbol;
 
     // AlpacaAssetResponse로부터 Stock 생성
     @Builder
     public Stock(String symbol, String stockName, String exchange, String assetClass, String status,
                  Boolean tradable, Boolean fractionable,
-                 String minOrderSize, String minTradeIncrement, String priceIncrement, String companyDomain) {
+                 String minOrderSize, String minTradeIncrement, String priceIncrement, String companyDomain,
+                 String binanceSymbol) {
         this.symbol = symbol;
         this.stockName = stockName;
         this.exchange = exchange;
@@ -70,6 +75,7 @@ public class Stock extends BaseTimeEntity {
         this.minTradeIncrement = minTradeIncrement;
         this.priceIncrement = priceIncrement;
         this.companyDomain = companyDomain;
+        this.binanceSymbol = binanceSymbol;
     }
 
     // 종목 정보 업데이트 (배치 작업용)
@@ -90,6 +96,11 @@ public class Stock extends BaseTimeEntity {
     // 도메인 설정 (Clearbit 로고용)
     public void setCompanyDomain(String companyDomain) {
         this.companyDomain = companyDomain;
+    }
+    
+    // Binance 심볼 설정 (차트 데이터용)
+    public void setBinanceSymbol(String binanceSymbol) {
+        this.binanceSymbol = binanceSymbol;
     }
 
     // Clearbit 로고 URL 반환

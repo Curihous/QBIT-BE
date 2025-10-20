@@ -11,13 +11,8 @@ import java.util.Optional;
 public interface TradeCycleRepository extends JpaRepository<TradeCycle, Long> {
     // 사용자의 특정 종목 진행 중인 사이클 조회 (endDate가 null)
     Optional<TradeCycle> findByUserAndStockAndEndDateIsNull(User user, Stock stock);
-    
-    // 사용자의 진행 중인 모든 사이클 조회
-    List<TradeCycle> findByUserAndEndDateIsNull(User user);
-    
+
     // 사용자의 종료된 사이클 조회
     List<TradeCycle> findByUserAndEndDateIsNotNull(User user);
-    
-    // 사용자의 전체 사이클 조회 (최신순)
-    List<TradeCycle> findByUserOrderByStartDateDesc(User user);
+
 }
