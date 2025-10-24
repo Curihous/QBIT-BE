@@ -208,6 +208,32 @@ public class OrderRequest extends BaseTimeEntity {
         this.rejectedAt = OffsetDateTime.now();
     }
     
+    // Symbol 업데이트
+    public void updateSymbol(String symbol) {
+        this.symbol = symbol;
+    }
+    
+    // 시간 필드 업데이트 메서드들
+    public void updateSubmittedAt(OffsetDateTime submittedAt) {
+        this.submittedAt = submittedAt;
+    }
+    
+    public void updateFilledAt(OffsetDateTime filledAt) {
+        this.filledAt = filledAt;
+    }
+    
+    public void updateCanceledAt(OffsetDateTime canceledAt) {
+        this.canceledAt = canceledAt;
+    }
+    
+    public void updateRejectedAt(OffsetDateTime rejectedAt) {
+        this.rejectedAt = rejectedAt;
+    }
+    
+    public void updateExpiredAt(OffsetDateTime expiredAt) {
+        this.expiredAt = expiredAt;
+    }
+    
     // 주문 만료 처리
     public void markAsExpired() {
         this.status = OrderStatus.EXPIRED;

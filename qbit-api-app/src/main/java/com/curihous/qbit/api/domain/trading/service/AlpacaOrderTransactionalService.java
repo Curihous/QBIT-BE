@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.Optional;
 
 /**
@@ -59,30 +60,36 @@ public class AlpacaOrderTransactionalService {
 
     // 기존 주문을 Alpaca 데이터로 업데이트
     private void updateExistingOrderFromAlpaca(OrderRequest existingOrder, AlpacaOrderResponse alpacaOrder) {
+        OrderStatus oldStatus = existingOrder.getStatus();
         OrderStatus newStatus = convertToOrderStatus(alpacaOrder.status());
-
-        switch (newStatus) {
-            case CANCELED:
-                if (alpacaOrder.canceledAt() != null) {
-                    existingOrder.markAsCanceled();
-                } else {
-                    existingOrder.updateStatus(newStatus);
-                }
-                break;
-            case FILLED:
-                if (alpacaOrder.filledAt() != null) {
-                    existingOrder.updateStatus(newStatus);
-                    updateFilledInfoFromAlpaca(existingOrder, alpacaOrder);
-                } else {
-                    existingOrder.updateStatus(newStatus);
-                }
-                break;
-            default:
-                existingOrder.updateStatus(newStatus);
-                break;
+        
+        // 상태 역전 경고 로그
+        if (isStatusReversal(oldStatus, newStatus)) {
+            log.warn("주문 상태 역전 감지: orderId={}, alpacaOrderId={}, oldStatus={}, newStatus={}", 
+                    existingOrder.getId(), alpacaOrder.id(), oldStatus, newStatus);
         }
         
-        orderRequestRepository.save(existingOrder);
+        // 상태 업데이트 
+        if (newStatus == OrderStatus.CANCELED && alpacaOrder.canceledAt() != null) {
+            existingOrder.markAsCanceled();
+        } else {
+            existingOrder.updateStatus(newStatus);
+        }
+        
+        // 체결 정보 업데이트 (항상 실행)
+        updateFilledInfoFromAlpaca(existingOrder, alpacaOrder);
+        
+        // 시간 정보 업데이트
+        updateTimestampsFromAlpaca(existingOrder, alpacaOrder);
+        
+        // symbol이 null인 경우 보정
+        if (existingOrder.getSymbol() == null || existingOrder.getSymbol().isEmpty()) {
+            existingOrder.updateSymbol(alpacaOrder.symbol());
+            log.info("주문 symbol 보정: orderId={}, newSymbol={}", existingOrder.getId(), alpacaOrder.symbol());
+        }
+        
+        // JPA 영속 상태이므로 save 호출 생략 가능 (성능 최적화)
+        // orderRequestRepository.save(existingOrder);
     }
 
     // Alpaca 데이터로 새 주문 생성
@@ -131,12 +138,41 @@ public class AlpacaOrderTransactionalService {
         }
     }
 
+    // 상태 역전 여부 확인
+    private boolean isStatusReversal(OrderStatus oldStatus, OrderStatus newStatus) {
+        return (oldStatus == OrderStatus.FILLED && newStatus == OrderStatus.CANCELED) ||
+               (oldStatus == OrderStatus.CANCELED && newStatus == OrderStatus.FILLED) ||
+               (oldStatus == OrderStatus.REJECTED && newStatus == OrderStatus.FILLED);
+    }
+    
+    // 시간 정보 업데이트
+    private void updateTimestampsFromAlpaca(OrderRequest order, AlpacaOrderResponse alpacaOrder) {
+        // 각 시간 필드가 null이 아닌 경우에만 업데이트
+        if (alpacaOrder.submittedAt() != null) {
+            order.updateSubmittedAt(alpacaOrder.submittedAt());
+        }
+        if (alpacaOrder.filledAt() != null) {
+            order.updateFilledAt(alpacaOrder.filledAt());
+        }
+        if (alpacaOrder.canceledAt() != null) {
+            order.updateCanceledAt(alpacaOrder.canceledAt());
+        }
+        if (alpacaOrder.rejectedAt() != null) {
+            order.updateRejectedAt(alpacaOrder.rejectedAt());
+        }
+        if (alpacaOrder.expiredAt() != null) {
+            order.updateExpiredAt(alpacaOrder.expiredAt());
+        }
+    }
+
     // Alpaca 데이터로 체결 정보 업데이트
     private void updateFilledInfoFromAlpaca(OrderRequest order, AlpacaOrderResponse alpacaOrder) {
         if (alpacaOrder.filledQuantity() != null && !alpacaOrder.filledQuantity().isEmpty()) {
             BigDecimal filledQty = parseBigDecimal(alpacaOrder.filledQuantity());
             BigDecimal filledAvgPrice = parseBigDecimal(alpacaOrder.filledAvgPrice());
-            order.updateFilledInfo(filledQty, filledAvgPrice, alpacaOrder.filledAt());
+            // filledAt이 null일 때는 이전 값 유지
+            OffsetDateTime filledAt = alpacaOrder.filledAt() != null ? alpacaOrder.filledAt() : order.getFilledAt();
+            order.updateFilledInfo(filledQty, filledAvgPrice, filledAt);
         }
     }
 

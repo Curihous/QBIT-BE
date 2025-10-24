@@ -41,6 +41,14 @@ public record AlpacaOrderResponse(
     @JsonProperty("canceled_at")
     OffsetDateTime canceledAt,
 
+    @Schema(description = "거부 시간 (RFC3339, UTC)")
+    @JsonProperty("rejected_at")
+    OffsetDateTime rejectedAt,
+
+    @Schema(description = "만료 시간 (RFC3339, UTC)")
+    @JsonProperty("expired_at")
+    OffsetDateTime expiredAt,
+
     @Schema(description = "대체된 시간 (RFC3339, UTC)")
     @JsonProperty("replaced_at")
     OffsetDateTime replacedAt,
