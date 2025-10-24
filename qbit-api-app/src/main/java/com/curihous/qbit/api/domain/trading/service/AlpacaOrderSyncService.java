@@ -5,9 +5,6 @@ import com.curihous.qbit.common.event.LoginOrderSyncEvent;
 import com.curihous.qbit.domain.alpaca.entity.AlpacaOAuthConnection;
 import com.curihous.qbit.domain.alpaca.entity.AlpacaConnectionStatus;
 import com.curihous.qbit.domain.alpaca.service.AlpacaOAuthConnectionService;
-import com.curihous.qbit.domain.order.entity.OrderSide;
-import com.curihous.qbit.domain.order.entity.OrderType;
-import com.curihous.qbit.domain.order.entity.TimeInForce;
 import com.curihous.qbit.domain.order.entity.OrderRequest;
 import com.curihous.qbit.domain.order.entity.OrderStatus;
 import com.curihous.qbit.domain.order.repository.OrderRequestRepository;
@@ -56,6 +53,7 @@ public class AlpacaOrderSyncService {
     private final StockRepository stockRepository;
     private final AlpacaOAuthConnectionService alpacaOAuthConnectionService;
     private final AlpacaTradingClient alpacaTradingClient;
+    private final AlpacaOrderTransactionalService alpacaOrderTransactionalService;
 
     // ============== 로그인 시 주문 동기화 ==============
     
@@ -114,7 +112,7 @@ public class AlpacaOrderSyncService {
                 try {
                     log.info("주문 동기화 시작: alpacaOrderId={}, symbol={}, status={}", 
                             alpacaOrder.id(), alpacaOrder.symbol(), alpacaOrder.status());
-                    syncSingleOrderFromAlpaca(user, alpacaOrder);
+                    alpacaOrderTransactionalService.syncSingleOrderFromAlpaca(user, alpacaOrder);
                     syncedCount++;
                     log.info("주문 동기화 완료: alpacaOrderId={}", alpacaOrder.id());
                 } catch (Exception e) {
@@ -131,125 +129,9 @@ public class AlpacaOrderSyncService {
                     user.getId(), e.getMessage(), e);
         }
     }
+    
 
-    // Alpaca에서 가져온 개별 주문을 DB와 동기화
-    @Transactional
-    private void syncSingleOrderFromAlpaca(User user, AlpacaOrderResponse alpacaOrder) {
-        // 기존 주문이 있는지 확인
-        Optional<OrderRequest> existingOrderOpt = orderRequestRepository
-                .findByAlpacaOrderId(alpacaOrder.id());
-        
-        if (existingOrderOpt.isPresent()) {
-            // 기존 주문 업데이트
-            OrderRequest existingOrder = existingOrderOpt.get();
-            
-            // 사용자 검증
-            if (!existingOrder.getUser().getId().equals(user.getId())) {
-                log.warn("주문 소유자 불일치: alpacaOrderId={}, expectedUserId={}, actualUserId={}", 
-                        alpacaOrder.id(), user.getId(), existingOrder.getUser().getId());
-                return;
-            }
-            
-            updateExistingOrderFromAlpaca(existingOrder, alpacaOrder);
-            log.info("기존 주문 업데이트: orderId={}, alpacaOrderId={}, status={}", 
-                    existingOrder.getId(), alpacaOrder.id(), alpacaOrder.status());
-        } else {
-            // 새 주문 생성
-            createNewOrderFromAlpaca(user, alpacaOrder);
-            log.info("새 주문 생성: alpacaOrderId={}, symbol={}, status={}", 
-                    alpacaOrder.id(), alpacaOrder.symbol(), alpacaOrder.status());
-        }
-    }
-
-    // 기존 주문을 Alpaca 데이트로 업데이트
-    private void updateExistingOrderFromAlpaca(OrderRequest existingOrder, AlpacaOrderResponse alpacaOrder) {
-        OrderStatus newStatus = convertToOrderStatus(alpacaOrder.status());
-
-        switch (newStatus) {
-            case CANCELED:
-                if (alpacaOrder.canceledAt() != null) {
-                    existingOrder.markAsCanceled();
-                } else {
-                    existingOrder.updateStatus(newStatus);
-                }
-                break;
-            case FILLED:
-                if (alpacaOrder.filledAt() != null) {
-                    existingOrder.updateStatus(newStatus);
-                    updateFilledInfoFromAlpaca(existingOrder, alpacaOrder);
-                } else {
-                    existingOrder.updateStatus(newStatus);
-                }
-                break;
-            default:
-                existingOrder.updateStatus(newStatus);
-                break;
-        }
-        
-        orderRequestRepository.save(existingOrder);
-    }
-
-    // Alpaca 데이터로 새 주문 생성(알파카 UI에서 한 경우)
-    private void createNewOrderFromAlpaca(User user, AlpacaOrderResponse alpacaOrder) {
-        // 주식 정보 조회 또는 생성
-        Stock stock = getOrCreateStock(alpacaOrder.symbol());
-        
-        OrderRequest newOrder = OrderRequest.builder()
-                .user(user)
-                .stock(stock)
-                .alpacaOrderId(alpacaOrder.id())
-                .clientOrderId(alpacaOrder.clientOrderId())
-                .side(convertToOrderSide(alpacaOrder.side()))
-                .type(convertToOrderType(alpacaOrder.type()))
-                .timeInForce(convertToTimeInForce(alpacaOrder.timeInForce()))
-                .quantity(parseBigDecimal(alpacaOrder.quantity()))
-                .status(convertToOrderStatus(alpacaOrder.status()))
-                .alpacaCreatedAt(alpacaOrder.createdAt())
-                .submittedAt(alpacaOrder.submittedAt())
-                .filledAt(alpacaOrder.filledAt())
-                .canceledAt(alpacaOrder.canceledAt())
-                .build();
-        
-        // 체결 정보 설정
-        if (alpacaOrder.filledQuantity() != null && !alpacaOrder.filledQuantity().isEmpty()) {
-            BigDecimal filledQty = parseBigDecimal(alpacaOrder.filledQuantity());
-            BigDecimal filledAvgPrice = parseBigDecimal(alpacaOrder.filledAvgPrice());
-            newOrder.updateFilledInfo(filledQty, filledAvgPrice, alpacaOrder.filledAt());
-        }
-        
-        log.info("DB 저장 전: alpacaOrderId={}, symbol={}, status={}, quantity={}", 
-                alpacaOrder.id(), alpacaOrder.symbol(), alpacaOrder.status(), alpacaOrder.quantity());
-        
-        try {
-            OrderRequest savedOrder = orderRequestRepository.save(newOrder);
-            log.info("DB 저장 완료: orderId={}, alpacaOrderId={}", 
-                    savedOrder.getId(), savedOrder.getAlpacaOrderId());
-        } catch (Exception e) {
-            log.error("DB 저장 실패: alpacaOrderId={}, error={}", 
-                    alpacaOrder.id(), e.getMessage(), e);
-            throw e;
-        }
-    }
-
-    // Alpaca 데이터로 체결 정보 업데이트(알파카 UI에서 한 경우)
-    private void updateFilledInfoFromAlpaca(OrderRequest order, AlpacaOrderResponse alpacaOrder) {
-        if (alpacaOrder.filledQuantity() != null && !alpacaOrder.filledQuantity().isEmpty()) {
-            BigDecimal filledQty = parseBigDecimal(alpacaOrder.filledQuantity());
-            BigDecimal filledAvgPrice = parseBigDecimal(alpacaOrder.filledAvgPrice());
-            order.updateFilledInfo(filledQty, filledAvgPrice, alpacaOrder.filledAt());
-        }
-    }
-
-    // 주식 정보 조회 또는 생성
-    private Stock getOrCreateStock(String symbol) {
-        return stockRepository.findBySymbol(symbol)
-                .orElseGet(() -> {
-                    Stock newStock = Stock.builder()
-                            .symbol(symbol)
-                            .build();
-                    return stockRepository.save(newStock);
-                });
-    }
+    // ============== Trade Update 이벤트 처리 ==============
 
     // Trade Update 이벤트 처리 (진입점)
     @Transactional
@@ -619,43 +501,6 @@ public class AlpacaOrderSyncService {
             default -> {
                 log.warn("알 수 없는 이벤트: {}", event);
                 yield OrderStatus.NEW;
-            }
-        };
-    }
-
-    private OrderSide convertToOrderSide(String side) {
-        return switch (side.toLowerCase()) {
-            case "buy" -> OrderSide.BUY;
-            case "sell" -> OrderSide.SELL;
-            default -> {
-                log.warn("알 수 없는 주문 방향: {}", side);
-                yield OrderSide.BUY;
-            }
-        };
-    }
-
-    private OrderType convertToOrderType(String orderType) {
-        return switch (orderType.toLowerCase()) {
-            case "market" -> OrderType.MARKET;
-            case "limit" -> OrderType.LIMIT;
-            case "stop" -> OrderType.STOP;
-            case "stop_limit" -> OrderType.STOP_LIMIT;
-            default -> {
-                log.warn("알 수 없는 주문 타입: {}", orderType);
-                yield OrderType.MARKET;
-            }
-        };
-    }
-
-    private TimeInForce convertToTimeInForce(String timeInForce) {
-        return switch (timeInForce.toLowerCase()) {
-            case "day" -> TimeInForce.DAY;
-            case "gtc" -> TimeInForce.GTC;
-            case "ioc" -> TimeInForce.IOC;
-            case "fok" -> TimeInForce.FOK;
-            default -> {
-                log.warn("알 수 없는 시간 제한: {}", timeInForce);
-                yield TimeInForce.DAY;
             }
         };
     }
