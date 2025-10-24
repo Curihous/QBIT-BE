@@ -4,7 +4,6 @@ import com.curihous.qbit.infra.alpaca.client.AlpacaOAuthClient;
 import com.curihous.qbit.infra.alpaca.client.AlpacaTradingClient;
 import com.curihous.qbit.infra.alpaca.dto.response.AlpacaAccountResponse;
 import com.curihous.qbit.infra.alpaca.dto.response.AlpacaTokenResponse;
-import com.curihous.qbit.infra.alpaca.port.AlpacaTradingPort;
 import com.curihous.qbit.common.exception.QbitException;
 import com.curihous.qbit.common.exception.ErrorCode;
 import com.curihous.qbit.domain.alpaca.entity.AlpacaOAuthConnection;
@@ -13,12 +12,13 @@ import com.curihous.qbit.domain.user.entity.User;
 import com.curihous.qbit.domain.user.service.UserService;
 import com.curihous.qbit.domain.order.port.TradingPort;
 import com.curihous.qbit.domain.order.entity.OrderRequest;
+import com.curihous.qbit.common.event.LoginOrderSyncEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -47,6 +47,7 @@ public class AlpacaOAuthService implements TradingPort {
     private final UserService userService;
     private final AlpacaOAuthStateService alpacaOAuthStateService;
     private final AlpacaOrderRequestService alpacaOrderRequestService;
+    private final ApplicationEventPublisher eventPublisher;
 
     // OAuth 승인 URL 생성
     public String generateAuthUrl(Long userId) {
@@ -92,8 +93,8 @@ public class AlpacaOAuthService implements TradingPort {
                 expiresAt
             );
 
-            // 로그인 시 주문 상태 동기화
-            syncOrdersFromAlpaca(user, tokenResponse.accessToken());
+            // 로그인 시 주문 상태 동기화 이벤트 발행
+            eventPublisher.publishEvent(new LoginOrderSyncEvent(user.getId(), user.getEmail()));
 
             return connection;
 
@@ -124,24 +125,6 @@ public class AlpacaOAuthService implements TradingPort {
         }
     }
     
-    // 로그인 시 Alpaca에서 주문 상태 동기화
-    @Async
-    public void syncOrdersFromAlpaca(User user, String accessToken) {
-        try {
-            log.info("로그인 시 주문 동기화 시작: userId={}", user.getId());
-            
-            // Alpaca에서 최신 주문 목록 가져오기
-            String authorization = "Bearer " + accessToken;
-            var alpacaOrders = alpacaTradingClient.getOrders(authorization);
-            
-            log.info("로그인 시 주문 동기화 완료: userId={}, 동기화된 주문 수={}", 
-                    user.getId(), alpacaOrders.size());
-                    
-        } catch (Exception e) {
-            log.error("로그인 시 주문 동기화 실패: userId={}, error={}", 
-                    user.getId(), e.getMessage(), e);
-        }
-    }
 
     // 계정 정보 조회
     @Override

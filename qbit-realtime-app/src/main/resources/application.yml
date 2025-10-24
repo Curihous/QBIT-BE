@@ -10,5 +10,5 @@ spring:
 info:
   app:
     name: QBIT-REALTIME
-    version: 2.3.1 # TODO: develop->deploy PR 시 수정
+    version: 2.4.0 # TODO: develop->deploy PR 시 수정
     description: QBIT 실시간 데이터 스트리밍 서버

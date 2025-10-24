@@ -1,6 +1,13 @@
 package com.curihous.qbit.api.domain.trading.service;
 
 import com.curihous.qbit.common.event.TradeUpdateEvent;
+import com.curihous.qbit.common.event.LoginOrderSyncEvent;
+import com.curihous.qbit.domain.alpaca.entity.AlpacaOAuthConnection;
+import com.curihous.qbit.domain.alpaca.entity.AlpacaConnectionStatus;
+import com.curihous.qbit.domain.alpaca.service.AlpacaOAuthConnectionService;
+import com.curihous.qbit.domain.order.entity.OrderSide;
+import com.curihous.qbit.domain.order.entity.OrderType;
+import com.curihous.qbit.domain.order.entity.TimeInForce;
 import com.curihous.qbit.domain.order.entity.OrderRequest;
 import com.curihous.qbit.domain.order.entity.OrderStatus;
 import com.curihous.qbit.domain.order.repository.OrderRequestRepository;
@@ -14,8 +21,12 @@ import com.curihous.qbit.domain.tradecycle.entity.TradeCycle;
 import com.curihous.qbit.domain.tradecycle.repository.TradeCycleRepository;
 import com.curihous.qbit.domain.user.entity.User;
 import com.curihous.qbit.domain.user.repository.UserRepository;
+import com.curihous.qbit.infra.alpaca.client.AlpacaTradingClient;
+import com.curihous.qbit.infra.alpaca.dto.response.AlpacaOrderResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,11 +35,13 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Optional;
 
 /**
  * Alpaca 주문 동기화 서비스
- * Redis Streams로부터 받은 Trade Update 이벤트를 DB에 반영
+ * 1. Redis Streams로부터 받은 Trade Update 이벤트를 DB에 반영
+ * 2. 로그인 시 Alpaca에서 주문 내역을 동기화
  */
 @Slf4j
 @Service
@@ -41,6 +54,187 @@ public class AlpacaOrderSyncService {
     private final TradeCycleRepository tradeCycleRepository;
     private final UserRepository userRepository;
     private final StockRepository stockRepository;
+    private final AlpacaOAuthConnectionService alpacaOAuthConnectionService;
+    private final AlpacaTradingClient alpacaTradingClient;
+
+    // ============== 로그인 시 주문 동기화 ==============
+    
+    /**
+     * 로그인 시 주문 동기화 이벤트 처리
+     */
+    @EventListener
+    @Async
+    public void handleLoginOrderSyncEvent(LoginOrderSyncEvent event) {
+        try {
+            log.info("로그인 시 주문 동기화 이벤트 처리: userId={}", event.getUserId());
+            
+            Optional<User> userOpt = userRepository.findById(event.getUserId());
+            if (userOpt.isEmpty()) {
+                log.warn("사용자를 찾을 수 없음: userId={}", event.getUserId());
+                return;
+            }
+            
+            User user = userOpt.get();
+            syncOrdersOnLogin(user);
+            
+        } catch (Exception e) {
+            log.error("로그인 시 주문 동기화 이벤트 처리 실패: userId={}, error={}", 
+                    event.getUserId(), e.getMessage(), e);
+        }
+    }
+
+    // 로그인 시 Alpaca 주문 내역 동기화
+    @Async
+    public void syncOrdersOnLogin(User user) {
+        try {
+            log.info("로그인 시 주문 동기화 시작: userId={}", user.getId());
+            
+            // 사용자의 활성화된 Alpaca 연결 조회
+            Optional<AlpacaOAuthConnection> connectionOpt = alpacaOAuthConnectionService.findByUserId(user.getId());
+            if (connectionOpt.isEmpty()) {
+                log.info("Alpaca 연결이 없는 사용자: userId={}", user.getId());
+                return;
+            }
+            
+            AlpacaOAuthConnection connection = connectionOpt.get();
+            if (!connection.getAlpacaConnectionStatus().equals(AlpacaConnectionStatus.ACTIVE)) {
+                log.info("비활성화된 Alpaca 연결: userId={}", user.getId());
+                return;
+            }
+            
+            // Alpaca에서 최신 주문 목록 가져오기
+            String authorization = "Bearer " + connection.getAccessToken();
+            List<AlpacaOrderResponse> alpacaOrders = alpacaTradingClient.getOrders(authorization);
+            
+            log.info("Alpaca에서 주문 조회 완료: userId={}, 주문 수={}", user.getId(), alpacaOrders.size());
+            
+            // 각 주문을 DB와 동기화
+            int syncedCount = 0;
+            for (AlpacaOrderResponse alpacaOrder : alpacaOrders) {
+                try {
+                    syncSingleOrderFromAlpaca(user, alpacaOrder);
+                    syncedCount++;
+                } catch (Exception e) {
+                    log.error("개별 주문 동기화 실패: userId={}, alpacaOrderId={}, error={}", 
+                            user.getId(), alpacaOrder.id(), e.getMessage(), e);
+                }
+            }
+            
+            log.info("로그인 시 주문 동기화 완료: userId={}, 동기화된 주문 수={}", 
+                    user.getId(), syncedCount);
+                    
+        } catch (Exception e) {
+            log.error("로그인 시 주문 동기화 실패: userId={}, error={}", 
+                    user.getId(), e.getMessage(), e);
+        }
+    }
+
+    // Alpaca에서 가져온 개별 주문을 DB와 동기화
+    @Transactional
+    private void syncSingleOrderFromAlpaca(User user, AlpacaOrderResponse alpacaOrder) {
+        // 기존 주문이 있는지 확인
+        Optional<OrderRequest> existingOrderOpt = orderRequestRepository
+                .findByAlpacaOrderId(alpacaOrder.id());
+        
+        if (existingOrderOpt.isPresent()) {
+            // 기존 주문 업데이트
+            OrderRequest existingOrder = existingOrderOpt.get();
+            
+            // 사용자 검증
+            if (!existingOrder.getUser().getId().equals(user.getId())) {
+                log.warn("주문 소유자 불일치: alpacaOrderId={}, expectedUserId={}, actualUserId={}", 
+                        alpacaOrder.id(), user.getId(), existingOrder.getUser().getId());
+                return;
+            }
+            
+            updateExistingOrderFromAlpaca(existingOrder, alpacaOrder);
+            log.debug("기존 주문 업데이트: orderId={}, alpacaOrderId={}", 
+                    existingOrder.getId(), alpacaOrder.id());
+        } else {
+            // 새 주문 생성
+            createNewOrderFromAlpaca(user, alpacaOrder);
+            log.debug("새 주문 생성: alpacaOrderId={}", alpacaOrder.id());
+        }
+    }
+
+    // 기존 주문을 Alpaca 데이트로 업데이트
+    private void updateExistingOrderFromAlpaca(OrderRequest existingOrder, AlpacaOrderResponse alpacaOrder) {
+        OrderStatus newStatus = convertToOrderStatus(alpacaOrder.status());
+
+        switch (newStatus) {
+            case CANCELED:
+                if (alpacaOrder.canceledAt() != null) {
+                    existingOrder.markAsCanceled();
+                } else {
+                    existingOrder.updateStatus(newStatus);
+                }
+                break;
+            case FILLED:
+                if (alpacaOrder.filledAt() != null) {
+                    existingOrder.updateStatus(newStatus);
+                    updateFilledInfoFromAlpaca(existingOrder, alpacaOrder);
+                } else {
+                    existingOrder.updateStatus(newStatus);
+                }
+                break;
+            default:
+                existingOrder.updateStatus(newStatus);
+                break;
+        }
+        
+        orderRequestRepository.save(existingOrder);
+    }
+
+    // Alpaca 데이터로 새 주문 생성(알파카 UI에서 한 경우)
+    private void createNewOrderFromAlpaca(User user, AlpacaOrderResponse alpacaOrder) {
+        // 주식 정보 조회 또는 생성
+        Stock stock = getOrCreateStock(alpacaOrder.symbol());
+        
+        OrderRequest newOrder = OrderRequest.builder()
+                .user(user)
+                .stock(stock)
+                .alpacaOrderId(alpacaOrder.id())
+                .clientOrderId(alpacaOrder.clientOrderId())
+                .side(convertToOrderSide(alpacaOrder.side()))
+                .type(convertToOrderType(alpacaOrder.type()))
+                .timeInForce(convertToTimeInForce(alpacaOrder.timeInForce()))
+                .quantity(parseBigDecimal(alpacaOrder.quantity()))
+                .status(convertToOrderStatus(alpacaOrder.status()))
+                .alpacaCreatedAt(alpacaOrder.createdAt())
+                .submittedAt(alpacaOrder.submittedAt())
+                .filledAt(alpacaOrder.filledAt())
+                .canceledAt(alpacaOrder.canceledAt())
+                .build();
+        
+        // 체결 정보 설정
+        if (alpacaOrder.filledQuantity() != null && !alpacaOrder.filledQuantity().isEmpty()) {
+            BigDecimal filledQty = parseBigDecimal(alpacaOrder.filledQuantity());
+            BigDecimal filledAvgPrice = parseBigDecimal(alpacaOrder.filledAvgPrice());
+            newOrder.updateFilledInfo(filledQty, filledAvgPrice, alpacaOrder.filledAt());
+        }
+        
+        orderRequestRepository.save(newOrder);
+    }
+
+    // Alpaca 데이터로 체결 정보 업데이트(알파카 UI에서 한 경우)
+    private void updateFilledInfoFromAlpaca(OrderRequest order, AlpacaOrderResponse alpacaOrder) {
+        if (alpacaOrder.filledQuantity() != null && !alpacaOrder.filledQuantity().isEmpty()) {
+            BigDecimal filledQty = parseBigDecimal(alpacaOrder.filledQuantity());
+            BigDecimal filledAvgPrice = parseBigDecimal(alpacaOrder.filledAvgPrice());
+            order.updateFilledInfo(filledQty, filledAvgPrice, alpacaOrder.filledAt());
+        }
+    }
+
+    // 주식 정보 조회 또는 생성
+    private Stock getOrCreateStock(String symbol) {
+        return stockRepository.findBySymbol(symbol)
+                .orElseGet(() -> {
+                    Stock newStock = Stock.builder()
+                            .symbol(symbol)
+                            .build();
+                    return stockRepository.save(newStock);
+                });
+    }
 
     // Trade Update 이벤트 처리 (진입점)
     @Transactional
@@ -410,6 +604,43 @@ public class AlpacaOrderSyncService {
             default -> {
                 log.warn("알 수 없는 이벤트: {}", event);
                 yield OrderStatus.NEW;
+            }
+        };
+    }
+
+    private OrderSide convertToOrderSide(String side) {
+        return switch (side.toLowerCase()) {
+            case "buy" -> OrderSide.BUY;
+            case "sell" -> OrderSide.SELL;
+            default -> {
+                log.warn("알 수 없는 주문 방향: {}", side);
+                yield OrderSide.BUY;
+            }
+        };
+    }
+
+    private OrderType convertToOrderType(String orderType) {
+        return switch (orderType.toLowerCase()) {
+            case "market" -> OrderType.MARKET;
+            case "limit" -> OrderType.LIMIT;
+            case "stop" -> OrderType.STOP;
+            case "stop_limit" -> OrderType.STOP_LIMIT;
+            default -> {
+                log.warn("알 수 없는 주문 타입: {}", orderType);
+                yield OrderType.MARKET;
+            }
+        };
+    }
+
+    private TimeInForce convertToTimeInForce(String timeInForce) {
+        return switch (timeInForce.toLowerCase()) {
+            case "day" -> TimeInForce.DAY;
+            case "gtc" -> TimeInForce.GTC;
+            case "ioc" -> TimeInForce.IOC;
+            case "fok" -> TimeInForce.FOK;
+            default -> {
+                log.warn("알 수 없는 시간 제한: {}", timeInForce);
+                yield TimeInForce.DAY;
             }
         };
     }

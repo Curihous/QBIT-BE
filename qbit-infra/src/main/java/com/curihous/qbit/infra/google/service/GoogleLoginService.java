@@ -8,9 +8,11 @@ import com.curihous.qbit.domain.user.repository.UserRepository;
 import com.curihous.qbit.infra.google.dto.GoogleUserInfo;
 import com.curihous.qbit.infra.security.jwt.JwtUtil;
 import com.curihous.qbit.infra.security.util.CookieUtil;
+import com.curihous.qbit.common.event.LoginOrderSyncEvent;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -30,6 +32,7 @@ public class GoogleLoginService {
     private final UserRepository userRepository;
     private final JwtUtil jwtUtil;
     private final CookieUtil cookieUtil;
+    private final ApplicationEventPublisher eventPublisher;
     
     @Transactional
     public Map<String, Object> loginWithGoogle(String googleIdToken, HttpServletResponse response) {
@@ -64,7 +67,10 @@ public class GoogleLoginService {
         
         log.info("JWT 토큰 발급 완료");
         
-        // 6. 응답 데이터 구성
+        // 6. Alpaca 주문 동기화 이벤트 발행 (비동기)
+        eventPublisher.publishEvent(new LoginOrderSyncEvent(user.getId(), user.getEmail()));
+        
+        // 7. 응답 데이터 구성
         Map<String, Object> result = new HashMap<>();
         result.put("accessToken", accessToken);
         result.put("expiresIn", expiresIn);
