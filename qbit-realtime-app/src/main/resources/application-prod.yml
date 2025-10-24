@@ -32,5 +32,7 @@ encryption:
 logging:
   level:
     root: INFO
-    com.curihous.qbit: INFO
-    org.springframework.web.socket: WARN
+    com.curihous.qbit: DEBUG
+    org.springframework.web.socket: DEBUG
+    org.springframework.messaging: DEBUG
+    org.springframework.messaging.simp: DEBUG

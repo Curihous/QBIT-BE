@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.lang.NonNull;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.config.ChannelRegistration;
@@ -15,7 +16,9 @@ import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
@@ -35,7 +38,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private final JwtUtil jwtUtil;
 
     @Override
-    public void configureMessageBroker(MessageBrokerRegistry config) {
+    public void configureMessageBroker(@NonNull MessageBrokerRegistry config) {
         // Simple in-memory message broker
         config.enableSimpleBroker("/topic", "/queue");
         // 클라이언트에서 서버로 메시지 보낼 때 prefix
@@ -45,7 +48,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     }
 
     @Override
-    public void registerStompEndpoints(StompEndpointRegistry registry) {
+    public void registerStompEndpoints(@NonNull StompEndpointRegistry registry) {
         // STOMP 엔드포인트 등록
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns("*")
@@ -53,47 +56,80 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     }
 
     @Override
-    public void configureClientInboundChannel(ChannelRegistration registration) {
+    public void configureClientInboundChannel(@NonNull ChannelRegistration registration) {
+        // 스레드 풀 설정
+        registration.taskExecutor(new ThreadPoolTaskExecutor() {
+            {
+                setCorePoolSize(4);
+                setMaxPoolSize(8);
+                setQueueCapacity(100);
+                setThreadNamePrefix("websocket-client-inbound-");
+                initialize();
+            }
+        });
+        
         registration.interceptors(new ChannelInterceptor() {
             @Override
-            public Message<?> preSend(Message<?> message, MessageChannel channel) {
+            public Message<?> preSend(@NonNull Message<?> message, @NonNull MessageChannel channel) {
                 StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
                 
-                if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
-                    // CONNECT 시 JWT 인증
-                    String token = accessor.getFirstNativeHeader("Authorization");
+                if (accessor != null) {
+                    log.debug("STOMP 메시지 수신: command={}, headers={}", 
+                        accessor.getCommand(), accessor.toNativeHeaderMap());
                     
-                    if (token != null && token.startsWith("Bearer ")) {
-                        token = token.substring(7);
+                    if (StompCommand.CONNECT.equals(accessor.getCommand())) {
+                        // CONNECT 시 JWT 인증
+                        String token = accessor.getFirstNativeHeader("Authorization");
                         
-                        try {
-                            // JWT 검증
-                            if (!jwtUtil.isAccessTokenExpired(token)) {
-                                Authentication authentication = jwtUtil.getAuthentication(token);
-                                
-                                if (authentication.getPrincipal() instanceof CustomUserDetails userDetails) {
-                                    Long userId = userDetails.getUserId();
-                                    accessor.setUser(() -> String.valueOf(userId));
-                                    log.info("STOMP WebSocket 인증 성공: userId={}", userId);
+                        if (token != null && token.startsWith("Bearer ")) {
+                            token = token.substring(7);
+                            
+                            try {
+                                // JWT 검증
+                                if (!jwtUtil.isAccessTokenExpired(token)) {
+                                    Authentication authentication = jwtUtil.getAuthentication(token);
+                                    
+                                    if (authentication.getPrincipal() instanceof CustomUserDetails userDetails) {
+                                        Long userId = userDetails.getUserId();
+                                        accessor.setUser(() -> String.valueOf(userId));
+                                        
+                                        // SecurityContext 설정 추가
+                                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                                        
+                                        log.info("STOMP WebSocket 인증 성공: userId={}", userId);
+                                    } else {
+                                        log.warn("STOMP 인증 실패: 유효하지 않은 사용자 정보");
+                                        throw new IllegalArgumentException("Invalid user");
+                                    }
                                 } else {
-                                    log.warn("STOMP 인증 실패: 유효하지 않은 사용자 정보");
-                                    throw new IllegalArgumentException("Invalid user");
+                                    log.warn("STOMP 인증 실패: 토큰 만료");
+                                    throw new IllegalArgumentException("Token expired");
                                 }
-                            } else {
-                                log.warn("STOMP 인증 실패: 토큰 만료");
-                                throw new IllegalArgumentException("Token expired");
+                            } catch (Exception e) {
+                                log.error("STOMP JWT 검증 실패: {}", e.getMessage());
+                                throw new IllegalArgumentException("Authentication failed");
                             }
-                        } catch (Exception e) {
-                            log.error("STOMP JWT 검증 실패: {}", e.getMessage());
-                            throw new IllegalArgumentException("Authentication failed");
+                        } else {
+                            log.warn("STOMP 인증 실패: Authorization 헤더 없음");
+                            throw new IllegalArgumentException("No authorization header");
                         }
-                    } else {
-                        log.warn("STOMP 인증 실패: Authorization 헤더 없음");
-                        throw new IllegalArgumentException("No authorization header");
                     }
                 }
                 
                 return message;
+            }
+        });
+    }
+    
+    @Override
+    public void configureClientOutboundChannel(@NonNull ChannelRegistration registration) {
+        registration.taskExecutor(new ThreadPoolTaskExecutor() {
+            {
+                setCorePoolSize(4);
+                setMaxPoolSize(8);
+                setQueueCapacity(100);
+                setThreadNamePrefix("websocket-client-outbound-");
+                initialize();
             }
         });
     }
