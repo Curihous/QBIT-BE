@@ -10,8 +10,13 @@ import com.curihous.qbit.domain.alpaca.entity.AlpacaOAuthConnection;
 import com.curihous.qbit.domain.alpaca.service.AlpacaOAuthConnectionService;
 import com.curihous.qbit.domain.user.entity.User;
 import com.curihous.qbit.domain.user.service.UserService;
+import com.curihous.qbit.domain.order.port.TradingPort;
+import com.curihous.qbit.domain.order.entity.OrderRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -22,7 +27,8 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-public class AlpacaOAuthService {
+@Slf4j
+public class AlpacaOAuthService implements TradingPort {
 
     @Value("${alpaca.oauth.client-id}")
     private String clientId;
@@ -38,6 +44,7 @@ public class AlpacaOAuthService {
     private final AlpacaOAuthConnectionService alpacaOAuthConnectionService;
     private final UserService userService;
     private final AlpacaOAuthStateService alpacaOAuthStateService;
+    private final AlpacaOrderRequestService alpacaOrderRequestService;
 
     // OAuth 승인 URL 생성
     public String generateAuthUrl(Long userId) {
@@ -110,6 +117,68 @@ public class AlpacaOAuthService {
         if (connectionOpt.isPresent()) {
             alpacaOAuthConnectionService.disconnect(connectionOpt.get());
         }
+    }
+
+    // 계정 정보 조회
+    @Override
+    @Transactional(readOnly = true)
+    public TradingPort.AccountInfo getAccountInfo(User user) {
+        // 사용자의 활성화된 Alpaca 연결 조회
+        AlpacaOAuthConnection connection = alpacaOAuthConnectionService.getValidConnection(user.getId());
+        String authorization = "Bearer " + connection.getAccessToken();
+        
+        try {
+            var account = alpacaTradingClient.getAccount(authorization);
+            return new TradingPort.AccountInfo(
+                    account.accountNumber(),
+                    account.status(),
+                    account.currency(),
+                    account.buyingPower() != null ? account.buyingPower().toString() : null,
+                    account.cash() != null ? account.cash().toString() : null,
+                    account.portfolioValue() != null ? account.portfolioValue().toString() : null,
+                    account.equity() != null ? account.equity().toString() : null,
+                    account.lastEquity() != null ? account.lastEquity().toString() : null,
+                    account.longMarketValue() != null ? account.longMarketValue().toString() : null,
+                    account.shortMarketValue() != null ? account.shortMarketValue().toString() : null,
+                    account.id(),                    
+                    account.cryptoStatus(),           
+                    account.tradingBlocked(),        
+                    account.accountBlocked()         
+            );
+        } catch (Exception e) {
+            log.error("Alpaca 계정 정보 조회 실패: {}", e.getMessage(), e);
+            throw new QbitException(ErrorCode.EXTERNAL_API_ERROR, "계정 정보 조회에 실패했습니다: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public TradingPort.OrderCreatedResult createOrder(User user, TradingPort.CreateOrderCommand command) {
+        return alpacaOrderRequestService.createOrder(user, command);
+    }
+
+    @Override
+    public Page<OrderRequest> getMyOrders(User user, Pageable pageable) {
+        return alpacaOrderRequestService.getMyOrders(user, pageable);
+    }
+
+    @Override
+    public OrderRequest getOrder(User user, Long orderId) {
+        return alpacaOrderRequestService.getOrder(user, orderId);
+    }
+
+    @Override
+    public void cancelOrder(User user, Long orderId) {
+        alpacaOrderRequestService.cancelOrder(user, orderId);
+    }
+
+    @Override
+    public Page<TradingPort.PositionInfo> getPositions(User user, Pageable pageable) {
+        return alpacaOrderRequestService.getPositions(user, pageable);
+    }
+
+    @Override
+    public TradingPort.OrderUpdateResult updateOrder(User user, Long orderId, TradingPort.UpdateOrderCommand command) {
+        return alpacaOrderRequestService.updateOrder(user, orderId, command);
     }
 
 }

@@ -34,7 +34,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class AlpacaOrderRequestService implements TradingPort {
+public class AlpacaOrderRequestService {
 
     private final OrderRequestRepository orderRequestRepository;
     private final AlpacaTradingPort alpacaTradingPort;
@@ -43,7 +43,7 @@ public class AlpacaOrderRequestService implements TradingPort {
 
     // 주문 생성
     @Transactional
-    public OrderRequest createOrder(User user, CreateOrderCommand command) {
+    public TradingPort.OrderCreatedResult createOrder(User user, TradingPort.CreateOrderCommand command) {
         // Command를 Infra DTO로 변환
         CreateOrderRequest request = createInfraRequest(command);
         // 사용자의 활성화된 Alpaca 연결 조회
@@ -64,18 +64,19 @@ public class AlpacaOrderRequestService implements TradingPort {
 
         // 3. OrderRequest 생성 + Stock 연결
         OrderRequest orderRequest = convertToEntity(alpacaResponse, user, stock);
-        return orderRequestRepository.save(orderRequest);
+        orderRequestRepository.save(orderRequest);
+        
+        // 4. OrderCreatedResult 반환
+        return convertToCreatedResult(alpacaResponse);
     }
 
     // 내 주문 목록 조회 
-    @Override
     @Transactional(readOnly = true)
     public Page<OrderRequest> getMyOrders(User user, Pageable pageable) {
         return orderRequestRepository.findByUser(user, pageable);
     }
 
     // 주문 상세 조회
-    @Override
     @Transactional(readOnly = true)
     public OrderRequest getOrder(User user, Long orderId) {
         return orderRequestRepository.findByIdAndUser(orderId, user)
@@ -83,7 +84,6 @@ public class AlpacaOrderRequestService implements TradingPort {
     }
     
     // 주문 취소
-    @Override
     @Transactional
     public void cancelOrder(User user, Long orderId) {
         // 사용자의 활성화된 Alpaca 연결 조회
@@ -115,7 +115,6 @@ public class AlpacaOrderRequestService implements TradingPort {
     }
     
     // 포지션 조회
-    @Override
     @Transactional(readOnly = true)
     public Page<TradingPort.PositionInfo> getPositions(User user, Pageable pageable) {
         // 사용자의 활성화된 Alpaca 연결 조회
@@ -149,39 +148,10 @@ public class AlpacaOrderRequestService implements TradingPort {
             throw new QbitException(ErrorCode.EXTERNAL_API_ERROR, "포지션 조회에 실패했습니다: " + e.getMessage());
         }
     }
-    
-    // 계정 정보 조회
-    @Override
-    @Transactional(readOnly = true)
-    public TradingPort.AccountInfo getAccountInfo(User user) {
-        // 사용자의 활성화된 Alpaca 연결 조회
-        AlpacaOAuthConnection connection = alpacaOAuthConnectionService.getValidConnection(user.getId());
-        String authorization = "Bearer " + connection.getAccessToken();
-        
-        try {
-            var account = alpacaTradingPort.getAccount(authorization);
-            return new TradingPort.AccountInfo(
-                    account.accountNumber(),
-                    account.status(),
-                    account.currency(),
-                    account.buyingPower() != null ? account.buyingPower().toString() : null,
-                    account.cash() != null ? account.cash().toString() : null,
-                    account.portfolioValue() != null ? account.portfolioValue().toString() : null,
-                    account.equity() != null ? account.equity().toString() : null,
-                    account.lastEquity() != null ? account.lastEquity().toString() : null,
-                    account.longMarketValue() != null ? account.longMarketValue().toString() : null,
-                    account.shortMarketValue() != null ? account.shortMarketValue().toString() : null
-            );
-        } catch (Exception e) {
-            log.error("Alpaca 계정 정보 조회 실패: {}", e.getMessage(), e);
-            throw new QbitException(ErrorCode.EXTERNAL_API_ERROR, "계정 정보 조회에 실패했습니다: " + e.getMessage());
-        }
-    }
 
     // 주문 수정
-    @Override
     @Transactional
-    public OrderUpdateResult updateOrder(User user, Long orderId, UpdateOrderCommand command) {
+    public TradingPort.OrderUpdateResult updateOrder(User user, Long orderId, TradingPort.UpdateOrderCommand command) {
 
         UpdateOrderRequest request = new UpdateOrderRequest(
             parseBigDecimal(command.quantity()),
@@ -343,8 +313,8 @@ public class AlpacaOrderRequestService implements TradingPort {
         };
     }
     
-    private OrderUpdateResult convertToUpdateResult(AlpacaOrderResponse response) {
-        return new OrderUpdateResult(
+    private TradingPort.OrderUpdateResult convertToUpdateResult(AlpacaOrderResponse response) {
+        return new TradingPort.OrderUpdateResult(
             response.id(),
             response.symbol(),
             response.quantity(),
@@ -367,8 +337,24 @@ public class AlpacaOrderRequestService implements TradingPort {
         );
     }
     
+    private TradingPort.OrderCreatedResult convertToCreatedResult(AlpacaOrderResponse response) {
+        return new TradingPort.OrderCreatedResult(
+            response.id(),
+            response.symbol(),
+            response.quantity(),
+            response.side(),
+            response.type(),
+            response.status(),
+            response.timeInForce(),
+            response.limitPrice(),
+            response.stopPrice(),
+            response.clientOrderId(),
+            response.createdAt() != null ? response.createdAt().toString() : null
+        );
+    }
+    
     // Command (String)를 Infra DTO (BigDecimal)로 변환하는 헬퍼 메서드
-    private CreateOrderRequest createInfraRequest(CreateOrderCommand command) {
+    private CreateOrderRequest createInfraRequest(TradingPort.CreateOrderCommand command) {
         BigDecimal quantity = parseBigDecimal(command.quantity());
         BigDecimal limitPrice = parseBigDecimal(command.limitPrice());
         BigDecimal stopPrice = parseBigDecimal(command.stopPrice());

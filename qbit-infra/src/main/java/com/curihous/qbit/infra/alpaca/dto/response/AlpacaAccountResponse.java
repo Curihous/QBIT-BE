@@ -103,6 +103,10 @@ public record AlpacaAccountResponse(
 
     @Schema(description = "SMA (Special Memorandum Account)")
     @JsonProperty("sma")
-    BigDecimal sma
+    BigDecimal sma,
+
+    @Schema(description = "암호화폐 거래 상태")
+    @JsonProperty("crypto_status")
+    String cryptoStatus
 ) {
 }

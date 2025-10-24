@@ -4,6 +4,7 @@ import com.curihous.qbit.infra.alpaca.port.AlpacaTradingPort;
 import com.curihous.qbit.infra.alpaca.config.AlpacaClientConfig;
 import com.curihous.qbit.infra.alpaca.dto.request.CreateOrderRequest;
 import com.curihous.qbit.infra.alpaca.dto.request.UpdateOrderRequest;
+import com.curihous.qbit.infra.alpaca.dto.request.CryptoAgreementRequest;
 import com.curihous.qbit.infra.alpaca.dto.response.AlpacaAccountResponse;
 import com.curihous.qbit.infra.alpaca.dto.response.AlpacaAssetResponse;
 import com.curihous.qbit.infra.alpaca.dto.response.AlpacaOrderResponse;
@@ -26,6 +27,14 @@ public interface AlpacaTradingClient extends AlpacaTradingPort {
     // 계정 정보 조회
     @GetMapping("/v2/account")
     AlpacaAccountResponse getAccount(@RequestHeader("Authorization") String authorization);
+
+    // crypto agreement 서명
+    @PatchMapping("/v1/accounts/{account_id}")
+    void signCryptoAgreement(
+        @RequestHeader("Authorization") String authorization,
+        @PathVariable("account_id") String accountId,
+        @RequestBody CryptoAgreementRequest request
+    );
 
     // ============== Orders API ==============
 

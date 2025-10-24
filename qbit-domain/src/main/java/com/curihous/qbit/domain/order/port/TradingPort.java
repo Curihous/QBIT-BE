@@ -14,7 +14,7 @@ import java.util.List;
 public interface TradingPort {
     
     // 주문 생성
-    OrderRequest createOrder(User user, CreateOrderCommand request);
+    OrderCreatedResult createOrder(User user, CreateOrderCommand request);
     
     // 주문 수정
     OrderUpdateResult updateOrder(User user, Long orderId, UpdateOrderCommand request);
@@ -76,6 +76,20 @@ public interface TradingPort {
         String replaces              // 대체하는 주문 ID
     ) {}
     
+    record OrderCreatedResult(
+        String alpacaOrderId,        // Alpaca 주문 ID
+        String symbol,               // 종목 심볼
+        String quantity,             // 수량
+        String side,                 // 매수/매도
+        String type,                 // 주문 유형
+        String status,               // 주문 상태
+        String timeInForce,          // 주문 유효기간
+        String limitPrice,           // 지정가
+        String stopPrice,            // 손절가
+        String clientOrderId,        // 클라이언트 주문 ID
+        String createdAt             // 주문 생성 시간
+    ) {}
+    
     record PositionInfo(
         String symbol,               // 종목 심볼
         String quantity,             // 보유 수량
@@ -98,7 +112,11 @@ public interface TradingPort {
         String equity,               // 자산 가치
         String lastEquity,           // 전일 자산 가치
         String longMarketValue,      // 롱 포지션 시장 가치
-        String shortMarketValue      // 숏 포지션 시장 가치
+        String shortMarketValue,     // 숏 포지션 시장 가치
+        String accountId,            // Alpaca 계정 ID
+        String cryptoStatus,         // 암호화폐 거래 상태
+        boolean tradingBlocked,      // 거래 차단 여부
+        boolean accountBlocked       // 계정 차단 여부
     ) {}
 }
 

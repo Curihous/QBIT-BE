@@ -10,11 +10,23 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * - GET /alpaca/account
  */
 public record AccountInfoResponseDto(
-    @Schema(description = "계정 번호", example = "PA2J8NKJ1M7P")
+    @Schema(description = "계정 ID (Alpaca 내부 ID)", example = "account-id")
+    String accountId,
+    
+    @Schema(description = "계정 번호 (사용자 식별용)", example = "PA2J8NKJ1M7P")
     String accountNumber,
     
     @Schema(description = "계정 상태", example = "ACTIVE")
     String status,
+    
+    @Schema(description = "암호화폐 거래 상태", example = "ACTIVE")
+    String cryptoStatus,
+    
+    @Schema(description = "거래 차단 여부", example = "false")
+    boolean tradingBlocked,
+    
+    @Schema(description = "계정 차단 여부", example = "false")
+    boolean accountBlocked,
     
     @Schema(description = "통화", example = "USD")
     String currency,
@@ -35,19 +47,27 @@ public record AccountInfoResponseDto(
     String lastEquity,
     
     @Schema(description = "롱 포지션(매수) 시장 가치", example = "500.00")
-    String longMarketValue
+    String longMarketValue,
+    
+    @Schema(description = "숏 포지션(매도) 시장 가치", example = "0.00")
+    String shortMarketValue
 ) {
     public static AccountInfoResponseDto from(TradingPort.AccountInfo account) {
         return new AccountInfoResponseDto(
-            account.accountNumber(),
-            account.status(),
-            account.currency(),
-            account.buyingPower(),
-            account.cash(),
-            account.portfolioValue(),
-            account.equity(),
-            account.lastEquity(),
-            account.longMarketValue()
+            account.accountId(),                  
+            account.accountNumber(),         
+            account.status(),                  
+            account.cryptoStatus(),                 
+            account.tradingBlocked(),               
+            account.accountBlocked(),               
+            account.currency(),                      
+            account.buyingPower(),                  
+            account.cash(),                         
+            account.portfolioValue(),               
+            account.equity(),                       
+            account.lastEquity(),                   
+            account.longMarketValue(),              
+            account.shortMarketValue()              
         );
     }
 }
