@@ -57,9 +57,7 @@ public class AlpacaOrderSyncService {
 
     // ============== 로그인 시 주문 동기화 ==============
     
-    /**
-     * 로그인 시 주문 동기화 이벤트 처리
-     */
+    // 로그인 시 주문 동기화 이벤트 처리
     @EventListener
     @Async
     public void handleLoginOrderSyncEvent(LoginOrderSyncEvent event) {
