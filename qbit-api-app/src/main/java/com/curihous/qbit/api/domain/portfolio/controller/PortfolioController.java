@@ -35,7 +35,7 @@ public class PortfolioController {
 
     @Operation(
         summary = "보유 포지션 조회", 
-        description = "현재 보유 중인 주식 포지션 목록을 조회합니다.(DB에 저장된 포지션 데이터 기반, 페이징 지원)"
+        description = "현재 보유 중인 주식 포지션 목록을 조회합니다.(알파카 기반, 페이징 지원)"
     )
     @GetMapping("/positions")
     public ResponseEntity<PaginatedResponseDto<PositionResponseDto>> getPositions(
