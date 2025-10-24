@@ -220,10 +220,15 @@ public class AlpacaOrderSyncService {
         log.info("DB 저장 전: alpacaOrderId={}, symbol={}, status={}, quantity={}", 
                 alpacaOrder.id(), alpacaOrder.symbol(), alpacaOrder.status(), alpacaOrder.quantity());
         
-        OrderRequest savedOrder = orderRequestRepository.save(newOrder);
-        
-        log.info("DB 저장 완료: orderId={}, alpacaOrderId={}", 
-                savedOrder.getId(), savedOrder.getAlpacaOrderId());
+        try {
+            OrderRequest savedOrder = orderRequestRepository.save(newOrder);
+            log.info("DB 저장 완료: orderId={}, alpacaOrderId={}", 
+                    savedOrder.getId(), savedOrder.getAlpacaOrderId());
+        } catch (Exception e) {
+            log.error("DB 저장 실패: alpacaOrderId={}, error={}", 
+                    alpacaOrder.id(), e.getMessage(), e);
+            throw e;
+        }
     }
 
     // Alpaca 데이터로 체결 정보 업데이트(알파카 UI에서 한 경우)
