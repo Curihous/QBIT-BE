@@ -16,6 +16,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     implementation 'org.springframework.security:spring-security-oauth2-client'
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
+    implementation 'io.github.openfeign:feign-httpclient'
     
     // JWT
     implementation 'io.jsonwebtoken:jjwt-api:0.13.0'
