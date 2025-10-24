@@ -112,8 +112,11 @@ public class AlpacaOrderSyncService {
             int syncedCount = 0;
             for (AlpacaOrderResponse alpacaOrder : alpacaOrders) {
                 try {
+                    log.info("주문 동기화 시작: alpacaOrderId={}, symbol={}, status={}", 
+                            alpacaOrder.id(), alpacaOrder.symbol(), alpacaOrder.status());
                     syncSingleOrderFromAlpaca(user, alpacaOrder);
                     syncedCount++;
+                    log.info("주문 동기화 완료: alpacaOrderId={}", alpacaOrder.id());
                 } catch (Exception e) {
                     log.error("개별 주문 동기화 실패: userId={}, alpacaOrderId={}, error={}", 
                             user.getId(), alpacaOrder.id(), e.getMessage(), e);
