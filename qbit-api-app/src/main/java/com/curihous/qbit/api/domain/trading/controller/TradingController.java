@@ -5,6 +5,11 @@ import com.curihous.qbit.api.domain.trading.dto.request.UpdateOrderRequestDto;
 import com.curihous.qbit.api.domain.trading.dto.response.OrderCreatedResponseDto;
 import com.curihous.qbit.api.domain.trading.dto.response.OrderDetailResponseDto;
 import com.curihous.qbit.api.domain.trading.dto.response.OrderUpdateResponseDto;
+import com.curihous.qbit.infra.alpaca.client.AlpacaTradingClient;
+import com.curihous.qbit.infra.alpaca.dto.response.AlpacaOrderResponse;
+import com.curihous.qbit.domain.alpaca.service.AlpacaOAuthConnectionService;
+import com.curihous.qbit.domain.alpaca.entity.AlpacaOAuthConnection;
+import com.curihous.qbit.domain.alpaca.entity.AlpacaConnectionStatus;
 import com.curihous.qbit.common.dto.PaginatedResponseDto;
 import com.curihous.qbit.common.exception.ErrorCode;
 import com.curihous.qbit.common.exception.QbitException;
@@ -28,6 +33,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
@@ -40,6 +47,8 @@ public class TradingController {
     private final TradingPort tradingPort;
     private final StockPort stockPort;
     private final UserSecurityFacade userSecurityFacade;
+    private final AlpacaTradingClient alpacaTradingClient;
+    private final AlpacaOAuthConnectionService alpacaOAuthConnectionService;
     
     @Value("${stock.sync.us-equity}")
     private boolean allowUsEquity;
@@ -140,6 +149,56 @@ public class TradingController {
         User user = userSecurityFacade.getCurrentUser();
         tradingPort.cancelOrder(user, orderId);
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(
+        summary = "[DEBUG] Alpaca로 직접 내 주문 목록 조회", 
+        description = "Alpaca API를 직접 호출하여 주문 목록을 조회합니다."
+    )
+    @GetMapping("/debug/orders")
+    public ResponseEntity<List<AlpacaOrderResponse>> debugAlpacaOrders(
+            @RequestParam(value = "status", required = false) String status,
+            @RequestParam(value = "limit", required = false, defaultValue = "100") Integer limit,
+            @RequestParam(value = "direction", required = false, defaultValue = "desc") String direction,
+            @RequestParam(value = "nested", required = false, defaultValue = "true") Boolean nested
+    ) {
+        User user = userSecurityFacade.getCurrentUser();
+        
+        log.info("Alpaca 직접 조회 디버깅 시작: userId={}, status={}, limit={}, direction={}, nested={}", 
+                user.getId(), status, limit, direction, nested);
+        
+        // Alpaca 연결 확인
+        Optional<AlpacaOAuthConnection> connectionOpt = alpacaOAuthConnectionService.findByUserId(user.getId());
+        if (connectionOpt.isEmpty()) {
+            log.warn("Alpaca 연결이 없는 사용자: userId={}", user.getId());
+            throw new QbitException(ErrorCode.ALPACA_NOT_CONNECTED);
+        }
+        
+        AlpacaOAuthConnection connection = connectionOpt.get();
+        if (!connection.getAlpacaConnectionStatus().equals(AlpacaConnectionStatus.ACTIVE)) {
+            log.warn("비활성화된 Alpaca 연결: userId={}, status={}", user.getId(), connection.getAlpacaConnectionStatus());
+            throw new QbitException(ErrorCode.ALPACA_TOKEN_EXPIRED);
+        }
+        
+        // Alpaca API 직접 호출
+        String authorization = "Bearer " + connection.getAccessToken();
+        log.info("Alpaca API 직접 호출: userId={}, alpacaUserId={}, token={}...", 
+                user.getId(), connection.getAlpacaUserId(), 
+                connection.getAccessToken().substring(0, Math.min(20, connection.getAccessToken().length())));
+        
+        List<AlpacaOrderResponse> alpacaOrders = alpacaTradingClient.getOrders(
+                authorization, status, limit, direction, nested);
+        
+        log.info("Alpaca 직접 조회 완료: userId={}, 주문 수={}", user.getId(), alpacaOrders.size());
+        
+        // 각 주문의 상세 정보 로그
+        for (AlpacaOrderResponse order : alpacaOrders) {
+            log.info("조회된 주문: id={}, symbol={}, status={}, side={}, qty={}, filled_qty={}, created_at={}", 
+                    order.id(), order.symbol(), order.status(), order.side(), 
+                    order.quantity(), order.filledQuantity(), order.createdAt());
+        }
+        
+        return ResponseEntity.ok(alpacaOrders);
     }
     
     // 자산 클래스 허용 여부 검증 헬퍼 메서드
