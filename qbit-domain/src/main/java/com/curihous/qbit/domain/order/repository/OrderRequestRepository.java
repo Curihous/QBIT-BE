@@ -21,4 +21,7 @@ public interface OrderRequestRepository extends JpaRepository<OrderRequest, Long
     
     // Alpaca 주문 ID로 조회
     Optional<OrderRequest> findByAlpacaOrderId(String alpacaOrderId);
+    
+    // 사용자의 Alpaca 주문 ID로 조회
+    Optional<OrderRequest> findByAlpacaOrderIdAndUser(String alpacaOrderId, User user);
 }

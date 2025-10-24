@@ -83,6 +83,13 @@ public class AlpacaOrderRequestService {
                 .orElseThrow(() -> new QbitException(ErrorCode.ORDER_REQUEST_NOT_FOUND, "주문을 찾을 수 없습니다"));
     }
     
+    // Alpaca 주문 ID로 주문 조회
+    @Transactional(readOnly = true)
+    public OrderRequest getOrderByAlpacaOrderId(User user, String alpacaOrderId) {
+        return orderRequestRepository.findByAlpacaOrderIdAndUser(alpacaOrderId, user)
+                .orElseThrow(() -> new QbitException(ErrorCode.ORDER_REQUEST_NOT_FOUND, "주문을 찾을 수 없습니다"));
+    }
+    
     // 주문 취소
     @Transactional
     public void cancelOrder(User user, Long orderId) {

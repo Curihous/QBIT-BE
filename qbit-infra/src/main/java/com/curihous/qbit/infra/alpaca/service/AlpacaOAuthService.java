@@ -167,6 +167,11 @@ public class AlpacaOAuthService implements TradingPort {
     }
 
     @Override
+    public OrderRequest getOrderByAlpacaOrderId(User user, String alpacaOrderId) {
+        return alpacaOrderRequestService.getOrderByAlpacaOrderId(user, alpacaOrderId);
+    }
+
+    @Override
     public void cancelOrder(User user, Long orderId) {
         alpacaOrderRequestService.cancelOrder(user, orderId);
     }

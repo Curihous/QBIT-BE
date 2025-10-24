@@ -25,6 +25,9 @@ public interface TradingPort {
     // 특정 주문 조회
     OrderRequest getOrder(User user, Long orderId);
     
+    // Alpaca 주문 ID로 주문 조회
+    OrderRequest getOrderByAlpacaOrderId(User user, String alpacaOrderId);
+    
     // 주문 취소
     void cancelOrder(User user, Long orderId);
     

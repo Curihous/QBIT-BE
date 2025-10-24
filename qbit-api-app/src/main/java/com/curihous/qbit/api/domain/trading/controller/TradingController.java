@@ -82,7 +82,8 @@ public class TradingController {
             clientOrderId
         );
         
-        OrderRequest orderRequest = tradingPort.createOrder(user, command);
+        TradingPort.OrderCreatedResult result = tradingPort.createOrder(user, command);
+        OrderRequest orderRequest = tradingPort.getOrderByAlpacaOrderId(user, result.alpacaOrderId());
         return ResponseEntity.ok(OrderCreatedResponseDto.from(orderRequest, stock.getAssetClass()));
     }
 
