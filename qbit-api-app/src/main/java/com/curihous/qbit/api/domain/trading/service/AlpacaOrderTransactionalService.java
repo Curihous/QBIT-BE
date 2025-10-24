@@ -97,6 +97,7 @@ public class AlpacaOrderTransactionalService {
                 .user(user)
                 .stock(stock)
                 .alpacaOrderId(alpacaOrder.id())
+                .symbol(alpacaOrder.symbol())
                 .clientOrderId(alpacaOrder.clientOrderId())
                 .side(convertToOrderSide(alpacaOrder.side()))
                 .type(convertToOrderType(alpacaOrder.type()))
