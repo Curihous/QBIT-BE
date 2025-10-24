@@ -53,7 +53,7 @@ public class AlpacaOAuthService implements TradingPort {
             .queryParam("response_type", "code")
             .queryParam("client_id", clientId)
             .queryParam("redirect_uri", redirectUri)
-            .queryParam("scope", "account:read account:write trading:read trading:write")
+            .queryParam("scope", "trading")
             .queryParam("state", secureState)
             .queryParam("env", "paper") // Paper Trading
             .build()

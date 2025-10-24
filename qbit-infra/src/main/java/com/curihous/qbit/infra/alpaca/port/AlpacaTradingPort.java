@@ -33,7 +33,4 @@ public interface AlpacaTradingPort {
     
     // 포지션 목록 조회
     List<AlpacaPositionResponse> getPositions(String authorization);
-    
-    // crypto agreement 서명
-    void signCryptoAgreement(String authorization, String accountId, CryptoAgreementRequest request);
 }

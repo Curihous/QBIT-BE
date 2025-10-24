@@ -28,14 +28,6 @@ public interface AlpacaTradingClient extends AlpacaTradingPort {
     @GetMapping("/v2/account")
     AlpacaAccountResponse getAccount(@RequestHeader("Authorization") String authorization);
 
-    // crypto agreement 서명
-    @PatchMapping("/v1/accounts/{account_id}")
-    void signCryptoAgreement(
-        @RequestHeader("Authorization") String authorization,
-        @PathVariable("account_id") String accountId,
-        @RequestBody CryptoAgreementRequest request
-    );
-
     // ============== Orders API ==============
 
     // 주문 생성
