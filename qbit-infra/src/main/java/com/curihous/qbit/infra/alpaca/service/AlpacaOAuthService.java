@@ -21,6 +21,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.time.LocalDateTime;
@@ -93,8 +95,14 @@ public class AlpacaOAuthService implements TradingPort {
                 expiresAt
             );
 
-            // 로그인 시 주문 상태 동기화 이벤트 발행
-            eventPublisher.publishEvent(new LoginOrderSyncEvent(user.getId(), user.getEmail()));
+            // 트랜잭션 커밋 후 로그인 시 주문 상태 동기화 이벤트 발행
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    log.info("트랜잭션 커밋 완료, 주문 동기화 이벤트 발행: userId={}", user.getId());
+                    eventPublisher.publishEvent(new LoginOrderSyncEvent(user.getId(), user.getEmail()));
+                }
+            });
 
             return connection;
 

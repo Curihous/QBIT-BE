@@ -18,6 +18,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -67,8 +69,14 @@ public class GoogleLoginService {
         
         log.info("JWT 토큰 발급 완료");
         
-        // 6. Alpaca 주문 동기화 이벤트 발행 (비동기)
-        eventPublisher.publishEvent(new LoginOrderSyncEvent(user.getId(), user.getEmail()));
+        // 6. 트랜잭션 커밋 후 Alpaca 주문 동기화 이벤트 발행
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                log.info("트랜잭션 커밋 완료, 주문 동기화 이벤트 발행: userId={}", user.getId());
+                eventPublisher.publishEvent(new LoginOrderSyncEvent(user.getId(), user.getEmail()));
+            }
+        });
         
         // 7. 응답 데이터 구성
         Map<String, Object> result = new HashMap<>();
