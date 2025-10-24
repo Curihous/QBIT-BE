@@ -151,12 +151,13 @@ public class AlpacaOrderSyncService {
             }
             
             updateExistingOrderFromAlpaca(existingOrder, alpacaOrder);
-            log.debug("기존 주문 업데이트: orderId={}, alpacaOrderId={}", 
-                    existingOrder.getId(), alpacaOrder.id());
+            log.info("기존 주문 업데이트: orderId={}, alpacaOrderId={}, status={}", 
+                    existingOrder.getId(), alpacaOrder.id(), alpacaOrder.status());
         } else {
             // 새 주문 생성
             createNewOrderFromAlpaca(user, alpacaOrder);
-            log.debug("새 주문 생성: alpacaOrderId={}", alpacaOrder.id());
+            log.info("새 주문 생성: alpacaOrderId={}, symbol={}, status={}", 
+                    alpacaOrder.id(), alpacaOrder.symbol(), alpacaOrder.status());
         }
     }
 
@@ -216,7 +217,13 @@ public class AlpacaOrderSyncService {
             newOrder.updateFilledInfo(filledQty, filledAvgPrice, alpacaOrder.filledAt());
         }
         
-        orderRequestRepository.save(newOrder);
+        log.info("DB 저장 전: alpacaOrderId={}, symbol={}, status={}, quantity={}", 
+                alpacaOrder.id(), alpacaOrder.symbol(), alpacaOrder.status(), alpacaOrder.quantity());
+        
+        OrderRequest savedOrder = orderRequestRepository.save(newOrder);
+        
+        log.info("DB 저장 완료: orderId={}, alpacaOrderId={}", 
+                savedOrder.getId(), savedOrder.getAlpacaOrderId());
     }
 
     // Alpaca 데이터로 체결 정보 업데이트(알파카 UI에서 한 경우)
