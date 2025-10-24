@@ -100,7 +100,7 @@ public class AlpacaOrderSyncService {
             
             // Alpaca에서 최신 주문 목록 가져오기
             String authorization = "Bearer " + connection.getAccessToken();
-            List<AlpacaOrderResponse> alpacaOrders = alpacaTradingClient.getOrders(authorization);
+            List<AlpacaOrderResponse> alpacaOrders = alpacaTradingClient.getOrders(authorization, "all", 500, "desc", true);
             
             log.info("Alpaca에서 주문 조회 완료: userId={}, 주문 수={}", user.getId(), alpacaOrders.size());
             
@@ -121,7 +121,7 @@ public class AlpacaOrderSyncService {
             
             log.info("로그인 시 주문 동기화 완료: userId={}, 동기화된 주문 수={}", 
                     user.getId(), syncedCount);
-                    
+     
         } catch (Exception e) {
             log.error("로그인 시 주문 동기화 실패: userId={}, error={}", 
                     user.getId(), e.getMessage(), e);
