@@ -83,6 +83,23 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
         connectToAlpaca(userId, accessToken);
     }
     
+    // 저장된 토큰으로 자동 구독 (STOMP CONNECT 시 호출)
+    public void subscribeIfHasToken(Long userId) {
+        if (userSessions.containsKey(userId)) {
+            log.debug("이미 구독 중인 사용자: userId={}", userId);
+            return;
+        }
+        
+        String accessToken = userAccessTokens.get(userId);
+        if (accessToken == null || accessToken.isEmpty()) {
+            log.info("저장된 Access Token이 없어 Alpaca 구독을 건너뜁니다: userId={}", userId);
+            return;
+        }
+        
+        log.info("저장된 Access Token으로 Alpaca 구독 시작: userId={}", userId);
+        connectToAlpaca(userId, accessToken);
+    }
+    
     // 구독 해제
     public void unsubscribe(Long userId) {
         WebSocketSession session = userSessions.remove(userId);

@@ -2,6 +2,7 @@ package com.curihous.qbit.realtime.config;
 
 import com.curihous.qbit.infra.security.jwt.JwtUtil;
 import com.curihous.qbit.infra.security.util.CustomUserDetails;
+import com.curihous.qbit.realtime.websocket.AlpacaTradeUpdatesManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
@@ -36,6 +37,7 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final JwtUtil jwtUtil;
+    private final AlpacaTradeUpdatesManager alpacaTradeUpdatesManager;
 
     @Override
     public void configureMessageBroker(@NonNull MessageBrokerRegistry config) {
@@ -97,6 +99,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                                         SecurityContextHolder.getContext().setAuthentication(authentication);
                                         
                                         log.info("STOMP WebSocket 인증 성공: userId={}", userId);
+                                        
+                                        // Alpaca WebSocket 자동 구독 (저장된 토큰 사용)
+                                        alpacaTradeUpdatesManager.subscribeIfHasToken(userId);
                                     } else {
                                         log.warn("STOMP 인증 실패: 유효하지 않은 사용자 정보");
                                         throw new IllegalArgumentException("Invalid user");
