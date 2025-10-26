@@ -4,6 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
+
 /**
  * 로그인 시 주문 동기화 이벤트
  * 
@@ -12,7 +14,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class LoginOrderSyncEvent {
+public class LoginOrderSyncEvent implements Serializable {
     private Long userId;
     private String userEmail;
     private String accessToken;  // Alpaca OAuth access token
