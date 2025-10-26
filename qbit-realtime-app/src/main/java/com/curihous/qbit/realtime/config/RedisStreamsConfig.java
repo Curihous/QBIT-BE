@@ -95,14 +95,25 @@ public class RedisStreamsConfig {
         return container;
     }
 
-    // Consumer Group 생성 (없는 경우에만)
+    // Consumer Group 생성 
     private void createConsumerGroup(String stream) {
         try {
+            // 기존 Consumer Group 삭제
+            try {
+                connectionFactory.getConnection().streamCommands()
+                        .xGroupDestroy(stream.getBytes(), CONSUMER_GROUP);
+                log.info("기존 Consumer Group 삭제: group={}, stream={}", CONSUMER_GROUP, stream);
+            } catch (Exception e) {
+                log.debug("삭제할 Consumer Group이 없음: group={}, stream={}", CONSUMER_GROUP, stream);
+            }
+            
+            // Consumer Group 생성
             connectionFactory.getConnection().streamCommands()
                     .xGroupCreate(stream.getBytes(), CONSUMER_GROUP, ReadOffset.from("0"), true);
             log.info("Consumer Group 생성: group={}, stream={}", CONSUMER_GROUP, stream);
         } catch (Exception e) {
-            log.debug("Consumer Group이 이미 존재: group={}, stream={}", CONSUMER_GROUP, stream);
+            log.error("Consumer Group 생성 실패: group={}, stream={}, error={}", 
+                    CONSUMER_GROUP, stream, e.getMessage());
         }
     }
 }
