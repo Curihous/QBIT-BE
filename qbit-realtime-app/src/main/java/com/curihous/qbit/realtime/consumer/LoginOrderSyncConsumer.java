@@ -25,8 +25,11 @@ public class LoginOrderSyncConsumer implements StreamListener<String, MapRecord<
         try {
             Map<String, String> fields = message.getValue();
             
-            Long userId = Long.parseLong(fields.get("userId"));
-            String accessToken = fields.get("accessToken");
+            // 값에서 JSON 따옴표 제거
+            String userIdStr = fields.get("userId").replaceAll("^\"|\"$", "");
+            String accessToken = fields.get("accessToken").replaceAll("^\"|\"$", "");
+            
+            Long userId = Long.parseLong(userIdStr);
             
             log.info("LoginOrderSyncEvent 수신: userId={}, hasAccessToken={}", 
                     userId, accessToken != null && !accessToken.isEmpty());
