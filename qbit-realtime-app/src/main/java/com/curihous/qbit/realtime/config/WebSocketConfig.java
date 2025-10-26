@@ -105,12 +105,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                                     log.warn("STOMP 인증 실패: 토큰 만료");
                                     throw new IllegalArgumentException("Token expired");
                                 }
-                            } catch (IllegalArgumentException e) {
-                                // 토큰 만료 또는 유효하지 않은 경우
-                                log.error("STOMP JWT 검증 실패: {}", e.getMessage());
-                                throw new IllegalArgumentException("Authentication failed: " + e.getMessage());
                             } catch (Exception e) {
-                                log.error("STOMP JWT 검증 실패: {}", e.getMessage(), e);
+                                log.error("STOMP JWT 검증 실패: {}", e.getMessage());
                                 throw new IllegalArgumentException("Authentication failed");
                             }
                         } else {
