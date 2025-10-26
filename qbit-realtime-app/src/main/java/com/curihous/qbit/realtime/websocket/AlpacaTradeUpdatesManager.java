@@ -1,9 +1,13 @@
 package com.curihous.qbit.realtime.websocket;
 
+import com.curihous.qbit.common.event.LoginOrderSyncEvent;
+import com.curihous.qbit.domain.alpaca.entity.AlpacaOAuthConnection;
+import com.curihous.qbit.domain.alpaca.repository.AlpacaOAuthConnectionRepository;
 import com.curihous.qbit.realtime.handler.TradeUpdatesEventHandler;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.*;
 import org.springframework.web.socket.client.WebSocketClient;
@@ -28,10 +32,8 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
     // 세션 -> 사용자 ID 역매핑
     private final Map<WebSocketSession, Long> sessionToUserId;
     
-    // 사용자별 인증 정보 
-    private final Map<Long, AlpacaCredentials> userCredentials;
-    
     private final TradeUpdatesEventHandler eventHandler;
+    private final AlpacaOAuthConnectionRepository alpacaOAuthConnectionRepository;
     
     private volatile WebSocketClient webSocketClient;
     
@@ -40,15 +42,13 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
     private final ScheduledExecutorService reconnectScheduler = 
         Executors.newScheduledThreadPool(1);
     
-    // 인증 정보
-    public record AlpacaCredentials(String apiKey, String apiSecret) {}
-    
-    public AlpacaTradeUpdatesManager(TradeUpdatesEventHandler eventHandler) {
+    public AlpacaTradeUpdatesManager(TradeUpdatesEventHandler eventHandler,
+                                     AlpacaOAuthConnectionRepository alpacaOAuthConnectionRepository) {
         this.objectMapper = new ObjectMapper();
         this.userSessions = new ConcurrentHashMap<>();
         this.sessionToUserId = new ConcurrentHashMap<>();
-        this.userCredentials = new ConcurrentHashMap<>();
         this.eventHandler = eventHandler;
+        this.alpacaOAuthConnectionRepository = alpacaOAuthConnectionRepository;
     }
     
     public void initialize(WebSocketClient webSocketClient) {
@@ -56,20 +56,35 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
         log.info("Alpaca Trade Updates WebSocket 매니저 초기화 완료");
     }
     
-    public void subscribe(Long userId, String apiKey, String apiSecret) {
+    // 로그인 시 자동 WebSocket 구독
+    @EventListener
+    public void handleLoginOrderSyncEvent(LoginOrderSyncEvent event) {
+        log.info("로그인 이벤트 수신 - Alpaca WebSocket 구독 시작: userId={}", event.getUserId());
+        subscribe(event.getUserId());
+    }
+    
+    public void subscribe(Long userId) {
         if (userSessions.containsKey(userId)) {
             log.debug("이미 구독 중인 사용자: userId={}", userId);
             return;
-        }   
-        // 인증 정보 저장
-        userCredentials.put(userId, new AlpacaCredentials(apiKey, apiSecret));
-        connectToAlpaca(userId);
+        }
+        
+        // Alpaca OAuth 연결 조회
+        AlpacaOAuthConnection connection = alpacaOAuthConnectionRepository
+                .findByUserId(userId)
+                .orElse(null);
+        
+        if (connection == null) {
+            log.warn("Alpaca OAuth 연결 없음: userId={}", userId);
+            return;
+        }
+        
+        connectToAlpaca(userId, connection.getAccessToken());
     }
     
     // 구독 해제
     public void unsubscribe(Long userId) {
         WebSocketSession session = userSessions.remove(userId);
-        userCredentials.remove(userId);
         
         if (session != null) {
             sessionToUserId.remove(session);
@@ -86,13 +101,7 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
     }
     
     // 연결
-    private void connectToAlpaca(Long userId) {
-        AlpacaCredentials credentials = userCredentials.get(userId);
-        if (credentials == null) {
-            log.error("인증 정보 없음: userId={}", userId);
-            return;
-        }
-        
+    private void connectToAlpaca(Long userId, String accessToken) {
         String url = ALPACA_STREAM_URL;
         
         int maxAttempts = 3;
@@ -114,7 +123,7 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
                 sessionToUserId.put(session, userId);
                 
                 log.info("Alpaca WebSocket 연결 성공: userId={}", userId);
-                sendAuthMessage(session, credentials);
+                sendAuthMessage(session, accessToken);
                 return;
                 
             } catch (Exception e) {
@@ -139,12 +148,14 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
     }
     
     // 인증 메시지 전송
-    private void sendAuthMessage(WebSocketSession session, AlpacaCredentials credentials) {
+    private void sendAuthMessage(WebSocketSession session, String accessToken) {
         try {
             Map<String, Object> authMessage = Map.of(
-                "action", "auth",
-                "key", credentials.apiKey(),
-                "secret", credentials.apiSecret()
+                "action", "authenticate",
+                "data", Map.of(
+                    "key_id", accessToken,  
+                    "secret_key", ""     
+                )
             );
             
             String json = objectMapper.writeValueAsString(authMessage);
@@ -200,7 +211,7 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
             log.debug("Alpaca 메시지 수신: stream={}, payload={}", stream, payload);
             
             switch (stream) {
-                case "authorization":
+                case "authentication":
                     handleAuthorizationMessage(session, root);
                     break;
                 case "listening":
@@ -243,10 +254,8 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
         log.info("Alpaca 인증 응답: status={}, action={}, sessionId={}", 
                 status, action, session.getId());
         
-        if ("authorized".equals(status) && "authenticate".equals(action)) {
-            log.info("Alpaca 인증 성공: sessionId={}", session.getId());
-            // 인증 성공 후 trade_updates 구독
-            sendListenMessage(session);
+        if ("authenticated".equals(status) && "authenticate".equals(action)) {
+            log.info("Alpaca 인증 성공 - trade_updates 자동 구독됨: sessionId={}", session.getId());
         } else {
             log.error("Alpaca 인증 실패: status={}, action={}, sessionId={}", 
                     status, action, session.getId());
@@ -314,16 +323,22 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
         // 세션 정리
         sessionToUserId.remove(session);
         userSessions.remove(userId);  
-        // 인증 정보가 남아있으면 재연결
-        if (userCredentials.containsKey(userId)) {
-            log.info("Alpaca WebSocket 재연결 예약: userId={}", userId);
-            // 5초 후 재연결 시도
-            reconnectScheduler.schedule(() -> {
-                if (userCredentials.containsKey(userId)) {
-                    connectToAlpaca(userId);
+        
+        // 재연결 시도
+        log.info("Alpaca WebSocket 재연결 시도: userId={}", userId);
+        reconnectScheduler.schedule(() -> {
+            if (!userSessions.containsKey(userId)) {
+                AlpacaOAuthConnection connection = alpacaOAuthConnectionRepository
+                        .findByUserId(userId)
+                        .orElse(null);
+                
+                if (connection != null) {
+                    connectToAlpaca(userId, connection.getAccessToken());
+                } else {
+                    log.warn("재연결 실패: OAuth 연결 없음: userId={}", userId);
                 }
-            }, 5, TimeUnit.SECONDS);
-        }
+            }
+        }, 5, TimeUnit.SECONDS);
     }
     
     @Override

@@ -1,6 +1,7 @@
 package com.curihous.qbit.domain.order.repository;
 
 import com.curihous.qbit.domain.order.entity.OrderRequest;
+import com.curihous.qbit.domain.order.entity.OrderStatus;
 import com.curihous.qbit.domain.user.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -24,4 +25,7 @@ public interface OrderRequestRepository extends JpaRepository<OrderRequest, Long
     
     // 사용자의 Alpaca 주문 ID로 조회
     Optional<OrderRequest> findByAlpacaOrderIdAndUser(String alpacaOrderId, User user);
+    
+    // 상태별 주문 조회
+    List<OrderRequest> findByStatusIn(List<OrderStatus> statuses);
 }

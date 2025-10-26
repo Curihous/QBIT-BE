@@ -217,7 +217,7 @@ public class AlpacaOrderTransactionalService {
         };
     }
 
-    private OrderStatus convertToOrderStatus(String status) {
+    public OrderStatus convertToOrderStatus(String status) {
         return switch (status.toLowerCase()) {
             case "new" -> OrderStatus.NEW;
             case "pending_new" -> OrderStatus.PENDING_NEW;
