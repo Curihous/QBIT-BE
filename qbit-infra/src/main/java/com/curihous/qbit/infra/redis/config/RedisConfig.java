@@ -11,9 +11,8 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 public class RedisConfig {
     
     // Object 타입 데이터용 RedisTemplate (JSON 직렬화)
-    // TODO: 추후 주식 데이터 캐싱용으로 사용 예정
-    @Bean
-    public RedisTemplate<String, Object> redisObjectTemplate(RedisConnectionFactory connectionFactory) {
+    @Bean(name = "redisTemplate")
+    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(connectionFactory);
         
