@@ -1,11 +1,9 @@
 package com.curihous.qbit.realtime.websocket;
 
-import com.curihous.qbit.common.event.LoginOrderSyncEvent;
 import com.curihous.qbit.realtime.handler.TradeUpdatesEventHandler;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.*;
 import org.springframework.web.socket.client.WebSocketClient;
@@ -55,21 +53,7 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
         log.info("Alpaca Trade Updates WebSocket 매니저 초기화 완료");
     }
     
-    // 로그인 시 자동 WebSocket 구독
-    @EventListener
-    public void handleLoginOrderSyncEvent(LoginOrderSyncEvent event) {
-        log.info("로그인 이벤트 수신 - Alpaca WebSocket 구독 시작: userId={}", event.getUserId());
-        
-        if (event.getAccessToken() == null || event.getAccessToken().isEmpty()) {
-            log.warn("Access Token이 없습니다: userId={}", event.getUserId());
-            return;
-        }
-        
-        // Access Token 저장
-        userAccessTokens.put(event.getUserId(), event.getAccessToken());
-        
-        subscribe(event.getUserId(), event.getAccessToken());
-    }
+
     
     public void subscribe(Long userId, String accessToken) {
         if (userSessions.containsKey(userId)) {

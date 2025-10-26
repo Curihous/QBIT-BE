@@ -15,7 +15,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -27,6 +26,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import org.springframework.data.redis.connection.stream.ObjectRecord;
+import org.springframework.data.redis.connection.stream.StreamRecords;
+import org.springframework.data.redis.core.RedisTemplate;
 
 @Slf4j
 @Service
@@ -36,10 +38,12 @@ public class GoogleLoginService {
     private final GoogleAuthService googleAuthService;
     private final UserRepository userRepository;
     private final AlpacaOAuthConnectionRepository alpacaOAuthConnectionRepository;
+    private final RedisTemplate<String, Object> redisTemplate;
     private final JwtUtil jwtUtil;
     private final CookieUtil cookieUtil;
-    private final ApplicationEventPublisher eventPublisher;
     
+    private static final String LOGIN_SYNC_STREAM = "login-order-sync";
+
     @Transactional
     public Map<String, Object> loginWithGoogle(String googleIdToken, HttpServletResponse response) {
         log.info("구글 네이티브 로그인 시작");
@@ -85,7 +89,19 @@ public class GoogleLoginService {
             public void afterCommit() {
                 log.info("트랜잭션 커밋 완료, 주문 동기화 이벤트 발행: userId={}, hasAlpacaToken={}", 
                     user.getId(), finalAlpacaAccessToken != null);
-                eventPublisher.publishEvent(new LoginOrderSyncEvent(user.getId(), user.getEmail(), finalAlpacaAccessToken));
+                
+                LoginOrderSyncEvent event = new LoginOrderSyncEvent(user.getId(), user.getEmail(), finalAlpacaAccessToken);
+                ObjectRecord<String, LoginOrderSyncEvent> record = StreamRecords
+                        .newRecord()
+                        .ofObject(event)
+                        .withStreamKey(LOGIN_SYNC_STREAM);
+                
+                try {
+                    redisTemplate.opsForStream().add(record);
+                    log.info("LoginOrderSyncEvent 발행 완료: userId={}", user.getId());
+                } catch (Exception e) {
+                    log.error("LoginOrderSyncEvent 발행 실패: userId={}, error={}", user.getId(), e.getMessage(), e);
+                }
             }
         });
         
