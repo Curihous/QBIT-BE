@@ -206,6 +206,7 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
     // 텍스트 메시지 처리
     private void handleTextMessage(WebSocketSession session, String payload) {
         try {
+            log.info("Alpaca 원본 메시지 수신: payload={}", payload); // 디버깅용
             JsonNode root = objectMapper.readTree(payload);
             String stream = root.path("stream").asText();
             
