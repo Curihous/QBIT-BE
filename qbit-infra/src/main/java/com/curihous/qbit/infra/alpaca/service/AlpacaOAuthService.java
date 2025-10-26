@@ -96,11 +96,12 @@ public class AlpacaOAuthService implements TradingPort {
             );
 
             // 트랜잭션 커밋 후 로그인 시 주문 상태 동기화 이벤트 발행
+            String alpacaAccessToken = tokenResponse.accessToken();
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
                     log.info("트랜잭션 커밋 완료, 주문 동기화 이벤트 발행: userId={}", user.getId());
-                    eventPublisher.publishEvent(new LoginOrderSyncEvent(user.getId(), user.getEmail()));
+                    eventPublisher.publishEvent(new LoginOrderSyncEvent(user.getId(), user.getEmail(), alpacaAccessToken));
                 }
             });
 

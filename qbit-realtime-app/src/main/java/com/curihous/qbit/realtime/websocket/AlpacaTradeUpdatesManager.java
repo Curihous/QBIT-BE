@@ -1,8 +1,6 @@
 package com.curihous.qbit.realtime.websocket;
 
 import com.curihous.qbit.common.event.LoginOrderSyncEvent;
-import com.curihous.qbit.domain.alpaca.entity.AlpacaOAuthConnection;
-import com.curihous.qbit.domain.alpaca.repository.AlpacaOAuthConnectionRepository;
 import com.curihous.qbit.realtime.handler.TradeUpdatesEventHandler;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,8 +30,10 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
     // 세션 -> 사용자 ID 역매핑
     private final Map<WebSocketSession, Long> sessionToUserId;
     
+    // 사용자 ID별 OAuth Access Token 저장 (재연결 시 사용)
+    private final Map<Long, String> userAccessTokens;
+    
     private final TradeUpdatesEventHandler eventHandler;
-    private final AlpacaOAuthConnectionRepository alpacaOAuthConnectionRepository;
     
     private volatile WebSocketClient webSocketClient;
     
@@ -42,13 +42,12 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
     private final ScheduledExecutorService reconnectScheduler = 
         Executors.newScheduledThreadPool(1);
     
-    public AlpacaTradeUpdatesManager(TradeUpdatesEventHandler eventHandler,
-                                     AlpacaOAuthConnectionRepository alpacaOAuthConnectionRepository) {
+    public AlpacaTradeUpdatesManager(TradeUpdatesEventHandler eventHandler) {
         this.objectMapper = new ObjectMapper();
         this.userSessions = new ConcurrentHashMap<>();
         this.sessionToUserId = new ConcurrentHashMap<>();
+        this.userAccessTokens = new ConcurrentHashMap<>();
         this.eventHandler = eventHandler;
-        this.alpacaOAuthConnectionRepository = alpacaOAuthConnectionRepository;
     }
     
     public void initialize(WebSocketClient webSocketClient) {
@@ -60,26 +59,28 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
     @EventListener
     public void handleLoginOrderSyncEvent(LoginOrderSyncEvent event) {
         log.info("로그인 이벤트 수신 - Alpaca WebSocket 구독 시작: userId={}", event.getUserId());
-        subscribe(event.getUserId());
+        
+        if (event.getAccessToken() == null || event.getAccessToken().isEmpty()) {
+            log.warn("Access Token이 없습니다: userId={}", event.getUserId());
+            return;
+        }
+        
+        // Access Token 저장
+        userAccessTokens.put(event.getUserId(), event.getAccessToken());
+        
+        subscribe(event.getUserId(), event.getAccessToken());
     }
     
-    public void subscribe(Long userId) {
+    public void subscribe(Long userId, String accessToken) {
         if (userSessions.containsKey(userId)) {
             log.debug("이미 구독 중인 사용자: userId={}", userId);
             return;
         }
         
-        // Alpaca OAuth 연결 조회
-        AlpacaOAuthConnection connection = alpacaOAuthConnectionRepository
-                .findByUserId(userId)
-                .orElse(null);
+        // Access Token 저장
+        userAccessTokens.put(userId, accessToken);
         
-        if (connection == null) {
-            log.warn("Alpaca OAuth 연결 없음: userId={}", userId);
-            return;
-        }
-        
-        connectToAlpaca(userId, connection.getAccessToken());
+        connectToAlpaca(userId, accessToken);
     }
     
     // 구독 해제
@@ -322,21 +323,19 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
         }
         // 세션 정리
         sessionToUserId.remove(session);
-        userSessions.remove(userId);  
+        userSessions.remove(userId);
         
-        // 재연결 시도
+        // 재연결 시도 (저장된 Access Token 사용)
+        String savedAccessToken = userAccessTokens.get(userId);
+        if (savedAccessToken == null) {
+            log.warn("재연결 실패: Access Token 없음: userId={}", userId);
+            return;
+        }
+        
         log.info("Alpaca WebSocket 재연결 시도: userId={}", userId);
         reconnectScheduler.schedule(() -> {
             if (!userSessions.containsKey(userId)) {
-                AlpacaOAuthConnection connection = alpacaOAuthConnectionRepository
-                        .findByUserId(userId)
-                        .orElse(null);
-                
-                if (connection != null) {
-                    connectToAlpaca(userId, connection.getAccessToken());
-                } else {
-                    log.warn("재연결 실패: OAuth 연결 없음: userId={}", userId);
-                }
+                subscribe(userId, savedAccessToken);
             }
         }, 5, TimeUnit.SECONDS);
     }
