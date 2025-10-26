@@ -154,8 +154,7 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
             Map<String, Object> authMessage = Map.of(
                 "action", "authenticate",
                 "data", Map.of(
-                    "key_id", accessToken,  
-                    "secret_key", ""     
+                    "oauth_token", accessToken
                 )
             );
             
@@ -212,7 +211,7 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
             log.debug("Alpaca 메시지 수신: stream={}, payload={}", stream, payload);
             
             switch (stream) {
-                case "authentication":
+                case "authorization":
                     handleAuthorizationMessage(session, root);
                     break;
                 case "listening":
@@ -255,8 +254,10 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
         log.info("Alpaca 인증 응답: status={}, action={}, sessionId={}", 
                 status, action, session.getId());
         
-        if ("authenticated".equals(status) && "authenticate".equals(action)) {
-            log.info("Alpaca 인증 성공 - trade_updates 자동 구독됨: sessionId={}", session.getId());
+        if ("authorized".equals(status) && "authenticate".equals(action)) {
+            log.info("Alpaca 인증 성공: sessionId={}", session.getId());
+            // 인증 성공 후 명시적으로 구독
+            sendListenMessage(session);
         } else {
             log.error("Alpaca 인증 실패: status={}, action={}, sessionId={}", 
                     status, action, session.getId());
