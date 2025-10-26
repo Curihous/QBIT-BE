@@ -1,6 +1,5 @@
 package com.curihous.qbit.realtime.config;
 
-import com.curihous.qbit.common.event.LoginOrderSyncEvent;
 import com.curihous.qbit.common.event.TradeUpdateEvent;
 import com.curihous.qbit.realtime.consumer.LoginOrderSyncConsumer;
 import com.curihous.qbit.realtime.consumer.OrderUpdateConsumer;
@@ -10,6 +9,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.stream.Consumer;
+import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.connection.stream.ObjectRecord;
 import org.springframework.data.redis.connection.stream.ReadOffset;
 import org.springframework.data.redis.connection.stream.StreamOffset;
@@ -72,11 +72,10 @@ public class RedisStreamsConfig {
 
     // Login Order Sync Stream 구독
     @Bean
-    public StreamMessageListenerContainer<String, ObjectRecord<String, LoginOrderSyncEvent>> loginOrderSyncStreamContainer() {
+    public StreamMessageListenerContainer<String, MapRecord<String, String, String>> loginOrderSyncStreamContainer() {
         var options = StreamMessageListenerContainer.StreamMessageListenerContainerOptions
                 .builder()
                 .pollTimeout(POLL_TIMEOUT)
-                .targetType(LoginOrderSyncEvent.class)
                 .build();
 
         var container = StreamMessageListenerContainer.create(connectionFactory, options);

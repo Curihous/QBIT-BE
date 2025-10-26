@@ -1,12 +1,13 @@
 package com.curihous.qbit.realtime.consumer;
 
-import com.curihous.qbit.common.event.LoginOrderSyncEvent;
 import com.curihous.qbit.realtime.websocket.AlpacaTradeUpdatesManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.connection.stream.ObjectRecord;
+import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.stream.StreamListener;
 import org.springframework.stereotype.Component;
+
+import java.util.Map;
 
 /**
  * Redis Streams Consumer
@@ -15,23 +16,26 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class LoginOrderSyncConsumer implements StreamListener<String, ObjectRecord<String, LoginOrderSyncEvent>> {
+public class LoginOrderSyncConsumer implements StreamListener<String, MapRecord<String, String, String>> {
 
     private final AlpacaTradeUpdatesManager alpacaTradeUpdatesManager;
     
     @Override
-    public void onMessage(ObjectRecord<String, LoginOrderSyncEvent> message) {
+    public void onMessage(MapRecord<String, String, String> message) {
         try {
-            LoginOrderSyncEvent event = message.getValue();
+            Map<String, String> fields = message.getValue();
+            
+            Long userId = Long.parseLong(fields.get("userId"));
+            String accessToken = fields.get("accessToken");
             
             log.info("LoginOrderSyncEvent 수신: userId={}, hasAccessToken={}", 
-                    event.getUserId(), event.getAccessToken() != null);
+                    userId, accessToken != null && !accessToken.isEmpty());
             
             // Alpaca WebSocket 구독
-            if (event.getAccessToken() != null && !event.getAccessToken().isEmpty()) {
-                alpacaTradeUpdatesManager.subscribe(event.getUserId(), event.getAccessToken());
+            if (accessToken != null && !accessToken.isEmpty()) {
+                alpacaTradeUpdatesManager.subscribe(userId, accessToken);
             } else {
-                log.warn("Access Token이 없어 Alpaca 구독을 건너뜁니다: userId={}", event.getUserId());
+                log.warn("Access Token이 없어 Alpaca 구독을 건너뜁니다: userId={}", userId);
             }
             
         } catch (Exception e) {

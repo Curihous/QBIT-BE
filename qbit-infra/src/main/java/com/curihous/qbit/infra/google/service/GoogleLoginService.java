@@ -26,8 +26,6 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import org.springframework.data.redis.connection.stream.ObjectRecord;
-import org.springframework.data.redis.connection.stream.StreamRecords;
 import org.springframework.data.redis.core.RedisTemplate;
 
 @Slf4j
@@ -90,14 +88,13 @@ public class GoogleLoginService {
                 log.info("트랜잭션 커밋 완료, 주문 동기화 이벤트 발행: userId={}, hasAlpacaToken={}", 
                     user.getId(), finalAlpacaAccessToken != null);
                 
-                LoginOrderSyncEvent event = new LoginOrderSyncEvent(user.getId(), user.getEmail(), finalAlpacaAccessToken);
-                ObjectRecord<String, LoginOrderSyncEvent> record = StreamRecords
-                        .newRecord()
-                        .ofObject(event)
-                        .withStreamKey(LOGIN_SYNC_STREAM);
+                Map<String, String> fields = new HashMap<>();
+                fields.put("userId", String.valueOf(user.getId()));
+                fields.put("userEmail", user.getEmail());
+                fields.put("accessToken", finalAlpacaAccessToken != null ? finalAlpacaAccessToken : "");
                 
                 try {
-                    redisTemplate.opsForStream().add(record);
+                    redisTemplate.opsForStream().add(LOGIN_SYNC_STREAM, fields);
                     log.info("LoginOrderSyncEvent 발행 완료: userId={}", user.getId());
                 } catch (Exception e) {
                     log.error("LoginOrderSyncEvent 발행 실패: userId={}, error={}", user.getId(), e.getMessage(), e);
