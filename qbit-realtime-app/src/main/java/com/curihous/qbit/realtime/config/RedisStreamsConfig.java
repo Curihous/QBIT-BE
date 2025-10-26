@@ -84,7 +84,7 @@ public class RedisStreamsConfig {
         
         container.receive(
                 Consumer.from(CONSUMER_GROUP, CONSUMER_LOGIN),
-                StreamOffset.create(LOGIN_SYNC_STREAM, ReadOffset.lastConsumed()),
+                StreamOffset.create(LOGIN_SYNC_STREAM, ReadOffset.from(">")),
                 loginOrderSyncConsumer
         );
 
