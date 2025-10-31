@@ -206,8 +206,9 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
             );
             
             String json = objectMapper.writeValueAsString(authMessage);
-            session.sendMessage(new TextMessage(json));
             
+            log.info("Alpaca 인증 메시지 전송 시작: sessionId={}, message={}", session.getId(), json);
+            session.sendMessage(new TextMessage(json));
             log.info("Alpaca 인증 메시지 전송 완료: sessionId={}", session.getId());
             
         } catch (IOException e) {
@@ -255,11 +256,27 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
     // 텍스트 메시지 처리
     private void handleTextMessage(WebSocketSession session, String payload) {
         try {
-            log.info("Alpaca 원본 메시지 수신: payload={}", payload); // 디버깅용
-            JsonNode root = objectMapper.readTree(payload);
+            log.info("Alpaca 원본 메시지 수신: sessionId={}, payload={}", session.getId(), payload);
+            
+            // 빈 메시지 체크
+            if (payload == null || payload.trim().isEmpty()) {
+                log.warn("Alpaca 빈 메시지 수신: sessionId={}", session.getId());
+                return;
+            }
+            
+            // JSON 파싱 시도
+            JsonNode root;
+            try {
+                root = objectMapper.readTree(payload);
+            } catch (Exception e) {
+                log.error("Alpaca 메시지 JSON 파싱 실패: sessionId={}, payload={}, error={}", 
+                        session.getId(), payload, e.getMessage());
+                return;
+            }
+            
             String stream = root.path("stream").asText();
             
-            log.debug("Alpaca 메시지 수신: stream={}, payload={}", stream, payload);
+            log.info("Alpaca 메시지 수신: sessionId={}, stream={}, payload={}", session.getId(), stream, payload);
             
             switch (stream) {
                 case "authorization":
@@ -272,12 +289,13 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
                     handleTradeUpdatesMessage(session, root);
                     break;
                 default:
-                    log.warn("알 수 없는 스트림: stream={}, payload={}", stream, payload);
+                    log.warn("알 수 없는 스트림: sessionId={}, stream={}, payload={}", 
+                            session.getId(), stream, payload);
             }
             
         } catch (Exception e) {
-            log.error("Alpaca 텍스트 메시지 처리 실패: payload={}, error={}", 
-                    payload, e.getMessage(), e);
+            log.error("Alpaca 텍스트 메시지 처리 실패: sessionId={}, payload={}, error={}", 
+                    session.getId(), payload, e.getMessage(), e);
         }
     }
     

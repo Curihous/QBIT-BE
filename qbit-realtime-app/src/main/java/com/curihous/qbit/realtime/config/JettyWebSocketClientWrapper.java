@@ -97,12 +97,15 @@ public class JettyWebSocketClientWrapper implements WebSocketClient {
 
         @Override
         public void onWebSocketText(String message) {
+            log.info("Jetty WebSocket 텍스트 메시지 수신: sessionId={}, message={}", 
+                    jettySession != null ? jettySession.hashCode() : "unknown", message);
+            
             // Alpaca의 텍스트 "ping" 메시지 처리 (keep-alive)
             if ("ping".equalsIgnoreCase(message.trim())) {
                 try {
                     if (jettySession != null && jettySession.isOpen()) {
                         jettySession.getRemote().sendString("pong");
-                        log.debug("Alpaca ping 수신 → pong 응답: sessionId={}", jettySession.hashCode());
+                        log.info("Alpaca ping 수신 → pong 응답: sessionId={}", jettySession.hashCode());
                     }
                 } catch (Exception e) {
                     log.error("pong 전송 실패: sessionId={}, error={}", 
@@ -118,6 +121,8 @@ public class JettyWebSocketClientWrapper implements WebSocketClient {
                 } catch (Exception e) {
                     log.error("Spring WebSocketHandler 텍스트 메시지 처리 실패: {}", e.getMessage(), e);
                 }
+            } else {
+                log.warn("Spring 세션이 null이어서 메시지 처리 불가: message={}", message);
             }
         }
 
