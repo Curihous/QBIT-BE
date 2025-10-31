@@ -15,17 +15,10 @@ import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 @Configuration
 public class BinanceWebSocketConfig {
 
-    /**
-     * Binance WebSocket 클라이언트
-     */
     @Bean
     public WebSocketClient webSocketClient() {
         return new StandardWebSocketClient();
     }
-
-    /**
-     * Binance 실시간 데이터 관리자
-     */
     @Bean
     public BinanceWebSocketManager binanceWebSocketManager(WebSocketClient webSocketClient) {
         BinanceWebSocketManager manager = new BinanceWebSocketManager();
