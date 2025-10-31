@@ -97,6 +97,21 @@ public class JettyWebSocketClientWrapper implements WebSocketClient {
 
         @Override
         public void onWebSocketText(String message) {
+            // Alpaca의 텍스트 "ping" 메시지 처리 (keep-alive)
+            if ("ping".equalsIgnoreCase(message.trim())) {
+                try {
+                    if (jettySession != null && jettySession.isOpen()) {
+                        jettySession.getRemote().sendString("pong");
+                        log.debug("Alpaca ping 수신 → pong 응답: sessionId={}", jettySession.hashCode());
+                    }
+                } catch (Exception e) {
+                    log.error("pong 전송 실패: sessionId={}, error={}", 
+                            jettySession != null ? jettySession.hashCode() : "unknown", e.getMessage());
+                }
+                return;
+            }
+            
+            // 일반 텍스트 메시지 처리
             if (springSession != null) {
                 try {
                     springHandler.handleMessage(springSession, new TextMessage(message));
@@ -119,21 +134,6 @@ public class JettyWebSocketClientWrapper implements WebSocketClient {
             }
         }
 
-        public void onWebSocketFrame(org.eclipse.jetty.websocket.api.Frame frame) {
-            // Ping 프레임 처리 (control frame) - WebSocket opcode 9
-            if (frame != null && frame.getOpCode() == 9) {
-                try {
-                    if (jettySession != null && jettySession.isOpen()) {
-                        jettySession.getRemote().sendPong(frame.getPayload());
-                        log.debug("Alpaca ping 프레임 수신 → pong 프레임 응답: sessionId={}", jettySession.hashCode());
-                    }
-                } catch (Exception e) {
-                    log.error("pong 프레임 전송 실패: sessionId={}, error={}", 
-                            jettySession != null ? jettySession.hashCode() : "unknown", e.getMessage());
-                }
-            }
-            // 다른 프레임은 기본 처리
-        }
 
         @Override
         public void onWebSocketClose(int statusCode, String reason) {
