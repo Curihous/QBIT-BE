@@ -73,6 +73,7 @@ public class JettyWebSocketClientWrapper implements WebSocketClient {
         private final URI uri;
         private final CompletableFuture<WebSocketSession> future;
         private JettyWebSocketSessionAdapter springSession;
+        private org.eclipse.jetty.websocket.api.Session jettySession;
 
         public JettyWebSocketAdapter(WebSocketHandler springHandler, URI uri, CompletableFuture<WebSocketSession> future) {
             this.springHandler = springHandler;
@@ -83,6 +84,7 @@ public class JettyWebSocketClientWrapper implements WebSocketClient {
         @Override
         public void onWebSocketConnect(Session jettySession) {
             try {
+                this.jettySession = jettySession;
                 springSession = new JettyWebSocketSessionAdapter(jettySession, uri);
                 springHandler.afterConnectionEstablished(springSession);
                 future.complete(springSession);
@@ -115,6 +117,22 @@ public class JettyWebSocketClientWrapper implements WebSocketClient {
                     log.error("Spring WebSocketHandler 바이너리 메시지 처리 실패: {}", e.getMessage(), e);
                 }
             }
+        }
+
+        public void onWebSocketFrame(org.eclipse.jetty.websocket.api.Frame frame) {
+            // Ping 프레임 처리 (control frame) - WebSocket opcode 9
+            if (frame != null && frame.getOpCode() == 9) {
+                try {
+                    if (jettySession != null && jettySession.isOpen()) {
+                        jettySession.getRemote().sendPong(frame.getPayload());
+                        log.debug("Alpaca ping 프레임 수신 → pong 프레임 응답: sessionId={}", jettySession.hashCode());
+                    }
+                } catch (Exception e) {
+                    log.error("pong 프레임 전송 실패: sessionId={}, error={}", 
+                            jettySession != null ? jettySession.hashCode() : "unknown", e.getMessage());
+                }
+            }
+            // 다른 프레임은 기본 처리
         }
 
         @Override

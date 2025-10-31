@@ -200,18 +200,7 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
     @Override
     public void handleMessage(WebSocketSession session, WebSocketMessage<?> message) {
         if (message instanceof TextMessage textMessage) {
-            String payload = textMessage.getPayload();
-            // Alpaca 서버의 ping 메시지 처리 (keep-alive)
-            if ("ping".equalsIgnoreCase(payload.trim())) {
-                try {
-                    session.sendMessage(new TextMessage("pong"));
-                    log.debug("Alpaca ping 수신 → pong 응답: sessionId={}", session.getId());
-                } catch (IOException e) {
-                    log.error("pong 전송 실패: sessionId={}, error={}", session.getId(), e.getMessage());
-                }
-                return;
-            }
-            handleTextMessage(session, payload);
+            handleTextMessage(session, textMessage.getPayload());
         } else if (message instanceof BinaryMessage binaryMessage) {
             handleBinaryMessage(session, binaryMessage.getPayload().array());
         }
