@@ -21,6 +21,9 @@ import org.springframework.context.annotation.Import;
 public class QbitRealtimeApplication {
 
     public static void main(String[] args) {
+        System.setProperty("jdk.tls.client.protocols", "TLSv1.2"); 
+        System.setProperty("https.protocols", "TLSv1.2");
+        
         SpringApplication.run(QbitRealtimeApplication.class, args);
     }
 }
