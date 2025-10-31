@@ -35,8 +35,8 @@ public class AlpacaWebSocketConfig {
     @Bean
     public AlpacaTradeUpdatesManager alpacaTradeUpdatesManager(
             TradeUpdatesEventHandler eventHandler,
-            AlpacaOAuthConnectionService alpacaOAuthConnectionService) {
-        return new AlpacaTradeUpdatesManager(eventHandler, alpacaOAuthConnectionService);
+            org.springframework.data.redis.core.RedisTemplate<String, Object> redisTemplate) {
+        return new AlpacaTradeUpdatesManager(eventHandler, redisTemplate);
     }
 }
 
