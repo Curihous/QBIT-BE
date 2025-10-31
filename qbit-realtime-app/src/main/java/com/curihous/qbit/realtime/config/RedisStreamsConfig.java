@@ -20,9 +20,9 @@ import java.time.Duration;
 /**
  * Redis Streams 이벤트 구독 설정
  * 
- * 두 가지 이벤트를 구독:
- * 1. LoginOrderSyncEvent: 로그인 시 Alpaca WebSocket 구독 시작(주문 체결 정보 받기)
- * 2. TradeUpdateEvent: 주문 체결 정보 클라이언트에게 WebSocket으로 전송
+ * 구독 Stream:
+ * - trade-updates: TradeUpdateEvent 구독, OrderUpdateConsumer에서 처리
+ * - login-order-sync: LoginOrderSyncEvent 구독, LoginOrderSyncConsumer에서 처리
  */
 @Slf4j
 @Configuration

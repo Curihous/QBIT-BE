@@ -21,8 +21,9 @@ import org.springframework.context.annotation.Import;
 public class QbitRealtimeApplication {
 
     public static void main(String[] args) {
-        System.setProperty("jdk.tls.client.protocols", "TLSv1.2"); 
-        System.setProperty("https.protocols", "TLSv1.2");
+        // TLS 1.3 우선, 1.2 fallback (Alpaca 서버가 TLS 1.3을 기본으로 사용)
+        System.setProperty("jdk.tls.client.protocols", "TLSv1.3,TLSv1.2"); 
+        System.setProperty("https.protocols", "TLSv1.3,TLSv1.2");
         
         SpringApplication.run(QbitRealtimeApplication.class, args);
     }

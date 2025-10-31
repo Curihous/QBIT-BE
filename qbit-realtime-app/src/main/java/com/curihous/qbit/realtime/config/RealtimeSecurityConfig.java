@@ -6,6 +6,12 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 
+/**
+ * Security 설정
+ * 
+ * WebSocket 엔드포인트(/ws/**) 허용
+ * CSRF 비활성화
+ */
 @Configuration
 @EnableWebSecurity
 public class RealtimeSecurityConfig {
