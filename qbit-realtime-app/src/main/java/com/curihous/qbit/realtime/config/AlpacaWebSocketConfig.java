@@ -1,5 +1,6 @@
 package com.curihous.qbit.realtime.config;
 
+import com.curihous.qbit.domain.alpaca.service.AlpacaOAuthConnectionService;
 import com.curihous.qbit.realtime.handler.TradeUpdatesEventHandler;
 import com.curihous.qbit.realtime.websocket.AlpacaTradeUpdatesManager;
 import lombok.extern.slf4j.Slf4j;
@@ -33,8 +34,9 @@ public class AlpacaWebSocketConfig {
 
     @Bean
     public AlpacaTradeUpdatesManager alpacaTradeUpdatesManager(
-            TradeUpdatesEventHandler eventHandler) {
-        return new AlpacaTradeUpdatesManager(eventHandler);
+            TradeUpdatesEventHandler eventHandler,
+            AlpacaOAuthConnectionService alpacaOAuthConnectionService) {
+        return new AlpacaTradeUpdatesManager(eventHandler, alpacaOAuthConnectionService);
     }
 }
 

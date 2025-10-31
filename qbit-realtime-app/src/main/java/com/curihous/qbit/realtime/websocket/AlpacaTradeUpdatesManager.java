@@ -1,7 +1,7 @@
 package com.curihous.qbit.realtime.websocket;
 
 import com.curihous.qbit.domain.alpaca.entity.AlpacaConnectionStatus;
-import com.curihous.qbit.domain.alpaca.repository.AlpacaOAuthConnectionRepository;
+import com.curihous.qbit.domain.alpaca.service.AlpacaOAuthConnectionService;
 import com.curihous.qbit.realtime.handler.TradeUpdatesEventHandler;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,7 +35,7 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
     private final Map<Long, String> userAccessTokens;
     
     private final TradeUpdatesEventHandler eventHandler;
-    private final AlpacaOAuthConnectionRepository alpacaOAuthConnectionRepository;
+    private final AlpacaOAuthConnectionService alpacaOAuthConnectionService;
     
     private volatile WebSocketClient webSocketClient;
     
@@ -46,13 +46,13 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
     
     public AlpacaTradeUpdatesManager(
             TradeUpdatesEventHandler eventHandler,
-            AlpacaOAuthConnectionRepository alpacaOAuthConnectionRepository) {
+            AlpacaOAuthConnectionService alpacaOAuthConnectionService) {
         this.objectMapper = new ObjectMapper();
         this.userSessions = new ConcurrentHashMap<>();
         this.sessionToUserId = new ConcurrentHashMap<>();
         this.userAccessTokens = new ConcurrentHashMap<>();
         this.eventHandler = eventHandler;
-        this.alpacaOAuthConnectionRepository = alpacaOAuthConnectionRepository;
+        this.alpacaOAuthConnectionService = alpacaOAuthConnectionService;
     }
     
     public void initialize(WebSocketClient webSocketClient) {
@@ -91,8 +91,7 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
             log.info("저장된 Access Token이 없음. DB에서 조회 시도: userId={}", userId);
             
             try {
-                Optional<com.curihous.qbit.domain.alpaca.entity.AlpacaOAuthConnection> connectionOpt = 
-                        alpacaOAuthConnectionRepository.findByUserId(userId);
+                var connectionOpt = alpacaOAuthConnectionService.findByUserId(userId);
                 
                 if (connectionOpt.isPresent()) {
                     var connection = connectionOpt.get();
