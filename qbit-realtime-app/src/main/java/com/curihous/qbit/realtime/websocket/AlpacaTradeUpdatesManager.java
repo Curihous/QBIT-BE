@@ -173,12 +173,15 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
     // 구독 메시지 전송
     private void sendListenMessage(WebSocketSession session) {
         try {
-            Map<String, Object> listenMessage = Map.of(
-                "action", "listen",
-                "data", Map.of("streams", new String[]{"trade_updates"})
-            );
+            String json = """
+                {
+                  "action": "listen",
+                  "data": {
+                    "streams": ["trade_updates"]
+                  }
+                }
+                """;
             
-            String json = objectMapper.writeValueAsString(listenMessage);
             session.sendMessage(new TextMessage(json));
             
             log.info("Alpaca trade_updates 구독 메시지 전송 완료: sessionId={}", session.getId());
@@ -258,8 +261,18 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
         
         if ("authorized".equals(status) && "authenticate".equals(action)) {
             log.info("Alpaca 인증 성공: sessionId={}", session.getId());
-            // 인증 성공 후 명시적으로 구독
-            sendListenMessage(session);
+            reconnectScheduler.schedule(() -> {
+                try {
+                    if (session.isOpen()) {
+                        sendListenMessage(session);
+                    } else {
+                        log.warn("세션이 이미 종료됨: sessionId={}", session.getId());
+                    }
+                } catch (Exception e) {
+                    log.error("구독 메시지 전송 중 오류: sessionId={}, error={}", 
+                            session.getId(), e.getMessage());
+                }
+            }, 300, TimeUnit.MILLISECONDS);
         } else {
             log.error("Alpaca 인증 실패: status={}, action={}, sessionId={}", 
                     status, action, session.getId());
