@@ -1,5 +1,7 @@
 package com.curihous.qbit.realtime.websocket;
 
+import com.curihous.qbit.domain.alpaca.entity.AlpacaConnectionStatus;
+import com.curihous.qbit.domain.alpaca.repository.AlpacaOAuthConnectionRepository;
 import com.curihous.qbit.realtime.handler.TradeUpdatesEventHandler;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -11,6 +13,7 @@ import org.springframework.web.socket.client.WebSocketClient;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -32,6 +35,7 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
     private final Map<Long, String> userAccessTokens;
     
     private final TradeUpdatesEventHandler eventHandler;
+    private final AlpacaOAuthConnectionRepository alpacaOAuthConnectionRepository;
     
     private volatile WebSocketClient webSocketClient;
     
@@ -40,12 +44,15 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
     private final ScheduledExecutorService reconnectScheduler = 
         Executors.newScheduledThreadPool(1);
     
-    public AlpacaTradeUpdatesManager(TradeUpdatesEventHandler eventHandler) {
+    public AlpacaTradeUpdatesManager(
+            TradeUpdatesEventHandler eventHandler,
+            AlpacaOAuthConnectionRepository alpacaOAuthConnectionRepository) {
         this.objectMapper = new ObjectMapper();
         this.userSessions = new ConcurrentHashMap<>();
         this.sessionToUserId = new ConcurrentHashMap<>();
         this.userAccessTokens = new ConcurrentHashMap<>();
         this.eventHandler = eventHandler;
+        this.alpacaOAuthConnectionRepository = alpacaOAuthConnectionRepository;
     }
     
     public void initialize(WebSocketClient webSocketClient) {
@@ -68,20 +75,59 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
     }
     
     // 저장된 토큰으로 자동 구독 (STOMP CONNECT 시 호출)
+    // 저장된 토큰이 없으면 DB에서 조회하여 구독
     public void subscribeIfHasToken(Long userId) {
         if (userSessions.containsKey(userId)) {
             log.debug("이미 구독 중인 사용자: userId={}", userId);
             return;
         }
         
+        // 1. 먼저 메모리에 저장된 토큰 확인
         String accessToken = userAccessTokens.get(userId);
-        if (accessToken == null || accessToken.isEmpty()) {
-            log.info("저장된 Access Token이 없어 Alpaca 구독을 건너뜁니다: userId={}", userId);
-            return;
+        boolean tokenFromMemory = accessToken != null && !accessToken.isEmpty();
+        
+        // 2. 저장된 토큰이 없으면 DB에서 조회
+        if (!tokenFromMemory) {
+            log.info("저장된 Access Token이 없음. DB에서 조회 시도: userId={}", userId);
+            
+            try {
+                Optional<com.curihous.qbit.domain.alpaca.entity.AlpacaOAuthConnection> connectionOpt = 
+                        alpacaOAuthConnectionRepository.findByUserId(userId);
+                
+                if (connectionOpt.isPresent()) {
+                    var connection = connectionOpt.get();
+                    
+                    // 활성 상태인지 확인
+                    if (connection.getAlpacaConnectionStatus() == AlpacaConnectionStatus.ACTIVE) {
+                        accessToken = connection.getAccessToken();
+                        
+                        // 메모리에 저장 (다음 구독 시 빠르게 조회)
+                        userAccessTokens.put(userId, accessToken);
+                        
+                        log.info("DB에서 Alpaca 토큰 조회 성공: userId={}", userId);
+                    } else {
+                        log.info("Alpaca 연결이 비활성 상태: userId={}, status={}", 
+                                userId, connection.getAlpacaConnectionStatus());
+                        return;
+                    }
+                } else {
+                    log.info("DB에 Alpaca 연결 정보가 없음: userId={}", userId);
+                    return;
+                }
+            } catch (Exception e) {
+                log.error("DB에서 Alpaca 토큰 조회 실패: userId={}, error={}", userId, e.getMessage(), e);
+                return;
+            }
         }
         
-        log.info("저장된 Access Token으로 Alpaca 구독 시작: userId={}", userId);
-        connectToAlpaca(userId, accessToken);
+        // 3. 토큰이 있으면 구독 시작
+        if (accessToken != null && !accessToken.isEmpty()) {
+            log.info("Alpaca 구독 시작: userId={}, tokenSource={}", 
+                    userId, tokenFromMemory ? "memory" : "database");
+            connectToAlpaca(userId, accessToken);
+        } else {
+            log.info("Alpaca 구독 불가: Access Token 없음: userId={}", userId);
+        }
     }
     
     // 구독 해제
