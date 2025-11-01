@@ -28,6 +28,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
@@ -40,6 +41,7 @@ public class TradingController {
     private final TradingPort tradingPort;
     private final StockPort stockPort;
     private final UserSecurityFacade userSecurityFacade;
+    private final com.curihous.qbit.api.domain.trading.service.AlpacaOrderSyncService alpacaOrderSyncService;
     
     @Value("${stock.sync.us-equity}")
     private boolean allowUsEquity;
@@ -140,6 +142,24 @@ public class TradingController {
         User user = userSecurityFacade.getCurrentUser();
         tradingPort.cancelOrder(user, orderId);
         return ResponseEntity.noContent().build();
+    }
+
+    // tradeCycle 임시 메서드
+    @Operation(
+        summary = "[임시] TradeCycle 후처리 생성", 
+        description = "DB의 OrderRequest를 기반으로 TradeCycle을 후처리로 생성합니다. " 
+    )
+    @PostMapping("/trade-cycles/backfill")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> backfillTradeCycles() {
+        User user = userSecurityFacade.getCurrentUser();
+        int createdCount = alpacaOrderSyncService.backfillTradeCycles(user.getId());
+        
+        return ResponseEntity.ok(Map.of(
+            "userId", user.getId(),
+            "createdCount", createdCount,
+            "message", "TradeCycle 후처리 완료"
+        ));
     }
     
     // 자산 클래스 허용 여부 검증 헬퍼 메서드

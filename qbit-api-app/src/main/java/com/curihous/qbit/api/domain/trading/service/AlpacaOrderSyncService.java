@@ -33,7 +33,9 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Alpaca 주문 동기화 서비스
@@ -525,6 +527,241 @@ public class AlpacaOrderSyncService {
             log.warn("OffsetDateTime 파싱 실패: value={}", value);
             return null;
         }
+    }
+    
+    // tradeCycle 임시 메서드
+    @Transactional
+    public int backfillTradeCycles(Long userId) {
+        try {
+            Optional<User> userOpt = userRepository.findById(userId);
+            if (userOpt.isEmpty()) {
+                log.error("사용자를 찾을 수 없음: userId={}", userId);
+                return 0;
+            }
+            
+            User user = userOpt.get();
+            log.info("TradeCycle 후처리 시작: userId={}", userId);
+            
+            // 사용자의 모든 체결 내역을 시간순으로 조회
+            List<TradeExecution> allExecutions = tradeExecutionRepository.findByUserOrderByExecutedAtAsc(user);
+            
+            if (allExecutions.isEmpty()) {
+                log.info("체결 내역이 없음: userId={}", userId);
+                return 0;
+            }
+            
+            // 사용자의 모든 완료된 TradeCycle 조회 (기간 필터링용)
+            List<TradeCycle> completedCycles = tradeCycleRepository.findByUserAndEndDateIsNotNull(user);
+            
+            // TradeCycle의 startDate ~ endDate 범위에 있는 체결 내역은 제외
+            final List<TradeCycle> finalCompletedCycles = completedCycles;
+            List<TradeExecution> unprocessedExecutions = allExecutions.stream()
+                    .filter(execution -> {
+                        LocalDateTime executedAt = execution.getExecutedAt();
+                        // 완료된 TradeCycle 중 이 체결 내역의 시각이 포함되는 기간이 있는지 확인
+                        return finalCompletedCycles.stream().noneMatch(cycle -> {
+                            LocalDateTime startDate = cycle.getStartDate();
+                            LocalDateTime endDate = cycle.getEndDate();
+                            // endDate가 null이면 진행 중이므로 여기서는 체크 안 함 (완료된 것만 조회했으므로)
+                            return executedAt.compareTo(startDate) >= 0 
+                                    && executedAt.compareTo(endDate) <= 0;
+                        });
+                    })
+                    .collect(Collectors.toList());
+            
+            if (unprocessedExecutions.isEmpty()) {
+                log.info("처리되지 않은 체결 내역 없음: userId={}", userId);
+                return 0;
+            }
+            
+            log.info("처리되지 않은 체결 내역 필터링: userId={}, 전체={}, 미처리={}", 
+                    userId, allExecutions.size(), unprocessedExecutions.size());
+            
+            // 종목별로 그룹화
+            Map<String, List<TradeExecution>> executionsBySymbol = unprocessedExecutions.stream()
+                    .collect(Collectors.groupingBy(te -> te.getOrderRequest().getSymbol()));
+            
+            int createdCount = 0;
+            
+            // 각 종목별로 TradeCycle 생성
+            for (Map.Entry<String, List<TradeExecution>> entry : executionsBySymbol.entrySet()) {
+                String symbol = entry.getKey();
+                List<TradeExecution> symbolExecutions = entry.getValue();
+                
+                Optional<Stock> stockOpt = stockRepository.findBySymbol(symbol);
+                if (stockOpt.isEmpty()) {
+                    log.warn("종목을 찾을 수 없음: symbol={}, userId={}", symbol, userId);
+                    continue;
+                }
+                
+                Stock stock = stockOpt.get();
+                
+                // 진행 중인 TradeCycle이 있는지 확인
+                Optional<TradeCycle> ongoingCycleOpt = tradeCycleRepository
+                        .findByUserAndStockAndEndDateIsNull(user, stock);
+                
+                if (ongoingCycleOpt.isPresent()) {
+                    log.info("진행 중인 TradeCycle이 이미 존재: userId={}, symbol={}", userId, symbol);
+                    continue;
+                }
+                
+                // 종목별 TradeCycle 생성 시도
+                Optional<TradeCycle> createdCycle = createTradeCycleFromExecutions(user, stock, symbolExecutions);
+                
+                if (createdCycle.isPresent()) {
+                    createdCount++;
+                    log.info("TradeCycle 생성 완료: userId={}, symbol={}, cycleId={}", 
+                            userId, symbol, createdCycle.get().getId());
+                }
+            }
+            
+            log.info("TradeCycle 후처리 완료: userId={}, 생성된 TradeCycle 수={}", userId, createdCount);
+            return createdCount;
+            
+        } catch (Exception e) {
+            log.error("TradeCycle 후처리 실패: userId={}, error={}", userId, e.getMessage(), e);
+            throw new RuntimeException("TradeCycle 후처리 실패", e);
+        }
+    }
+    
+    private Optional<TradeCycle> createTradeCycleFromExecutions(User user, Stock stock, 
+                                                                 List<TradeExecution> executions) {
+        if (executions.isEmpty()) {
+            return Optional.empty();
+        }
+        
+        BigDecimal currentQuantity = BigDecimal.ZERO;
+        BigDecimal currentAverageBuyPrice = BigDecimal.ZERO;
+        BigDecimal totalBoughtQuantity = BigDecimal.ZERO;
+        BigDecimal totalInvestmentAmount = BigDecimal.ZERO;
+        BigDecimal totalSoldQuantity = BigDecimal.ZERO;
+        BigDecimal totalSoldAmount = BigDecimal.ZERO;
+        
+        LocalDateTime startDate = null;
+        LocalDateTime endDate = null;
+        int endIndex = executions.size(); // 전량 매도 완료 시점까지의 인덱스
+        
+        // peakInvestment와 maxDrawdown 계산용 변수
+        BigDecimal peakInvestment = BigDecimal.ZERO;
+        BigDecimal maxDrawdown = BigDecimal.ZERO;
+        BigDecimal currentInvestment = BigDecimal.ZERO;
+        BigDecimal highestInvestment = BigDecimal.ZERO;
+        
+        for (int i = 0; i < executions.size(); i++) {
+            TradeExecution execution = executions.get(i);
+            OrderRequest order = execution.getOrderRequest();
+            
+            if (startDate == null) {
+                startDate = execution.getExecutedAt();
+            }
+            
+            if (order.getSide() == com.curihous.qbit.domain.order.entity.OrderSide.BUY) {
+                BigDecimal qty = execution.getExecutedQuantity();
+                BigDecimal price = execution.getExecutedPrice();
+                
+                BigDecimal buyAmount = qty.multiply(price);
+                if (currentQuantity.compareTo(BigDecimal.ZERO) == 0) {
+                    currentAverageBuyPrice = price;
+                    currentQuantity = qty;
+                } else {
+                    BigDecimal currentTotalCost = currentQuantity.multiply(currentAverageBuyPrice);
+                    BigDecimal newTotalCost = currentTotalCost.add(buyAmount);
+                    BigDecimal newQuantity = currentQuantity.add(qty);
+                    currentAverageBuyPrice = newTotalCost.divide(newQuantity, 8, RoundingMode.HALF_UP);
+                    currentQuantity = newQuantity;
+                }
+                
+                totalBoughtQuantity = totalBoughtQuantity.add(qty);
+                totalInvestmentAmount = totalInvestmentAmount.add(buyAmount);
+                
+                currentInvestment = currentQuantity.multiply(currentAverageBuyPrice);
+                if (currentInvestment.compareTo(highestInvestment) > 0) {
+                    highestInvestment = currentInvestment;
+                }
+                peakInvestment = highestInvestment; 
+                
+            } else if (order.getSide() == com.curihous.qbit.domain.order.entity.OrderSide.SELL) {
+                BigDecimal qty = execution.getExecutedQuantity();
+                BigDecimal price = execution.getExecutedPrice();
+                
+                currentQuantity = currentQuantity.subtract(qty);
+                
+                totalSoldQuantity = totalSoldQuantity.add(qty);
+                totalSoldAmount = totalSoldAmount.add(qty.multiply(price));
+                
+                if (currentQuantity.compareTo(BigDecimal.ZERO) > 0) {
+                    currentInvestment = currentQuantity.multiply(currentAverageBuyPrice);
+                } else {
+                    currentInvestment = BigDecimal.ZERO;
+                }
+                
+                if (peakInvestment.compareTo(BigDecimal.ZERO) > 0 && currentInvestment.compareTo(peakInvestment) < 0) {
+                    BigDecimal drawdown = peakInvestment.subtract(currentInvestment)
+                            .divide(peakInvestment, 8, RoundingMode.HALF_UP)
+                            .multiply(new BigDecimal("100")); // 백분율
+                    if (drawdown.compareTo(maxDrawdown) > 0) {
+                        maxDrawdown = drawdown;
+                    }
+                }
+                
+                if (currentQuantity.compareTo(BigDecimal.ZERO) <= 0) {
+                    endDate = execution.getExecutedAt();
+                    endIndex = i + 1; 
+                    break; 
+                }
+            }
+        }
+        
+        // 전량 매도가 완료되지 않으면 TradeCycle 생성 안 함 
+        if (endDate == null || totalBoughtQuantity.compareTo(BigDecimal.ZERO) <= 0) {
+            log.debug("전량 매도 미완료 또는 매수 내역 없음: userId={}, symbol={}", user.getId(), stock.getSymbol());
+            return Optional.empty();
+        }
+        
+        BigDecimal averageBuyPrice = totalInvestmentAmount.divide(
+                totalBoughtQuantity, 8, RoundingMode.HALF_UP);
+        
+        BigDecimal averageSellPrice = totalSoldAmount.divide(
+                totalSoldQuantity, 8, RoundingMode.HALF_UP);
+
+        BigDecimal profitLossRate = averageSellPrice.subtract(averageBuyPrice)
+                .divide(averageBuyPrice, 8, RoundingMode.HALF_UP)
+                .multiply(new BigDecimal("100")); 
+        
+        if (peakInvestment.compareTo(BigDecimal.ZERO) == 0) {
+            peakInvestment = totalInvestmentAmount;
+        }
+        
+        TradeCycle tradeCycle = new TradeCycle(
+                startDate,
+                endDate,
+                profitLossRate,
+                totalInvestmentAmount,
+                averageBuyPrice,
+                averageSellPrice,
+                peakInvestment,
+                maxDrawdown,
+                user,
+                stock
+        );
+        
+        for (int i = 0; i < endIndex; i++) {
+            TradeExecution execution = executions.get(i);
+            OrderRequest order = execution.getOrderRequest();
+            
+            if (order.getSide() == com.curihous.qbit.domain.order.entity.OrderSide.BUY) {
+                BigDecimal qty = execution.getExecutedQuantity();
+                BigDecimal price = execution.getExecutedPrice();
+                tradeCycle.updateOnAdditionalBuy(qty, price);
+            } else if (order.getSide() == com.curihous.qbit.domain.order.entity.OrderSide.SELL) {
+                BigDecimal qty = execution.getExecutedQuantity();
+                BigDecimal price = execution.getExecutedPrice();
+                tradeCycle.updateOnPartialSell(qty, price);
+            }
+        }
+        
+        tradeCycleRepository.save(tradeCycle);
+        return Optional.of(tradeCycle);
     }
 }
 

@@ -425,7 +425,7 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
                 Object tokenObj = redisTemplate.opsForValue().get(redisKey);
                 if (tokenObj != null) {
                     savedAccessToken = tokenObj.toString();
-                    userAccessTokens.put(userId, savedAccessToken); // 메모리에도 저장
+                    userAccessTokens.put(userId, savedAccessToken); 
                     log.info("Redis에서 토큰 조회 성공 (재연결용): userId={}", userId);
                 }
             } catch (Exception e) {

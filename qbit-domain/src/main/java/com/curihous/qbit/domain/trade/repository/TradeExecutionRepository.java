@@ -26,4 +26,11 @@ public interface TradeExecutionRepository extends JpaRepository<TradeExecution, 
         @Param("startDate") LocalDateTime startDate,
         @Param("endDate") LocalDateTime endDate
     );
+    
+    // 특정 사용자의 모든 체결 내역 조회 (시간순) - tradeCycle 임시 메서드
+    @Query("SELECT te FROM TradeExecution te " +
+           "JOIN FETCH te.orderRequest orderReq " +
+           "WHERE te.user = :user " +
+           "ORDER BY te.executedAt ASC")
+    List<TradeExecution> findByUserOrderByExecutedAtAsc(@Param("user") User user);
 }
