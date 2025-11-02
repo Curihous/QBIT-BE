@@ -98,6 +98,7 @@ public enum ErrorCode {
     DATABASE_ERROR(500, "데이터베이스 오류가 발생했습니다."),
     INTERNAL_SERVER_ERROR(500, "서버 내부 오류가 발생했습니다."),
     WEBSOCKET_CONNECTION_ERROR(500, "WebSocket 연결 중 문제가 발생했습니다."),
+    TRADE_CYCLE_BACKFILL_FAILED(500, "TradeCycle 후처리에 실패했습니다."),
     
     // Auth 관련 내부 에러
     COOKIE_ADD_FAILED(500, "쿠키 추가에 실패했습니다."),

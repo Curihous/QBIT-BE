@@ -2,6 +2,8 @@ package com.curihous.qbit.api.domain.trade.service;
 
 import com.curihous.qbit.common.event.TradeUpdateEvent;
 import com.curihous.qbit.common.event.LoginOrderSyncEvent;
+import com.curihous.qbit.common.exception.ErrorCode;
+import com.curihous.qbit.common.exception.QbitException;
 import com.curihous.qbit.domain.alpaca.entity.AlpacaOAuthConnection;
 import com.curihous.qbit.domain.alpaca.entity.AlpacaConnectionStatus;
 import com.curihous.qbit.domain.alpaca.service.AlpacaOAuthConnectionService;
@@ -656,7 +658,7 @@ public class AlpacaOrderSyncService {
             
         } catch (Exception e) {
             log.error("TradeCycle 후처리 실패: userId={}, error={}", userId, e.getMessage(), e);
-            throw new RuntimeException("TradeCycle 후처리 실패", e);
+            throw new QbitException(ErrorCode.TRADE_CYCLE_BACKFILL_FAILED, "TradeCycle 후처리 실패: userId=" + userId, e);
         }
     }
     
