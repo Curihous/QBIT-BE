@@ -21,8 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * 포트폴리오 관리 API
  * 
- * 사용자의 보유 주식 포지션을 관리합니다.
- * Portfolio 테이블과 연동되어 DB에 저장된 포지션 데이터를 제공합니다.
+ * 사용자의 현재 보유 주식 포지션을 관리합니다.
  */
 @Tag(name = "Portfolio", description = "포트폴리오 관리 API입니다.")
 @RestController
