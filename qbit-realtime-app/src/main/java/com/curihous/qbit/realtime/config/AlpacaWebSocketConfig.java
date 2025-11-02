@@ -17,14 +17,14 @@ import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 @Configuration
 public class AlpacaWebSocketConfig {
 
-    @Bean(destroyMethod = "destroy")
+    @Bean
     public WebSocketClient alpacaWebSocketClient() {
         try {
             WebSocketContainer container = ContainerProvider.getWebSocketContainer();
-            log.info("Jetty WebSocketClient 초기화 완료");
+            log.info("Alpaca WebSocketClient 초기화 완료 (StandardWebSocketClient)");
             return new StandardWebSocketClient(container);
         } catch (Exception e) {
-            log.error("Jetty WebSocketClient 초기화 실패: {}", e.getMessage(), e);
+            log.error("Alpaca WebSocketClient 초기화 실패: {}", e.getMessage(), e);
             throw new RuntimeException("WebSocketClient 초기화 실패", e);
         }
     }
