@@ -1,8 +1,6 @@
 package com.curihous.qbit.infra.binance.service;
 
 import com.curihous.qbit.infra.binance.client.BinanceClient;
-import com.curihous.qbit.infra.binance.dto.response.BinanceKlineResponse;
-import com.curihous.qbit.infra.binance.dto.response.BinanceOrderBookResponse;
 import com.curihous.qbit.infra.binance.dto.response.BinanceTickerResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -53,19 +51,4 @@ public class BinanceMarketService {
         }
     }
 
-    // 호가창 조회 (1초 캐싱)
-    // 사용 API: GET /api/v3/depth
-    @Cacheable(value = "binance-orderbook")
-    public BinanceOrderBookResponse getOrderBook(String symbol) {
-        log.info("Binance 호가창 조회 시작: symbol={}", symbol);
-        
-        try {
-            BinanceOrderBookResponse response = binanceClient.getOrderBook(symbol, 100);
-            log.info("Binance 호가창 조회 성공: symbol={}", symbol);
-            return response;
-        } catch (Exception e) {
-            log.error("Binance 호가창 조회 실패: symbol={}, error={}", symbol, e.getMessage());
-            throw e;
-        }
-    }
 }

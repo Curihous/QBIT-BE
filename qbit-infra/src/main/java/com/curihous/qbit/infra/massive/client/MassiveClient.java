@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 @FeignClient(
     name = "massive-api",
-    url = "https://api.polygon.io/v2",
+    url = "https://api.massive.com/v2",
     configuration = MassiveFeignConfig.class
 )
 public interface MassiveClient {
@@ -36,9 +36,5 @@ public interface MassiveClient {
     // 최근 거래 조회
     @GetMapping("/last/trade/{ticker}")
     MassiveLastQuoteResponse getLastTrade(@PathVariable("ticker") String ticker);
-
-    // 최근 호가 조회
-    @GetMapping("/last/nbbo/{ticker}")
-    MassiveLastQuoteResponse getLastQuote(@PathVariable("ticker") String ticker);
 }
 

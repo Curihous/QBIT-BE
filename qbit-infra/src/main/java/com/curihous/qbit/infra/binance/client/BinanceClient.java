@@ -1,8 +1,6 @@
 package com.curihous.qbit.infra.binance.client;
 
 import com.curihous.qbit.infra.binance.config.BinanceFeignConfig;
-import com.curihous.qbit.infra.binance.dto.response.BinanceKlineResponse;
-import com.curihous.qbit.infra.binance.dto.response.BinanceOrderBookResponse;
 import com.curihous.qbit.infra.binance.dto.response.BinanceTickerResponse;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,10 +30,4 @@ public interface BinanceClient {
         @RequestParam(value = "limit", defaultValue = "500") Integer limit
     );
 
-    // 호가창 조회
-    @GetMapping("/depth")
-    BinanceOrderBookResponse getOrderBook(
-        @RequestParam("symbol") String symbol,
-        @RequestParam(value = "limit", defaultValue = "100") Integer limit
-    );
 }

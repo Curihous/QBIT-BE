@@ -1,18 +1,21 @@
 package com.curihous.qbit.realtime.handler;
 
-import com.curihous.qbit.realtime.websocket.BinanceWebSocketManager;
+import com.curihous.qbit.realtime.websocket.MassiveWebSocketManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.*;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
+/**
+ * 미국 주식 실시간 Level1 호가창(NBBO) WebSocket 핸들러 (Massive.io)
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class ClientDepthWebSocketHandler extends TextWebSocketHandler {
+public class ClientUsEquityQuoteWebSocketHandler extends TextWebSocketHandler {
 
-    private final BinanceWebSocketManager binanceWebSocketManager;
+    private final MassiveWebSocketManager massiveWebSocketManager;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
@@ -23,11 +26,11 @@ public class ClientDepthWebSocketHandler extends TextWebSocketHandler {
         }
         
         String uri = session.getUri().toString();
-        String binanceSymbol = extractSymbolFromUri(uri);
+        String ticker = extractTickerFromUri(uri);
         
-        if (binanceSymbol != null) {
-            binanceWebSocketManager.subscribeToDepth(binanceSymbol, session);
-            log.info("클라이언트 호가창 WebSocket 연결: binanceSymbol={}, sessionId={}", binanceSymbol, session.getId());
+        if (ticker != null) {
+            massiveWebSocketManager.subscribeToQuote(ticker, session);
+            log.info("클라이언트 시세 WebSocket 연결: ticker={}, sessionId={}", ticker, session.getId());
         } else {
             log.warn("잘못된 URI: {}", uri);
             session.close(CloseStatus.BAD_DATA);
@@ -36,13 +39,12 @@ public class ClientDepthWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-        log.debug("클라이언트 호가창 메시지 수신: {}", message.getPayload());
+        log.debug("클라이언트 시세 메시지 수신: {}", message.getPayload());
     }
 
     @Override
     public void handleTransportError(WebSocketSession session, Throwable exception) throws Exception {
-        log.error("호가창 WebSocket 전송 오류: sessionId={}, error={}", 
-            session.getId(), exception.getMessage());
+        log.error("시세 WebSocket 전송 오류: sessionId={}, error={}", session.getId(), exception.getMessage());
     }
 
     @Override
@@ -52,17 +54,17 @@ public class ClientDepthWebSocketHandler extends TextWebSocketHandler {
         }
         
         String uri = session.getUri().toString();
-        String binanceSymbol = extractSymbolFromUri(uri);
+        String ticker = extractTickerFromUri(uri);
         
-        if (binanceSymbol != null) {
-            binanceWebSocketManager.unsubscribeFromDepth(binanceSymbol, session);
-            log.info("클라이언트 호가창 WebSocket 연결 종료: binanceSymbol={}, sessionId={}, status={}", 
-                    binanceSymbol, session.getId(), status);
+        if (ticker != null) {
+            massiveWebSocketManager.unsubscribeFromQuote(ticker, session);
+            log.info("클라이언트 시세 WebSocket 연결 종료: ticker={}, sessionId={}, status={}", 
+                    ticker, session.getId(), status);
         }
     }
 
-    // URI에서 종목 심볼 추출
-    private String extractSymbolFromUri(String uri) {
+    // URI에서 종목 ticker 추출
+    private String extractTickerFromUri(String uri) {
         if (uri == null) return null;
         
         String[] parts = uri.split("/");

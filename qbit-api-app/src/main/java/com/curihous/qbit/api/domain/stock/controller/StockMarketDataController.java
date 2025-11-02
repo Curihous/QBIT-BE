@@ -2,7 +2,6 @@ package com.curihous.qbit.api.domain.stock.controller;
 
 import com.curihous.qbit.api.domain.stock.dto.response.QuoteResponseDto;
 import com.curihous.qbit.api.domain.stock.dto.response.CandleResponseDto;
-import com.curihous.qbit.api.domain.stock.dto.response.OrderBookResponseDto;
 import com.curihous.qbit.infra.binance.service.BinanceMarketService;
 import com.curihous.qbit.infra.massive.service.MassiveMarketService;
 import java.time.LocalDate;
@@ -64,26 +63,6 @@ public class StockMarketDataController {
         
         CandleResponseDto candle = CandleResponseDto.fromBinance(binanceSymbol, interval, binanceKlines);
         return ResponseEntity.ok(candle);
-    }
-
-    @Operation(
-        summary = "암호화폐 호가창 조회", 
-        description = "암호화폐의 매수/매도 호가 정보를 조회합니다.(일회성 조회, 사용자가 페이지 로딩 후 즉시 데이터 확인용)"
-    )
-    @GetMapping("/crypto/orderbook/{binanceSymbol}")
-    public ResponseEntity<OrderBookResponseDto> getCryptoOrderBook(
-        @PathVariable String binanceSymbol
-    ) {
-        var binanceOrderBook = binanceMarketService.getOrderBook(binanceSymbol);
-        
-        OrderBookResponseDto orderBook = OrderBookResponseDto.fromBinance(
-            binanceSymbol,
-            binanceOrderBook.getAsks(),
-            binanceOrderBook.getBids(),
-            binanceOrderBook.getLastUpdateId()
-        );
-        
-        return ResponseEntity.ok(orderBook);
     }
 
     @Operation(
