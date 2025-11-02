@@ -2,6 +2,8 @@ package com.curihous.qbit.infra.google.service;
 
 import com.curihous.qbit.common.exception.ErrorCode;
 import com.curihous.qbit.common.exception.QbitException;
+import com.curihous.qbit.domain.alpaca.entity.AlpacaOAuthConnection;
+import com.curihous.qbit.domain.alpaca.repository.AlpacaOAuthConnectionRepository;
 import com.curihous.qbit.domain.user.entity.LoginType;
 import com.curihous.qbit.domain.user.entity.User;
 import com.curihous.qbit.domain.user.repository.UserRepository;
@@ -10,9 +12,9 @@ import com.curihous.qbit.infra.security.jwt.JwtUtil;
 import com.curihous.qbit.infra.security.util.CookieUtil;
 import com.curihous.qbit.common.event.LoginOrderSyncEvent;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -24,6 +26,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import org.springframework.data.redis.core.RedisTemplate;
 
 @Slf4j
 @Service
@@ -32,10 +35,13 @@ public class GoogleLoginService {
     
     private final GoogleAuthService googleAuthService;
     private final UserRepository userRepository;
+    private final AlpacaOAuthConnectionRepository alpacaOAuthConnectionRepository;
+    private final RedisTemplate<String, Object> redisTemplate;
     private final JwtUtil jwtUtil;
     private final CookieUtil cookieUtil;
-    private final ApplicationEventPublisher eventPublisher;
     
+    private static final String LOGIN_SYNC_STREAM = "login-order-sync";
+
     @Transactional
     public Map<String, Object> loginWithGoogle(String googleIdToken, HttpServletResponse response) {
         log.info("구글 네이티브 로그인 시작");
@@ -69,12 +75,30 @@ public class GoogleLoginService {
         
         log.info("JWT 토큰 발급 완료");
         
-        // 6. 트랜잭션 커밋 후 Alpaca 주문 동기화 이벤트 발행
+        // 6. DB에서 Alpaca 토큰 조회
+        Optional<AlpacaOAuthConnection> alpacaConnection = alpacaOAuthConnectionRepository.findByUserId(user.getId());
+        String alpacaAccessToken = alpacaConnection.map(AlpacaOAuthConnection::getAccessToken).orElse(null);
+        
+        final String finalAlpacaAccessToken = alpacaAccessToken; 
+        
+        // 7. 트랜잭션 커밋 후 Alpaca 주문 동기화 이벤트 발행
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                log.info("트랜잭션 커밋 완료, 주문 동기화 이벤트 발행: userId={}", user.getId());
-                eventPublisher.publishEvent(new LoginOrderSyncEvent(user.getId(), user.getEmail()));
+                log.info("트랜잭션 커밋 완료, 주문 동기화 이벤트 발행: userId={}, hasAlpacaToken={}", 
+                    user.getId(), finalAlpacaAccessToken != null);
+                
+                Map<String, String> fields = new HashMap<>();
+                fields.put("userId", String.valueOf(user.getId()));
+                fields.put("userEmail", user.getEmail());
+                fields.put("accessToken", finalAlpacaAccessToken != null ? finalAlpacaAccessToken : "");
+                
+                try {
+                    redisTemplate.opsForStream().add(LOGIN_SYNC_STREAM, fields);
+                    log.info("LoginOrderSyncEvent 발행 완료: userId={}", user.getId());
+                } catch (Exception e) {
+                    log.error("LoginOrderSyncEvent 발행 실패: userId={}, error={}", user.getId(), e.getMessage(), e);
+                }
             }
         });
         

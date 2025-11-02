@@ -2,6 +2,7 @@ package com.curihous.qbit.api.config;
 
 import com.curihous.qbit.api.consumer.TradeUpdateConsumer;
 import com.curihous.qbit.common.event.TradeUpdateEvent;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -11,62 +12,66 @@ import org.springframework.data.redis.connection.stream.ObjectRecord;
 import org.springframework.data.redis.connection.stream.ReadOffset;
 import org.springframework.data.redis.connection.stream.StreamOffset;
 import org.springframework.data.redis.stream.StreamMessageListenerContainer;
-import org.springframework.data.redis.stream.Subscription;
 
 import java.time.Duration;
-import java.util.UUID;
 
 /**
- * Redis Streams 설정
- * Trade Update 이벤트를 Consumer Group으로 구독
+ * Redis Streams 이벤트 구독 설정
+ * 
+ * Trade Update 이벤트를 구독하여 DB에 반영
  */
 @Slf4j
 @Configuration
+@RequiredArgsConstructor
 public class RedisStreamsConfig {
 
-    private static final String STREAM_KEY = "trade-updates";
-    private static final String CONSUMER_GROUP = "qbit-api-group";
-    // 인스턴스별 고유한 consumer name (배포 안정성 대응)
-    private final String consumerName = "qbit-api-consumer-" + UUID.randomUUID().toString().substring(0, 8);
+    // Stream 키
+    private static final String TRADE_UPDATE_STREAM = "trade-updates";
     
+    // Consumer 그룹 및 이름
+    private static final String CONSUMER_GROUP = "qbit-api-group";
+    private static final String CONSUMER_TRADE = "qbit-api-consumer-trade";
+    
+    // Polling 설정
+    private static final Duration POLL_TIMEOUT = Duration.ofMillis(100);
+
+    private final RedisConnectionFactory connectionFactory;
+    private final TradeUpdateConsumer tradeUpdateConsumer;
+
+    // Trade Update Stream 구독
     @Bean
-    public StreamMessageListenerContainer<String, ObjectRecord<String, TradeUpdateEvent>> 
-            tradeUpdateListenerContainer(RedisConnectionFactory connectionFactory,
-                                        TradeUpdateConsumer tradeUpdateConsumer) {
+    public StreamMessageListenerContainer<String, ObjectRecord<String, TradeUpdateEvent>> tradeUpdateStreamContainer() {
+        var options = StreamMessageListenerContainer.StreamMessageListenerContainerOptions
+                .builder()
+                .pollTimeout(POLL_TIMEOUT)
+                .targetType(TradeUpdateEvent.class)
+                .build();
+
+        var container = StreamMessageListenerContainer.create(connectionFactory, options);
+        createConsumerGroup(TRADE_UPDATE_STREAM);
         
-        // Consumer Group 생성 (이미 있으면 무시)
-        try (var connection = connectionFactory.getConnection()) {
-            connection.streamCommands()
-                    .xGroupCreate(STREAM_KEY.getBytes(), CONSUMER_GROUP, ReadOffset.from("0-0"), true);
-            log.info("Redis Streams Consumer Group 생성: group={}, stream={}", CONSUMER_GROUP, STREAM_KEY);
-        } catch (Exception e) {
-            log.debug("Consumer Group 이미 존재: group={}", CONSUMER_GROUP);
-        }
-        
-        // StreamMessageListenerContainer 설정
-        StreamMessageListenerContainer.StreamMessageListenerContainerOptions<String, ObjectRecord<String, TradeUpdateEvent>> options =
-                StreamMessageListenerContainer.StreamMessageListenerContainerOptions
-                        .builder()
-                        .pollTimeout(Duration.ofMillis(100))
-                        .targetType(TradeUpdateEvent.class)
-                        .build();
-        
-        StreamMessageListenerContainer<String, ObjectRecord<String, TradeUpdateEvent>> container =
-                StreamMessageListenerContainer.create(connectionFactory, options);
-        
-        // Consumer 등록
-        Subscription subscription = container.receive(
-                Consumer.from(CONSUMER_GROUP, consumerName),
-                StreamOffset.create(STREAM_KEY, ReadOffset.lastConsumed()),
+        container.receive(
+                Consumer.from(CONSUMER_GROUP, CONSUMER_TRADE),
+                StreamOffset.create(TRADE_UPDATE_STREAM, ReadOffset.lastConsumed()),
                 tradeUpdateConsumer
         );
-        
+
         container.start();
-        
-        log.info("Redis Streams Listener 시작: stream={}, group={}, consumer={}", 
-                STREAM_KEY, CONSUMER_GROUP, consumerName);
-        
+        log.info("Trade Update Stream 구독 시작: stream={}, consumer={}", 
+                TRADE_UPDATE_STREAM, CONSUMER_TRADE);
+
         return container;
+    }
+
+    // Consumer Group 생성 (없는 경우에만)
+    private void createConsumerGroup(String stream) {
+        try {
+            connectionFactory.getConnection().streamCommands()
+                    .xGroupCreate(stream.getBytes(), CONSUMER_GROUP, ReadOffset.from("0"), true);
+            log.info("Consumer Group 생성: group={}, stream={}", CONSUMER_GROUP, stream);
+        } catch (Exception e) {
+            log.debug("Consumer Group이 이미 존재: group={}, stream={}", CONSUMER_GROUP, stream);
+        }
     }
 }
 

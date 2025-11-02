@@ -407,8 +407,8 @@ public class BinanceWebSocketManager implements WebSocketHandler {
                         normalizedSymbol, removedCount, subscribers.size());
             }
             
-            log.debug("호가창 데이터 브로드캐스트: symbol={}, active_subscribers={}", 
-                    normalizedSymbol, subscribers.size());
+            // log.debug("호가창 데이터 브로드캐스트: symbol={}, active_subscribers={}", 
+            //         normalizedSymbol, subscribers.size());
                     
         } catch (Exception e) {
             log.error("호가창 데이터 브로드캐스트 실패: symbol={}, error={}", normalizedSymbol, e.getMessage());

@@ -14,5 +14,4 @@ public interface TradeCycleRepository extends JpaRepository<TradeCycle, Long> {
 
     // 사용자의 종료된 사이클 조회
     List<TradeCycle> findByUserAndEndDateIsNotNull(User user);
-
 }

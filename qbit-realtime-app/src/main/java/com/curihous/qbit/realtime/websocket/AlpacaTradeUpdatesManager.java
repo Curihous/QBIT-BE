@@ -1,17 +1,17 @@
 package com.curihous.qbit.realtime.websocket;
 
-import com.curihous.qbit.common.event.LoginOrderSyncEvent;
 import com.curihous.qbit.realtime.handler.TradeUpdatesEventHandler;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.event.EventListener;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.*;
 import org.springframework.web.socket.client.WebSocketClient;
 
 import java.io.IOException;
 import java.net.URI;
+import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -31,9 +31,14 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
     private final Map<WebSocketSession, Long> sessionToUserId;
     
     // 사용자 ID별 OAuth Access Token 저장 (재연결 시 사용)
+    // 메모리 캐시 + Redis 백업
     private final Map<Long, String> userAccessTokens;
     
     private final TradeUpdatesEventHandler eventHandler;
+    private final RedisTemplate<String, Object> redisTemplate;
+    
+    private static final String REDIS_TOKEN_KEY_PREFIX = "alpaca:token:";
+    private static final Duration TOKEN_TTL = Duration.ofDays(7); // 7일 TTL
     
     private volatile WebSocketClient webSocketClient;
     
@@ -42,12 +47,15 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
     private final ScheduledExecutorService reconnectScheduler = 
         Executors.newScheduledThreadPool(1);
     
-    public AlpacaTradeUpdatesManager(TradeUpdatesEventHandler eventHandler) {
+    public AlpacaTradeUpdatesManager(
+            TradeUpdatesEventHandler eventHandler,
+            RedisTemplate<String, Object> redisTemplate) {
         this.objectMapper = new ObjectMapper();
         this.userSessions = new ConcurrentHashMap<>();
         this.sessionToUserId = new ConcurrentHashMap<>();
         this.userAccessTokens = new ConcurrentHashMap<>();
         this.eventHandler = eventHandler;
+        this.redisTemplate = redisTemplate;
     }
     
     public void initialize(WebSocketClient webSocketClient) {
@@ -55,21 +63,7 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
         log.info("Alpaca Trade Updates WebSocket 매니저 초기화 완료");
     }
     
-    // 로그인 시 자동 WebSocket 구독
-    @EventListener
-    public void handleLoginOrderSyncEvent(LoginOrderSyncEvent event) {
-        log.info("로그인 이벤트 수신 - Alpaca WebSocket 구독 시작: userId={}", event.getUserId());
-        
-        if (event.getAccessToken() == null || event.getAccessToken().isEmpty()) {
-            log.warn("Access Token이 없습니다: userId={}", event.getUserId());
-            return;
-        }
-        
-        // Access Token 저장
-        userAccessTokens.put(event.getUserId(), event.getAccessToken());
-        
-        subscribe(event.getUserId(), event.getAccessToken());
-    }
+
     
     public void subscribe(Long userId, String accessToken) {
         if (userSessions.containsKey(userId)) {
@@ -77,27 +71,57 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
             return;
         }
         
-        // Access Token 저장
-        userAccessTokens.put(userId, accessToken);
+        // Access Token 저장 (메모리 + Redis)
+        saveToken(userId, accessToken);
         
         connectToAlpaca(userId, accessToken);
     }
     
     // 저장된 토큰으로 자동 구독 (STOMP CONNECT 시 호출)
+    // 메모리 → Redis 순으로 조회
     public void subscribeIfHasToken(Long userId) {
         if (userSessions.containsKey(userId)) {
             log.debug("이미 구독 중인 사용자: userId={}", userId);
             return;
         }
         
+        // 1. 메모리에서 토큰 확인
         String accessToken = userAccessTokens.get(userId);
+        
+        // 2. 메모리에 없으면 Redis에서 조회
         if (accessToken == null || accessToken.isEmpty()) {
-            log.info("저장된 Access Token이 없어 Alpaca 구독을 건너뜁니다: userId={}", userId);
-            return;
+            log.info("메모리에 토큰이 없음. Redis에서 조회 시도: userId={}", userId);
+            
+            try {
+                String redisKey = REDIS_TOKEN_KEY_PREFIX + userId;
+                Object tokenObj = redisTemplate.opsForValue().get(redisKey);
+                
+                if (tokenObj != null) {
+                    accessToken = tokenObj.toString();
+                    
+                    // 메모리에도 저장 (다음 조회 시 빠르게 접근)
+                    userAccessTokens.put(userId, accessToken);
+                    
+                    log.info("Redis에서 Alpaca 토큰 조회 성공: userId={}", userId);
+                } else {
+                    log.info("Redis에도 토큰이 없음: userId={}", userId);
+                    log.info("알림: 로그인 시 LoginOrderSyncEvent가 발행되어야 토큰이 저장됩니다.");
+                    return;
+                }
+            } catch (Exception e) {
+                log.error("Redis에서 토큰 조회 실패: userId={}, error={}", userId, e.getMessage(), e);
+                return;
+            }
         }
         
-        log.info("저장된 Access Token으로 Alpaca 구독 시작: userId={}", userId);
-        connectToAlpaca(userId, accessToken);
+        // 3. 토큰이 있으면 구독 시작
+        if (accessToken != null && !accessToken.isEmpty()) {
+            log.info("저장된 Access Token으로 Alpaca 구독 시작: userId={}, tokenSource={}", 
+                    userId, userAccessTokens.containsKey(userId) ? "memory" : "redis");
+            connectToAlpaca(userId, accessToken);
+        } else {
+            log.info("Alpaca 구독 불가: Access Token 없음: userId={}", userId);
+        }
     }
     
     // 구독 해제
@@ -176,8 +200,9 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
             );
             
             String json = objectMapper.writeValueAsString(authMessage);
-            session.sendMessage(new TextMessage(json));
             
+            log.info("Alpaca 인증 메시지 전송 시작: sessionId={}, message={}", session.getId(), json);
+            session.sendMessage(new TextMessage(json));
             log.info("Alpaca 인증 메시지 전송 완료: sessionId={}", session.getId());
             
         } catch (IOException e) {
@@ -189,12 +214,15 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
     // 구독 메시지 전송
     private void sendListenMessage(WebSocketSession session) {
         try {
-            Map<String, Object> listenMessage = Map.of(
-                "action", "listen",
-                "data", Map.of("streams", new String[]{"trade_updates"})
-            );
+            String json = """
+                {
+                  "action": "listen",
+                  "data": {
+                    "streams": ["trade_updates"]
+                  }
+                }
+                """;
             
-            String json = objectMapper.writeValueAsString(listenMessage);
             session.sendMessage(new TextMessage(json));
             
             log.info("Alpaca trade_updates 구독 메시지 전송 완료: sessionId={}", session.getId());
@@ -222,10 +250,27 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
     // 텍스트 메시지 처리
     private void handleTextMessage(WebSocketSession session, String payload) {
         try {
-            JsonNode root = objectMapper.readTree(payload);
+            log.info("Alpaca 원본 메시지 수신: sessionId={}, payload={}", session.getId(), payload);
+            
+            // 빈 메시지 체크
+            if (payload == null || payload.trim().isEmpty()) {
+                log.warn("Alpaca 빈 메시지 수신: sessionId={}", session.getId());
+                return;
+            }
+            
+            // JSON 파싱 시도
+            JsonNode root;
+            try {
+                root = objectMapper.readTree(payload);
+            } catch (Exception e) {
+                log.error("Alpaca 메시지 JSON 파싱 실패: sessionId={}, payload={}, error={}", 
+                        session.getId(), payload, e.getMessage());
+                return;
+            }
+            
             String stream = root.path("stream").asText();
             
-            log.debug("Alpaca 메시지 수신: stream={}, payload={}", stream, payload);
+            log.info("Alpaca 메시지 수신: sessionId={}, stream={}, payload={}", session.getId(), stream, payload);
             
             switch (stream) {
                 case "authorization":
@@ -238,12 +283,13 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
                     handleTradeUpdatesMessage(session, root);
                     break;
                 default:
-                    log.warn("알 수 없는 스트림: stream={}, payload={}", stream, payload);
+                    log.warn("알 수 없는 스트림: sessionId={}, stream={}, payload={}", 
+                            session.getId(), stream, payload);
             }
             
         } catch (Exception e) {
-            log.error("Alpaca 텍스트 메시지 처리 실패: payload={}, error={}", 
-                    payload, e.getMessage(), e);
+            log.error("Alpaca 텍스트 메시지 처리 실패: sessionId={}, payload={}, error={}", 
+                    session.getId(), payload, e.getMessage(), e);
         }
     }
     
@@ -273,8 +319,18 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
         
         if ("authorized".equals(status) && "authenticate".equals(action)) {
             log.info("Alpaca 인증 성공: sessionId={}", session.getId());
-            // 인증 성공 후 명시적으로 구독
-            sendListenMessage(session);
+            reconnectScheduler.schedule(() -> {
+                try {
+                    if (session.isOpen()) {
+                        sendListenMessage(session);
+                    } else {
+                        log.warn("세션이 이미 종료됨: sessionId={}", session.getId());
+                    }
+                } catch (Exception e) {
+                    log.error("구독 메시지 전송 중 오류: sessionId={}, error={}", 
+                            session.getId(), e.getMessage());
+                }
+            }, 300, TimeUnit.MILLISECONDS);
         } else {
             log.error("Alpaca 인증 실패: status={}, action={}, sessionId={}", 
                     status, action, session.getId());
@@ -333,6 +389,22 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
         handleDisconnectionAndReconnect(session);
     }
     
+    // 토큰 저장 (메모리 + Redis)
+    private void saveToken(Long userId, String accessToken) {
+        // 메모리에 저장
+        userAccessTokens.put(userId, accessToken);
+        
+        // Redis에 저장 (7일 TTL)
+        try {
+            String redisKey = REDIS_TOKEN_KEY_PREFIX + userId;
+            redisTemplate.opsForValue().set(redisKey, accessToken, TOKEN_TTL);
+            log.debug("Alpaca 토큰 Redis 저장 완료: userId={}, ttl={}일", userId, TOKEN_TTL.toDays());
+        } catch (Exception e) {
+            log.error("Redis 토큰 저장 실패 (무시): userId={}, error={}", userId, e.getMessage());
+            // Redis 저장 실패해도 메모리에 있으면 계속 사용 가능
+        }
+    }
+    
     // 연결 해제 및 재연결 처리
     private void handleDisconnectionAndReconnect(WebSocketSession session) {
         Long userId = sessionToUserId.get(session);
@@ -343,9 +415,28 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
         sessionToUserId.remove(session);
         userSessions.remove(userId);
         
-        // 재연결 시도 (저장된 Access Token 사용)
+        // 재연결 시도 (메모리 → Redis 순으로 조회)
         String savedAccessToken = userAccessTokens.get(userId);
-        if (savedAccessToken == null) {
+        
+        if (savedAccessToken == null || savedAccessToken.isEmpty()) {
+            // Redis에서 조회 시도
+            try {
+                String redisKey = REDIS_TOKEN_KEY_PREFIX + userId;
+                Object tokenObj = redisTemplate.opsForValue().get(redisKey);
+                if (tokenObj != null) {
+                    savedAccessToken = tokenObj.toString();
+                    userAccessTokens.put(userId, savedAccessToken); 
+                    log.info("Redis에서 토큰 조회 성공 (재연결용): userId={}", userId);
+                }
+            } catch (Exception e) {
+                log.error("Redis 토큰 조회 실패 (재연결용): userId={}, error={}", userId, e.getMessage());
+            }
+        }
+        
+        // 람다에서 사용하기 위해 final 변수로 복사
+        final String finalAccessToken = savedAccessToken;
+        
+        if (finalAccessToken == null || finalAccessToken.isEmpty()) {
             log.warn("재연결 실패: Access Token 없음: userId={}", userId);
             return;
         }
@@ -353,7 +444,7 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
         log.info("Alpaca WebSocket 재연결 시도: userId={}", userId);
         reconnectScheduler.schedule(() -> {
             if (!userSessions.containsKey(userId)) {
-                subscribe(userId, savedAccessToken);
+                subscribe(userId, finalAccessToken);
             }
         }, 5, TimeUnit.SECONDS);
     }

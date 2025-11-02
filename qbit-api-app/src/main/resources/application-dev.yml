@@ -69,6 +69,10 @@ stock:
     us-equity: ${STOCK_SYNC_US_EQUITY}  # 미국 주식 동기화 활성화
     crypto: ${STOCK_SYNC_CRYPTO}  # 암호화폐 동기화 활성화
 
+# Massive.io (Polygon.io)
+massive:
+  api-key: ${MASSIVE_API_KEY}
+
 logging:
   level:
     com.curihous.qbit: DEBUG

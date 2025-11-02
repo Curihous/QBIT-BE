@@ -1,11 +1,14 @@
 package com.curihous.qbit.api.domain.stock.dto.response;
 
+import com.curihous.qbit.infra.massive.dto.response.MassiveLastQuoteResponse;
+import com.curihous.qbit.infra.massive.dto.response.MassiveTickerResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
- * 암호화폐 실시간 시세 응답 DTO
+ * 실시간 시세 응답 DTO
  * 
- * QBIT API: GET /stocks/quote/{symbol}
+ * - QBIT API: GET /stocks/crypto/quote/{binanceSymbol} (Binance API)
+ * - QBIT API: GET /stocks/us-equity/quote/{ticker} (Massive.io API)
  */
 public record QuoteResponseDto(
     @Schema(description = "종목 심볼", example = "BTCUSDT")
@@ -40,5 +43,52 @@ public record QuoteResponseDto(
                                     Double priceChange, Double priceChangePercentage, Long timestamp) {
         return new QuoteResponseDto(symbol, currentPrice, highPrice, lowPrice, openPrice, 
                                   previousClose, priceChange, priceChangePercentage, timestamp);
+    }
+    
+    public static QuoteResponseDto fromMassive(String ticker,
+                                                MassiveTickerResponse previousClose,
+                                                MassiveLastQuoteResponse lastTrade) {
+        // 전일 데이터 추출
+        MassiveTickerResponse.AggregateResult prevData = previousClose.getResults() != null 
+                && !previousClose.getResults().isEmpty()
+                ? previousClose.getResults().get(0)
+                : null;
+        
+        Double currentPrice = lastTrade.getLast() != null 
+                ? lastTrade.getLast().getPrice()
+                : (prevData != null ? prevData.getClosePrice() : null);
+        
+        Double highPrice = prevData != null ? prevData.getHighPrice() : null;
+        Double lowPrice = prevData != null ? prevData.getLowPrice() : null;
+        Double openPrice = prevData != null ? prevData.getOpenPrice() : null;
+        Double previousClosePrice = prevData != null ? prevData.getClosePrice() : null;
+        
+        // 변동가 및 변동률 계산
+        Double priceChange = null;
+        Double priceChangePercentage = null;
+        
+        if (currentPrice != null && previousClosePrice != null) {
+            priceChange = currentPrice - previousClosePrice;
+            if (previousClosePrice != 0) {
+                priceChangePercentage = (priceChange / previousClosePrice) * 100;
+            }
+        }
+        
+        Long timestamp = prevData != null ? prevData.getTimestamp() : null;
+        if (timestamp != null) {
+            timestamp = timestamp / 1_000_000; // 나노초를 밀리초로 변환
+        }
+        
+        return new QuoteResponseDto(
+            ticker,
+            currentPrice,
+            highPrice,
+            lowPrice,
+            openPrice,
+            previousClosePrice,
+            priceChange,
+            priceChangePercentage,
+            timestamp
+        );
     }
 }

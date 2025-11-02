@@ -8,6 +8,11 @@ import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSeriali
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 
+/**
+ * Redis 설정
+ * 
+ * redisTemplate: TradeUpdateProducer에서 Redis Streams에 메시지 발행 시 사용
+ */
 @Configuration
 public class RedisConfig {
 

@@ -1,4 +1,4 @@
-package com.curihous.qbit.api.domain.trading.service;
+package com.curihous.qbit.api.domain.trade.service;
 
 import com.curihous.qbit.common.event.TradeUpdateEvent;
 import com.curihous.qbit.common.event.LoginOrderSyncEvent;
@@ -33,7 +33,9 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Alpaca 주문 동기화 서비스
@@ -347,7 +349,16 @@ public class AlpacaOrderSyncService {
             if ("buy".equalsIgnoreCase(event.getSide())) {
                 handleBuyTradeCycle(user, stock, filledQty, filledAvgPrice, filledAt);
             } else if ("sell".equalsIgnoreCase(event.getSide())) {
-                handleSellTradeCycle(user, stock, filledQty, filledAvgPrice, filledAt);
+                Optional<OrderRequest> orderOpt = orderRequestRepository
+                        .findByAlpacaOrderId(event.getAlpacaOrderId());
+                
+                if (orderOpt.isPresent()) {
+                    OrderRequest order = orderOpt.get();
+                    handleSellTradeCycle(user, stock, filledQty, filledAvgPrice, filledAt, order);
+                } else {
+                    log.warn("OrderRequest를 찾을 수 없어 TradeCycle 업데이트 건너뜀: alpacaOrderId={}", 
+                            event.getAlpacaOrderId());
+                }
             }
             
         } catch (Exception e) {
@@ -451,7 +462,14 @@ public class AlpacaOrderSyncService {
     }
     
     private void handleSellTradeCycle(User user, Stock stock, BigDecimal qty, 
-                                      BigDecimal avgPrice, OffsetDateTime filledAt) {
+                                      BigDecimal avgPrice, OffsetDateTime filledAt,
+                                      OrderRequest order) {
+        if (order == null) {
+            log.warn("OrderRequest가 null이어서 TradeCycle 업데이트 건너뜀: userId={}, symbol={}", 
+                    user.getId(), stock.getSymbol());
+            return;
+        }
+        
         Optional<TradeCycle> activeCycleOpt = tradeCycleRepository
                 .findByUserAndStockAndEndDateIsNull(user, stock);
         
@@ -462,9 +480,19 @@ public class AlpacaOrderSyncService {
         
         TradeCycle cycle = activeCycleOpt.get();
         
-        Optional<Portfolio> portfolioOpt = portfolioRepository.findByUserAndStock(user, stock);
-        boolean isFullSell = portfolioOpt.isEmpty() || 
-            portfolioOpt.get().getQuantity().compareTo(BigDecimal.ZERO) == 0;
+        BigDecimal filledQuantity = order.getFilledQuantity();
+        BigDecimal orderQuantity = order.getQuantity();
+        
+        boolean isFullSell = false;
+        if (filledQuantity != null && orderQuantity != null) {
+            isFullSell = filledQuantity.compareTo(orderQuantity) >= 0;
+            log.debug("OrderRequest 기준 전량 매도 확인: alpacaOrderId={}, quantity={}, filledQuantity={}, isFullSell={}",
+                    order.getAlpacaOrderId(), orderQuantity, filledQuantity, isFullSell);
+        } else {
+            log.warn("OrderRequest의 quantity 또는 filledQuantity가 null: alpacaOrderId={}, quantity={}, filledQuantity={}",
+                    order.getAlpacaOrderId(), orderQuantity, filledQuantity);
+            return;
+        }
         
         if (isFullSell) {
             LocalDateTime filledAtLocal = filledAt != null 
@@ -474,13 +502,14 @@ public class AlpacaOrderSyncService {
             cycle.close(filledAtLocal, qty, avgPrice);
             tradeCycleRepository.save(cycle);
             
-            log.info("TradeCycle 종료 (전량 매도): userId={}, symbol={}, cycleId={}, profitLossRate={}%", 
-                    user.getId(), stock.getSymbol(), cycle.getId(), cycle.getProfitLossRate());
+            log.info("TradeCycle 종료 (전량 매도): userId={}, symbol={}, cycleId={}, profitLossRate={}%, alpacaOrderId={}", 
+                    user.getId(), stock.getSymbol(), cycle.getId(), cycle.getProfitLossRate(),
+                    order.getAlpacaOrderId());
         } else {
             cycle.updateOnPartialSell(qty, avgPrice);
             tradeCycleRepository.save(cycle);
-            log.info("TradeCycle 업데이트 (부분 매도): userId={}, symbol={}, cycleId={}", 
-                    user.getId(), stock.getSymbol(), cycle.getId());
+            log.info("TradeCycle 업데이트 (부분 매도): userId={}, symbol={}, cycleId={}, alpacaOrderId={}", 
+                    user.getId(), stock.getSymbol(), cycle.getId(), order.getAlpacaOrderId());
         }
     }
     
@@ -526,5 +555,284 @@ public class AlpacaOrderSyncService {
             return null;
         }
     }
+    
+    // tradeCycle 임시 메서드
+    @Transactional
+    public int backfillTradeCycles(Long userId) {
+        try {
+            Optional<User> userOpt = userRepository.findById(userId);
+            if (userOpt.isEmpty()) {
+                log.error("사용자를 찾을 수 없음: userId={}", userId);
+                return 0;
+            }
+            
+            User user = userOpt.get();
+            log.info("TradeCycle 후처리 시작 (OrderRequest 기준): userId={}", userId);
+            
+            // 사용자의 모든 OrderRequest를 시간순으로 조회
+            List<OrderRequest> allOrders = orderRequestRepository.findByUserOrderByAlpacaCreatedAtDesc(user);
+            
+            if (allOrders.isEmpty()) {
+                log.info("주문 내역이 없음: userId={}", userId);
+                return 0;
+            }
+            
+            // 시간순 정렬 (오름차순)
+            allOrders.sort((o1, o2) -> {
+                OffsetDateTime time1 = o1.getAlpacaCreatedAt() != null ? o1.getAlpacaCreatedAt() : o1.getCreatedAt().atOffset(java.time.ZoneOffset.UTC);
+                OffsetDateTime time2 = o2.getAlpacaCreatedAt() != null ? o2.getAlpacaCreatedAt() : o2.getCreatedAt().atOffset(java.time.ZoneOffset.UTC);
+                return time1.compareTo(time2);
+            });
+            
+            // 사용자의 모든 완료된 TradeCycle 조회 (기간 필터링용)
+            List<TradeCycle> completedCycles = tradeCycleRepository.findByUserAndEndDateIsNotNull(user);
+            
+            // TradeCycle의 startDate ~ endDate 범위에 있는 주문은 제외
+            final List<TradeCycle> finalCompletedCycles = completedCycles;
+            List<OrderRequest> unprocessedOrders = allOrders.stream()
+                    .filter(order -> {
+                        if (order.getFilledAt() == null) {
+                            return true; // 체결되지 않은 주문도 포함
+                        }
+                        LocalDateTime filledAt = order.getFilledAt().atZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();
+                        // 완료된 TradeCycle 중 이 주문의 체결 시각이 포함되는 기간이 있는지 확인
+                        return finalCompletedCycles.stream().noneMatch(cycle -> {
+                            LocalDateTime startDate = cycle.getStartDate();
+                            LocalDateTime endDate = cycle.getEndDate();
+                            return filledAt.compareTo(startDate) >= 0 
+                                    && filledAt.compareTo(endDate) <= 0;
+                        });
+                    })
+                    .collect(Collectors.toList());
+            
+            if (unprocessedOrders.isEmpty()) {
+                log.info("처리되지 않은 주문 없음: userId={}", userId);
+                return 0;
+            }
+            
+            log.info("처리되지 않은 주문 필터링: userId={}, 전체={}, 미처리={}", 
+                    userId, allOrders.size(), unprocessedOrders.size());
+            
+            // 종목별로 그룹화
+            Map<String, List<OrderRequest>> ordersBySymbol = unprocessedOrders.stream()
+                    .collect(Collectors.groupingBy(OrderRequest::getSymbol));
+            
+            int createdCount = 0;
+            
+            // 각 종목별로 TradeCycle 생성 시도
+            for (Map.Entry<String, List<OrderRequest>> entry : ordersBySymbol.entrySet()) {
+                String symbol = entry.getKey();
+                List<OrderRequest> symbolOrders = entry.getValue();
+                
+                Optional<Stock> stockOpt = stockRepository.findBySymbol(symbol);
+                if (stockOpt.isEmpty()) {
+                    log.warn("종목을 찾을 수 없음: symbol={}, userId={}", symbol, userId);
+                    continue;
+                }
+                
+                Stock stock = stockOpt.get();
+                
+                // 진행 중인 TradeCycle이 있는지 확인
+                Optional<TradeCycle> ongoingCycleOpt = tradeCycleRepository
+                        .findByUserAndStockAndEndDateIsNull(user, stock);
+                
+                if (ongoingCycleOpt.isPresent()) {
+                    log.info("진행 중인 TradeCycle이 이미 존재: userId={}, symbol={}", userId, symbol);
+                    continue;
+                }
+                
+                // OrderRequest 기준으로 TradeCycle 생성 시도
+                Optional<TradeCycle> createdCycle = createTradeCycleFromOrders(user, stock, symbolOrders);
+                
+                if (createdCycle.isPresent()) {
+                    createdCount++;
+                    log.info("TradeCycle 생성 완료: userId={}, symbol={}, cycleId={}", 
+                            userId, symbol, createdCycle.get().getId());
+                }
+            }
+            
+            log.info("TradeCycle 후처리 완료: userId={}, 생성된 TradeCycle 수={}", userId, createdCount);
+            return createdCount;
+            
+        } catch (Exception e) {
+            log.error("TradeCycle 후처리 실패: userId={}, error={}", userId, e.getMessage(), e);
+            throw new RuntimeException("TradeCycle 후처리 실패", e);
+        }
+    }
+    
+    // OrderRequest 기준으로 TradeCycle 생성 (전량 매도 시점 역추적)
+    private Optional<TradeCycle> createTradeCycleFromOrders(User user, Stock stock, 
+                                                             List<OrderRequest> orders) {
+        if (orders.isEmpty()) {
+            return Optional.empty();
+        }
+        
+        BigDecimal currentQuantity = BigDecimal.ZERO;
+        BigDecimal currentAverageBuyPrice = BigDecimal.ZERO;
+        BigDecimal totalBoughtQuantity = BigDecimal.ZERO;
+        BigDecimal totalInvestmentAmount = BigDecimal.ZERO;
+        BigDecimal totalSoldQuantity = BigDecimal.ZERO;
+        BigDecimal totalSoldAmount = BigDecimal.ZERO;
+        
+        LocalDateTime startDate = null;
+        LocalDateTime endDate = null;
+        int endIndex = orders.size();
+        
+        // peakInvestment와 maxDrawdown 계산용 변수
+        BigDecimal peakInvestment = BigDecimal.ZERO;
+        BigDecimal maxDrawdown = BigDecimal.ZERO;
+        BigDecimal currentInvestment = BigDecimal.ZERO;
+        BigDecimal highestInvestment = BigDecimal.ZERO;
+        
+        for (int i = 0; i < orders.size(); i++) {
+            OrderRequest order = orders.get(i);
+            
+            // 체결되지 않은 주문은 스킵
+            if (order.getFilledQuantity() == null || order.getFilledQuantity().compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
+            
+            LocalDateTime orderTime = order.getFilledAt() != null 
+                    ? order.getFilledAt().atZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime()
+                    : (order.getAlpacaCreatedAt() != null 
+                            ? order.getAlpacaCreatedAt().atZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime()
+                            : LocalDateTime.now());
+            
+            if (startDate == null) {
+                startDate = orderTime;
+            }
+            
+            if (order.getSide() == com.curihous.qbit.domain.order.entity.OrderSide.BUY) {
+                BigDecimal qty = order.getFilledQuantity();
+                BigDecimal price = order.getFilledAvgPrice() != null ? order.getFilledAvgPrice() : BigDecimal.ZERO;
+                
+                if (price.compareTo(BigDecimal.ZERO) <= 0) {
+                    log.warn("매수 주문의 평균 체결가가 없음: orderId={}, alpacaOrderId={}", 
+                            order.getId(), order.getAlpacaOrderId());
+                    continue;
+                }
+                
+                BigDecimal buyAmount = qty.multiply(price);
+                if (currentQuantity.compareTo(BigDecimal.ZERO) == 0) {
+                    currentAverageBuyPrice = price;
+                    currentQuantity = qty;
+                } else {
+                    BigDecimal currentTotalCost = currentQuantity.multiply(currentAverageBuyPrice);
+                    BigDecimal newTotalCost = currentTotalCost.add(buyAmount);
+                    BigDecimal newQuantity = currentQuantity.add(qty);
+                    currentAverageBuyPrice = newTotalCost.divide(newQuantity, 8, RoundingMode.HALF_UP);
+                    currentQuantity = newQuantity;
+                }
+                
+                totalBoughtQuantity = totalBoughtQuantity.add(qty);
+                totalInvestmentAmount = totalInvestmentAmount.add(buyAmount);
+                
+                currentInvestment = currentQuantity.multiply(currentAverageBuyPrice);
+                if (currentInvestment.compareTo(highestInvestment) > 0) {
+                    highestInvestment = currentInvestment;
+                }
+                peakInvestment = highestInvestment;
+                
+            } else if (order.getSide() == com.curihous.qbit.domain.order.entity.OrderSide.SELL) {
+                BigDecimal qty = order.getFilledQuantity();
+                BigDecimal price = order.getFilledAvgPrice() != null ? order.getFilledAvgPrice() : BigDecimal.ZERO;
+                
+                if (price.compareTo(BigDecimal.ZERO) <= 0) {
+                    log.warn("매도 주문의 평균 체결가가 없음: orderId={}, alpacaOrderId={}", 
+                            order.getId(), order.getAlpacaOrderId());
+                    continue;
+                }
+                
+                boolean isFullSell = order.getFilledQuantity().compareTo(order.getQuantity()) >= 0;
+                
+                currentQuantity = currentQuantity.subtract(qty);
+                
+                totalSoldQuantity = totalSoldQuantity.add(qty);
+                totalSoldAmount = totalSoldAmount.add(qty.multiply(price));
+                
+                if (currentQuantity.compareTo(BigDecimal.ZERO) > 0) {
+                    currentInvestment = currentQuantity.multiply(currentAverageBuyPrice);
+                } else {
+                    currentInvestment = BigDecimal.ZERO;
+                }
+                
+                if (peakInvestment.compareTo(BigDecimal.ZERO) > 0 && currentInvestment.compareTo(peakInvestment) < 0) {
+                    BigDecimal drawdown = peakInvestment.subtract(currentInvestment)
+                            .divide(peakInvestment, 8, RoundingMode.HALF_UP)
+                            .multiply(new BigDecimal("100")); // 백분율
+                    if (drawdown.compareTo(maxDrawdown) > 0) {
+                        maxDrawdown = drawdown;
+                    }
+                }
+                
+                // 전량 매도된 시점이면 TradeCycle 종료
+                if (isFullSell && currentQuantity.compareTo(BigDecimal.ZERO) <= 0) {
+                    endDate = orderTime;
+                    endIndex = i + 1;
+                    log.debug("전량 매도 시점 발견: orderId={}, alpacaOrderId={}, filledAt={}, quantity={}, filledQuantity={}",
+                            order.getId(), order.getAlpacaOrderId(), orderTime, order.getQuantity(), order.getFilledQuantity());
+                    break;
+                }
+            }
+        }
+        
+        // 전량 매도가 완료되지 않으면 TradeCycle 생성 안 함
+        if (endDate == null || totalBoughtQuantity.compareTo(BigDecimal.ZERO) <= 0) {
+            log.debug("전량 매도 미완료 또는 매수 내역 없음: userId={}, symbol={}", user.getId(), stock.getSymbol());
+            return Optional.empty();
+        }
+        
+        BigDecimal averageBuyPrice = totalInvestmentAmount.divide(
+                totalBoughtQuantity, 8, RoundingMode.HALF_UP);
+        
+        BigDecimal averageSellPrice = totalSoldAmount.divide(
+                totalSoldQuantity, 8, RoundingMode.HALF_UP);
+        
+        BigDecimal profitLossRate = averageSellPrice.subtract(averageBuyPrice)
+                .divide(averageBuyPrice, 8, RoundingMode.HALF_UP)
+                .multiply(new BigDecimal("100"));
+        
+        if (peakInvestment.compareTo(BigDecimal.ZERO) == 0) {
+            peakInvestment = totalInvestmentAmount;
+        }
+        
+        TradeCycle tradeCycle = new TradeCycle(
+                startDate,
+                endDate,
+                profitLossRate,
+                totalInvestmentAmount,
+                averageBuyPrice,
+                averageSellPrice,
+                peakInvestment,
+                maxDrawdown,
+                user,
+                stock
+        );
+        
+        // 각 주문별로 TradeCycle 업데이트
+        for (int i = 0; i < endIndex; i++) {
+            OrderRequest order = orders.get(i);
+            if (order.getFilledQuantity() == null || order.getFilledQuantity().compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
+            
+            BigDecimal qty = order.getFilledQuantity();
+            BigDecimal price = order.getFilledAvgPrice() != null ? order.getFilledAvgPrice() : BigDecimal.ZERO;
+            
+            if (price.compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
+            
+            if (order.getSide() == com.curihous.qbit.domain.order.entity.OrderSide.BUY) {
+                tradeCycle.updateOnAdditionalBuy(qty, price);
+            } else if (order.getSide() == com.curihous.qbit.domain.order.entity.OrderSide.SELL) {
+                tradeCycle.updateOnPartialSell(qty, price);
+            }
+        }
+        
+        tradeCycleRepository.save(tradeCycle);
+        return Optional.of(tradeCycle);
+    }
+    
 }
 

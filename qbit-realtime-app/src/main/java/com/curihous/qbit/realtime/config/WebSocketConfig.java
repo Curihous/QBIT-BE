@@ -26,8 +26,10 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 
 /**
  * STOMP WebSocket 설정
- * - JWT 인증 지원
- * - 사용자별 주문 업데이트 구독
+ * 
+ * - JWT 토큰 기반 인증
+ * - STOMP CONNECT 시 AlpacaTradeUpdatesManager.subscribeIfHasToken() 자동 호출
+ * - 주문 업데이트 전송: /user/{userId}/queue/orders-updates
  */
 @Slf4j
 @Configuration

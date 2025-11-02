@@ -4,8 +4,8 @@ import com.curihous.qbit.api.domain.stock.dto.response.MarketIndexHistoryDto;
 import com.curihous.qbit.api.domain.stock.dto.response.MarketIndexResponseDto;
 import com.curihous.qbit.api.domain.stock.dto.response.MarketIndexSummaryDto;
 import com.curihous.qbit.domain.stock.entity.MarketIndex;
-import com.curihous.qbit.domain.stock.port.MarketIndexPort;
 import com.curihous.qbit.domain.stock.service.MarketIndexService;
+import com.curihous.qbit.infra.yahoo.service.YahooFinanceMarketIndexService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 public class MarketIndexController {
 
     private final MarketIndexService marketIndexService;
-    private final MarketIndexPort marketIndexPort;
+    private final YahooFinanceMarketIndexService yahooFinanceMarketIndexService;
 
     @GetMapping
     @Operation(summary = "주요 지수 목록 조회", description = "해외 주요 지수 목록을 조회합니다. (홈 화면용)")
@@ -46,7 +46,7 @@ public class MarketIndexController {
         // 허용된 지수 심볼만 조회 가능
         marketIndexService.validateIndexSymbol(symbol);
         
-        MarketIndex index = marketIndexPort.getOrFetchIndex(symbol);
+        MarketIndex index = yahooFinanceMarketIndexService.getOrFetchIndex(symbol);
         MarketIndexResponseDto response = MarketIndexResponseDto.fromEntity(index);
         
         log.info("지수 조회: {} - {}", symbol, index.getName());
@@ -66,7 +66,7 @@ public class MarketIndexController {
         // 허용된 지수 심볼만 조회 가능
         marketIndexService.validateIndexSymbol(symbol);
 
-        MarketIndexPort.MarketIndexHistoryData data = marketIndexPort.getIndexHistory(symbol, from, to);
+        var data = yahooFinanceMarketIndexService.getIndexHistory(symbol, from, to);
         
         List<MarketIndexHistoryDto> response = data.dataPoints().stream()
             .map(point -> new MarketIndexHistoryDto(
