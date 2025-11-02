@@ -35,7 +35,7 @@ public class MassiveFeignConfig {
     @Bean("massiveRequestInterceptor")
     public RequestInterceptor requestInterceptor() {
         return requestTemplate -> {
-            requestTemplate.query("apiKey", apiKey);
+            requestTemplate.query("apikey", apiKey);  
         };
     }
 
