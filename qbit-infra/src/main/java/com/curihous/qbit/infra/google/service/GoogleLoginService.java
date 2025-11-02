@@ -10,7 +10,6 @@ import com.curihous.qbit.domain.user.repository.UserRepository;
 import com.curihous.qbit.infra.google.dto.GoogleUserInfo;
 import com.curihous.qbit.infra.security.jwt.JwtUtil;
 import com.curihous.qbit.infra.security.util.CookieUtil;
-import com.curihous.qbit.common.event.LoginOrderSyncEvent;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -85,13 +84,14 @@ public class GoogleLoginService {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
+                boolean hasAlpacaToken = finalAlpacaAccessToken != null && !finalAlpacaAccessToken.isEmpty();
                 log.info("트랜잭션 커밋 완료, 주문 동기화 이벤트 발행: userId={}, hasAlpacaToken={}", 
-                    user.getId(), finalAlpacaAccessToken != null);
+                    user.getId(), hasAlpacaToken);
                 
                 Map<String, String> fields = new HashMap<>();
                 fields.put("userId", String.valueOf(user.getId()));
                 fields.put("userEmail", user.getEmail());
-                fields.put("accessToken", finalAlpacaAccessToken != null ? finalAlpacaAccessToken : "");
+                fields.put("hasAlpacaToken", String.valueOf(hasAlpacaToken));
                 
                 try {
                     redisTemplate.opsForStream().add(LOGIN_SYNC_STREAM, fields);
