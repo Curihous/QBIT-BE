@@ -13,7 +13,6 @@ import com.curihous.qbit.domain.order.entity.OrderRequest;
 import com.curihous.qbit.domain.order.entity.*;
 import com.curihous.qbit.domain.order.port.TradingPort;
 import com.curihous.qbit.domain.order.repository.OrderRequestRepository;
-import com.curihous.qbit.domain.stock.port.StockPort;
 import com.curihous.qbit.domain.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,7 +38,7 @@ public class AlpacaOrderRequestService {
     private final OrderRequestRepository orderRequestRepository;
     private final AlpacaTradingPort alpacaTradingPort;
     private final AlpacaOAuthConnectionService alpacaOAuthConnectionService;
-    private final StockPort stockPort;
+    private final AlpacaStockService alpacaStockService;
 
     // 주문 생성
     @Transactional
@@ -60,7 +59,7 @@ public class AlpacaOrderRequestService {
         }
 
         // 2. Stock 조회/생성 (DB에 없으면 Alpaca API로 가져옴)
-        Stock stock = stockPort.getOrFetchStock(user, alpacaResponse.symbol());
+        Stock stock = alpacaStockService.getOrFetchStock(user, alpacaResponse.symbol());
 
         // 3. OrderRequest 생성 + Stock 연결
         OrderRequest orderRequest = convertToEntity(alpacaResponse, user, stock);
