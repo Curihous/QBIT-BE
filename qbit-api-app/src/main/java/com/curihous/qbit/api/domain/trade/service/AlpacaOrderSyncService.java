@@ -606,11 +606,11 @@ public class AlpacaOrderSyncService {
                     .collect(Collectors.toList());
             
             if (unprocessedOrders.isEmpty()) {
-                log.info("처리되지 않은 주문 없음: userId={}", userId);
+                log.debug("처리되지 않은 주문 없음: userId={}", userId);
                 return 0;
             }
             
-            log.info("처리되지 않은 주문 필터링: userId={}, 전체={}, 미처리={}", 
+            log.debug("처리되지 않은 주문 필터링: userId={}, 전체={}, 미처리={}", 
                     userId, allOrders.size(), unprocessedOrders.size());
             
             // 종목별로 그룹화
@@ -637,7 +637,7 @@ public class AlpacaOrderSyncService {
                         .findByUserAndStockAndEndDateIsNull(user, stock);
                 
                 if (ongoingCycleOpt.isPresent()) {
-                    log.info("진행 중인 TradeCycle이 이미 존재: userId={}, symbol={}", userId, symbol);
+                    log.debug("진행 중인 TradeCycle이 이미 존재: userId={}, symbol={}", userId, symbol);
                     continue;
                 }
                 
