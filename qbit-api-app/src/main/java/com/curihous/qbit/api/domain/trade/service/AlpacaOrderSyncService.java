@@ -67,7 +67,19 @@ public class AlpacaOrderSyncService {
 
     // ============== 로그인 시 주문 동기화 ==============
     
-    // 로그인 시 주문 동기화 이벤트 처리
+    // 로그인 시 주문 동기화 이벤트 처리 (qbit-api-app 내부 처리)
+    // 
+    // 이벤트 발행자: AlpacaOAuthService.exchangeTokenAndSave()
+    // 이벤트 수신자: 이 메서드 (@EventListener)
+    // 
+    // 처리 내용:
+    // 1. accessToken을 Redis에 저장 (qbit-realtime-app에서 조회 가능하도록)
+    //    → Key: "alpaca:token:{userId}", TTL: 7일
+    //    → 왜 Redis에 저장? qbit-realtime-app은 JPA가 없어서 DB 조회 불가
+    //
+    // 2. 주문 내역을 DB에 동기화
+    //    → Alpaca API에서 최신 주문 내역을 가져와서 DB에 저장
+    //
     @EventListener
     @Async
     public void handleLoginOrderSyncEvent(LoginOrderSyncEvent event) {
@@ -82,10 +94,23 @@ public class AlpacaOrderSyncService {
             
             User user = userOpt.get();
             
-            // DB에서 Alpaca 토큰 조회 후 Redis에 저장 (JPA 사용 안 하는 realtime-app에서 조회 가능하도록)
-            syncTokenToRedis(user.getId());
+            // 토큰을 Redis에 저장 (qbit-realtime-app에서 조회 가능하도록)
+            // 
+            // 왜 Redis에 저장하나요?
+            // - qbit-realtime-app은 JPA가 없어서 DB 조회 불가
+            // - Redis를 통해서만 토큰을 전달 가능
+            //
+            if (event.getAccessToken() != null && !event.getAccessToken().isEmpty()) {
+                // ✅ 최신 방식: 이벤트에 accessToken이 포함되어 있으면 DB 조회 없이 바로 Redis에 저장
+                //    (AlpacaOAuthService에서 이벤트 발행 시 accessToken을 포함시킴)
+                saveTokenToRedis(user.getId(), event.getAccessToken());
+            } else {
+                // ⚠️ 하위 호환성: 이벤트에 accessToken이 없으면 DB에서 조회 (구버전 호환)
+                //    (KakaoLoginService, GoogleLoginService에서 발행하는 이벤트는 accessToken이 없음)
+                syncTokenToRedis(user.getId());
+            }
             
-            // 주문 내역 동기화
+            // 주문 내역 동기화 (Alpaca API에서 최신 주문 내역을 가져와서 DB에 저장)
             syncOrdersOnLogin(user);
             
         } catch (Exception e) {
@@ -94,7 +119,39 @@ public class AlpacaOrderSyncService {
         }
     }
     
+    // 토큰을 직접 받아서 Redis에 저장
+    // 
+    // 언제 사용하나요?
+    // - AlpacaOAuthService에서 이벤트에 accessToken을 포함시켜 발행한 경우
+    // - 이벤트에서 직접 accessToken을 받아서 DB 조회 없이 Redis에 저장
+    //
+    private void saveTokenToRedis(Long userId, String accessToken) {
+        try {
+            if (accessToken == null || accessToken.isEmpty()) {
+                log.debug("Alpaca 토큰이 없어 Redis 저장 건너뜀: userId={}", userId);
+                return;
+            }
+            
+            // Redis에 토큰 저장 (qbit-realtime-app에서 조회 가능하도록)
+            // Key: "alpaca:token:{userId}"
+            // TTL: 7일
+            String redisKey = REDIS_TOKEN_KEY_PREFIX + userId;
+            redisTemplate.opsForValue().set(redisKey, accessToken, TOKEN_TTL);
+            
+            log.debug("Alpaca 토큰 Redis 저장 완료: userId={}, ttl={}일", userId, TOKEN_TTL.toDays());
+            
+        } catch (Exception e) {
+            log.error("Alpaca 토큰 Redis 저장 실패: userId={}, error={}", 
+                    userId, e.getMessage(), e);
+        }
+    }
+    
     // DB에서 Alpaca 토큰 조회 후 Redis에 저장
+    // 
+    // 언제 사용하나요?
+    // - 이벤트에 accessToken이 없는 경우 (KakaoLoginService, GoogleLoginService에서 발행한 이벤트)
+    // - DB에서 토큰을 조회하여 Redis에 저장
+    //
     private void syncTokenToRedis(Long userId) {
         try {
             Optional<AlpacaOAuthConnection> connectionOpt = 
@@ -117,10 +174,8 @@ public class AlpacaOrderSyncService {
                 return;
             }
             
-            String redisKey = REDIS_TOKEN_KEY_PREFIX + userId;
-            redisTemplate.opsForValue().set(redisKey, accessToken, TOKEN_TTL);
-            
-            log.debug("Alpaca 토큰 Redis 동기화 완료: userId={}, ttl={}일", userId, TOKEN_TTL.toDays());
+            // DB에서 조회한 토큰을 Redis에 저장
+            saveTokenToRedis(userId, accessToken);
             
         } catch (Exception e) {
             log.error("Alpaca 토큰 Redis 동기화 실패: userId={}, error={}", 
