@@ -1,6 +1,6 @@
 package com.curihous.qbit.api.consumer;
 
-import com.curihous.qbit.api.domain.trading.service.AlpacaOrderSyncService;
+import com.curihous.qbit.api.domain.trade.service.AlpacaOrderSyncService;
 import com.curihous.qbit.common.event.TradeUpdateEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

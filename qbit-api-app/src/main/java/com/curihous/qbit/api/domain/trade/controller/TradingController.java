@@ -1,10 +1,10 @@
-package com.curihous.qbit.api.domain.trading.controller;
+package com.curihous.qbit.api.domain.trade.controller;
 
-import com.curihous.qbit.api.domain.trading.dto.request.CreateOrderRequestDto;
-import com.curihous.qbit.api.domain.trading.dto.request.UpdateOrderRequestDto;
-import com.curihous.qbit.api.domain.trading.dto.response.OrderCreatedResponseDto;
-import com.curihous.qbit.api.domain.trading.dto.response.OrderDetailResponseDto;
-import com.curihous.qbit.api.domain.trading.dto.response.OrderUpdateResponseDto;
+import com.curihous.qbit.api.domain.trade.dto.request.CreateOrderRequestDto;
+import com.curihous.qbit.api.domain.trade.dto.request.UpdateOrderRequestDto;
+import com.curihous.qbit.api.domain.trade.dto.response.OrderCreatedResponseDto;
+import com.curihous.qbit.api.domain.trade.dto.response.OrderDetailResponseDto;
+import com.curihous.qbit.api.domain.trade.dto.response.OrderUpdateResponseDto;
 import com.curihous.qbit.common.dto.PaginatedResponseDto;
 import com.curihous.qbit.common.exception.ErrorCode;
 import com.curihous.qbit.common.exception.QbitException;
@@ -41,7 +41,7 @@ public class TradingController {
     private final TradingPort tradingPort; // 헥사고날 아키텍처
     private final AlpacaStockService alpacaStockService;
     private final UserSecurityFacade userSecurityFacade;
-    private final com.curihous.qbit.api.domain.trading.service.AlpacaOrderSyncService alpacaOrderSyncService;
+    private final com.curihous.qbit.api.domain.trade.service.AlpacaOrderSyncService alpacaOrderSyncService;
     
     @Value("${stock.sync.us-equity}")
     private boolean allowUsEquity;
