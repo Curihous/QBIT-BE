@@ -73,7 +73,7 @@ public record CandleResponseDto(
         List<CandleData> candles = aggregates.getResults() != null
                 ? aggregates.getResults().stream()
                     .map(result -> new CandleData(
-                        result.getTimestamp() / 1_000_000, // 나노초를 밀리초로 변환
+                        result.getTimestamp(), 
                         result.getOpenPrice(),
                         result.getHighPrice(),
                         result.getLowPrice(),

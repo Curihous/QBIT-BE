@@ -85,13 +85,14 @@ public class KakaoLoginService {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
+                boolean hasAlpacaToken = finalAlpacaAccessToken != null && !finalAlpacaAccessToken.isEmpty();
                 log.info("트랜잭션 커밋 완료, 주문 동기화 이벤트 발행: userId={}, hasAlpacaToken={}", 
-                    user.getId(), finalAlpacaAccessToken != null);
+                    user.getId(), hasAlpacaToken);
                 
                 Map<String, String> fields = new HashMap<>();
                 fields.put("userId", String.valueOf(user.getId()));
                 fields.put("userEmail", user.getEmail());
-                fields.put("accessToken", finalAlpacaAccessToken != null ? finalAlpacaAccessToken : "");
+                fields.put("hasAlpacaToken", String.valueOf(hasAlpacaToken));
                 
                 try {
                     redisTemplate.opsForStream().add(LOGIN_SYNC_STREAM, fields);

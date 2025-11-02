@@ -143,11 +143,12 @@ jobs:
             -e ALPACA_OAUTH_CLIENT_ID="${{ secrets.ALPACA_OAUTH_CLIENT_ID }}" \
             -e ALPACA_OAUTH_CLIENT_SECRET="${{ secrets.ALPACA_OAUTH_CLIENT_SECRET }}" \
             -e OAUTH_STATE_SECRET="${{ secrets.OAUTH_STATE_SECRET }}" \
-            -e STOCK_SYNC_ON="${{ secrets.STOCK_SYNC_ON }}" \
-            -e STOCK_SYNC_US_EQUITY="${{ secrets.STOCK_SYNC_US_EQUITY }}" \
-            -e STOCK_SYNC_CRYPTO="${{ secrets.STOCK_SYNC_CRYPTO }}" \
-            -e INFO_APP_VERSION="${{ github.sha }}" \
-            ${{ secrets.DOCKER_REPO }}:${{ github.sha }}
+          -e STOCK_SYNC_ON="${{ secrets.STOCK_SYNC_ON }}" \
+          -e STOCK_SYNC_US_EQUITY="${{ secrets.STOCK_SYNC_US_EQUITY }}" \
+          -e STOCK_SYNC_CRYPTO="${{ secrets.STOCK_SYNC_CRYPTO }}" \
+          -e MASSIVE_API_KEY="${{ secrets.MASSIVE_API_KEY }}" \
+          -e INFO_APP_VERSION="${{ github.sha }}" \
+          ${{ secrets.DOCKER_REPO }}:${{ github.sha }}
 
           # 4) 사용하지 않는 이미지 정리
           docker image prune -f
@@ -184,10 +185,11 @@ jobs:
             -e REDIS_HOST_PROD=${{ secrets.HOST}} \
             -e REDIS_PORT_PROD=6379 \
             -e REDIS_PASSWORD_PROD="${{ secrets.REDIS_PASSWORD_PROD }}" \
-            -e ENCRYPTION_SECRET_KEY="${{ secrets.ENCRYPTION_SECRET_KEY }}" \
-            -e JWT_ACCESS_SECRET="${{ secrets.JWT_ACCESS_SECRET }}" \
-            -e JWT_REFRESH_SECRET="${{ secrets.JWT_REFRESH_SECRET }}" \
-            ${{ secrets.DOCKER_REPO_REALTIME }}:${{ github.sha }}
+          -e ENCRYPTION_SECRET_KEY="${{ secrets.ENCRYPTION_SECRET_KEY }}" \
+          -e JWT_ACCESS_SECRET="${{ secrets.JWT_ACCESS_SECRET }}" \
+          -e JWT_REFRESH_SECRET="${{ secrets.JWT_REFRESH_SECRET }}" \
+          -e MASSIVE_API_KEY="${{ secrets.MASSIVE_API_KEY }}" \
+          ${{ secrets.DOCKER_REPO_REALTIME }}:${{ github.sha }}
 
           echo "[INFO] Show container status and last logs"
           docker ps -a | grep qbit-realtime || true

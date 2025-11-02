@@ -75,9 +75,6 @@ public record QuoteResponseDto(
         }
         
         Long timestamp = prevData != null ? prevData.getTimestamp() : null;
-        if (timestamp != null) {
-            timestamp = timestamp / 1_000_000; // 나노초를 밀리초로 변환
-        }
         
         return new QuoteResponseDto(
             ticker,

@@ -15,8 +15,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.*;
 
 /**
  * Massive.io(Polygon.io) WebSocket 매니저
@@ -54,12 +53,48 @@ public class MassiveWebSocketManager implements WebSocketHandler {
     private String apiKey;
     
     private static final String MASSIVE_WEBSOCKET_URL = "wss://socket.polygon.io/stocks";
+    
+    // 비동기 작업용 ExecutorService
+    private final ExecutorService connectionExecutor;
+    
+    // 재시도 스케줄링용 ScheduledExecutorService
+    private final ScheduledExecutorService retryScheduler;
+    
+    // 재연결 스케줄링용 ScheduledExecutorService
+    private final ScheduledExecutorService reconnectExecutor;
+    
+    // 진행 중인 연결 작업 추적 (중복 연결 방지)
+    private volatile CompletableFuture<WebSocketSession> connectionFuture;
+    
+    // 진행 중인 재시도 작업 추적 (취소용)
+    private volatile ScheduledFuture<?> scheduledRetry;
+    
+    // 진행 중인 재연결 작업 추적 (취소용)
+    private volatile ScheduledFuture<?> scheduledReconnect;
+    
+    // 재연결 지연 시간 
+    private static final long RECONNECT_DELAY_MS = 5000; // 5초
 
     public MassiveWebSocketManager() {
         this.objectMapper = new ObjectMapper();
         this.tradeSubscribers = new ConcurrentHashMap<>();
         this.quoteSubscribers = new ConcurrentHashMap<>();
         this.subscribedSymbols = ConcurrentHashMap.newKeySet();
+        this.connectionExecutor = Executors.newSingleThreadExecutor(r -> {
+            Thread t = new Thread(r, "massive-websocket-connection");
+            t.setDaemon(true);
+            return t;
+        });
+        this.retryScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "massive-websocket-retry");
+            t.setDaemon(true);
+            return t;
+        });
+        this.reconnectExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "massive-websocket-reconnect");
+            t.setDaemon(true);
+            return t;
+        });
     }
 
     // WebSocket 연결 초기화
@@ -77,65 +112,110 @@ public class MassiveWebSocketManager implements WebSocketHandler {
     }
 
     // Massive.io WebSocket 연결
-    private void connectToMassive() {
+    private CompletableFuture<WebSocketSession> connectToMassiveAsync() {
+        // 이미 연결되어 있으면 완료된 Future 반환
         if (massiveSession != null && massiveSession.isOpen()) {
             log.debug("Massive WebSocket 이미 연결됨");
-            return;
+            return CompletableFuture.completedFuture(massiveSession);
         }
-
-        int maxAttempts = 3;
-        int attempt = 0;
-        long backoffMs = 1000; // 초기 대기 시간 1초
         
-        while (attempt < maxAttempts) {
-            attempt++;
-            
-            try {
-                WebSocketHttpHeaders headers = new WebSocketHttpHeaders();
-                
-                log.info("Massive WebSocket 연결 시도 {}/{}: url={}", 
-                    attempt, maxAttempts, MASSIVE_WEBSOCKET_URL);
-                
-                WebSocketSession session = webSocketClient
-                    .execute(this, headers, URI.create(MASSIVE_WEBSOCKET_URL))
-                    .get(10, java.util.concurrent.TimeUnit.SECONDS);
-                
+        // 진행 중인 연결 작업이 있는지 확인
+        CompletableFuture<WebSocketSession> existingFuture = connectionFuture;
+        if (existingFuture != null && !existingFuture.isDone()) {
+            log.debug("이미 진행 중인 연결 작업이 있음");
+            return existingFuture;
+        }
+        
+        // 새로운 연결 작업 시작
+        CompletableFuture<WebSocketSession> newFuture = CompletableFuture
+                .supplyAsync(() -> {
+                    return attemptConnection(1, 1000L);
+                }, connectionExecutor)
+                .thenCompose(session -> {
+                    if (session != null) {
+                        return CompletableFuture.completedFuture(session);
+                    } else {
+                        // 첫 시도 실패 시 비동기 재시도
+                        return scheduleRetry(2, 2000L);
+                    }
+                });
+        
+        connectionFuture = newFuture;
+        
+        // 완료 후 connectionFuture 정리
+        newFuture.whenComplete((session, throwable) -> {
+            connectionFuture = null;
+            if (session != null) {
                 massiveSession = session;
-                
-                log.info("Massive WebSocket 연결 성공: sessionId={}", session.getId());
-                
-                // 인증 메시지 전송
+                log.info("Massive WebSocket 연결 완료: sessionId={}", session.getId());
                 sendAuthMessage(session);
-                
-                return;
-                
-            } catch (java.util.concurrent.TimeoutException e) {
-                log.error("Massive WebSocket 연결 타임아웃 (시도 {}/{}): error={}", 
-                         attempt, maxAttempts, e.getMessage());
-            } catch (java.util.concurrent.ExecutionException e) {
-                log.error("Massive WebSocket 연결 실패 (시도 {}/{}): error={}", 
-                         attempt, maxAttempts, e.getMessage(), e);
-            } catch (InterruptedException e) {
-                log.error("Massive WebSocket 연결 중단됨 (시도 {}/{}): error={}", 
-                         attempt, maxAttempts, e.getMessage());
-                Thread.currentThread().interrupt();
-                return;
+            } else if (throwable != null) {
+                log.error("Massive WebSocket 연결 최종 실패: error={}", throwable.getMessage(), throwable);
             }
+        });
+        
+        return newFuture;
+    }
+    
+    // 단일 연결 시도
+    private WebSocketSession attemptConnection(int attempt, long backoffMs) {
+        try {
+            WebSocketHttpHeaders headers = new WebSocketHttpHeaders();
             
-            // 마지막 시도가 아니면 대기 후 재시도
-            if (attempt < maxAttempts) {
-                try {
-                    log.info("{}ms 후 재시도...", backoffMs);
-                    Thread.sleep(backoffMs);
-                    backoffMs *= 2; // 지수 백오프 (1초 → 2초 → 4초)
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    return;
-                }
-            }
+            log.info("Massive WebSocket 연결 시도 {}: url={}", attempt, MASSIVE_WEBSOCKET_URL);
+            
+            WebSocketSession session = webSocketClient
+                    .execute(this, headers, URI.create(MASSIVE_WEBSOCKET_URL))
+                    .get(10, TimeUnit.SECONDS);
+            
+            log.info("Massive WebSocket 연결 성공: sessionId={}", session.getId());
+            return session;
+            
+        } catch (TimeoutException e) {
+            log.error("Massive WebSocket 연결 타임아웃 (시도 {}): error={}", attempt, e.getMessage());
+            return null;
+        } catch (ExecutionException e) {
+            log.error("Massive WebSocket 연결 실패 (시도 {}): error={}", attempt, e.getMessage(), e);
+            return null;
+        } catch (InterruptedException e) {
+            log.error("Massive WebSocket 연결 중단됨 (시도 {}): error={}", attempt, e.getMessage());
+            Thread.currentThread().interrupt();
+            return null;
+        }
+    }
+    
+    // 비동기 재시도 스케줄링 (지수 백오프)
+    private CompletableFuture<WebSocketSession> scheduleRetry(int attempt, long backoffMs) {
+        if (attempt > 3) {
+            log.error("Massive WebSocket 연결 실패: 최대 재시도 횟수(3)를 초과했습니다.");
+            return CompletableFuture.completedFuture(null);
         }
         
-        log.error("Massive WebSocket 연결 실패: 최대 재시도 횟수({})를 초과했습니다.", maxAttempts);
+        CompletableFuture<WebSocketSession> future = new CompletableFuture<>();
+        
+        // ScheduledExecutorService로 지연 후 재시도
+        scheduledRetry = retryScheduler.schedule(() -> {
+            try {
+                WebSocketSession session = attemptConnection(attempt, backoffMs);
+                
+                if (session != null) {
+                    future.complete(session);
+                } else {
+                    // 재시도 실패 시 다음 재시도 스케줄링
+                    long nextBackoffMs = backoffMs * 2;
+                    scheduleRetry(attempt + 1, nextBackoffMs)
+                            .thenAccept(future::complete)
+                            .exceptionally(throwable -> {
+                                future.completeExceptionally(throwable);
+                                return null;
+                            });
+                }
+            } catch (Exception e) {
+                future.completeExceptionally(e);
+            }
+        }, backoffMs, TimeUnit.MILLISECONDS);
+        
+        return future;
     }
 
     // 인증 메시지 전송
@@ -257,10 +337,10 @@ public class MassiveWebSocketManager implements WebSocketHandler {
                 quoteSubscribers.get(normalizedTicker) != null ? quoteSubscribers.get(normalizedTicker).size() : 0);
     }
 
-    // Massive WebSocket 연결 확인 및 연결
+    // Massive WebSocket 연결 확인 및 연결 
     private void ensureMassiveConnection() {
         if (massiveSession == null || !massiveSession.isOpen()) {
-            connectToMassive();
+            connectToMassiveAsync();
         }
     }
 
@@ -440,25 +520,31 @@ public class MassiveWebSocketManager implements WebSocketHandler {
             log.info("Massive WebSocket 재연결 시도: tradeSubscribers={}, quoteSubscribers={}", 
                     tradeSubscribers.size(), quoteSubscribers.size());
             
-            // 5초 후 재연결 시도
-            try {
-                Thread.sleep(5000);
-                connectToMassive();
-                
-                // 기존 구독 복구
-                if (massiveSession != null && massiveSession.isOpen()) {
-                    for (String symbol : tradeSubscribers.keySet()) {
-                        sendSubscribeMessage(massiveSession, "T", symbol);
-                        subscribedSymbols.add("T." + symbol);
-                    }
-                    for (String symbol : quoteSubscribers.keySet()) {
-                        sendSubscribeMessage(massiveSession, "Q", symbol);
-                        subscribedSymbols.add("Q." + symbol);
-                    }
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+            // 기존 재연결 작업 취소
+            if (scheduledReconnect != null && !scheduledReconnect.isDone()) {
+                scheduledReconnect.cancel(false);
             }
+            
+            // 비동기로 재연결 스케줄링 (WebSocket 콜백 스레드에서 블로킹하지 않음)
+            scheduledReconnect = reconnectExecutor.schedule(() -> {
+                connectToMassiveAsync().thenAccept(session -> {
+                    if (session != null && session.isOpen()) {
+                        // 기존 구독 복구
+                        for (String symbol : tradeSubscribers.keySet()) {
+                            sendSubscribeMessage(session, "T", symbol);
+                            subscribedSymbols.add("T." + symbol);
+                        }
+                        for (String symbol : quoteSubscribers.keySet()) {
+                            sendSubscribeMessage(session, "Q", symbol);
+                            subscribedSymbols.add("Q." + symbol);
+                        }
+                        log.info("Massive WebSocket 재연결 성공 및 구독 복구 완료");
+                    }
+                }).exceptionally(throwable -> {
+                    log.error("Massive WebSocket 재연결 실패: error={}", throwable.getMessage(), throwable);
+                    return null;
+                });
+            }, RECONNECT_DELAY_MS, TimeUnit.MILLISECONDS);
         } else {
             log.info("구독자가 없어 재연결하지 않음");
         }
@@ -467,6 +553,59 @@ public class MassiveWebSocketManager implements WebSocketHandler {
     @Override
     public boolean supportsPartialMessages() {
         return false;
+    }
+    
+    // 애플리케이션 종료 시 리소스 정리
+    public void shutdown() {
+        log.info("Massive WebSocket 매니저 종료 시작");
+        
+        // 진행 중인 연결 작업 취소
+        if (connectionFuture != null && !connectionFuture.isDone()) {
+            connectionFuture.cancel(true);
+        }
+        
+        // 진행 중인 재시도 작업 취소
+        if (scheduledRetry != null && !scheduledRetry.isDone()) {
+            scheduledRetry.cancel(false);
+        }
+        
+        // 진행 중인 재연결 작업 취소
+        if (scheduledReconnect != null && !scheduledReconnect.isDone()) {
+            scheduledReconnect.cancel(false);
+        }
+        
+        // ExecutorService 종료
+        connectionExecutor.shutdown();
+        retryScheduler.shutdown();
+        reconnectExecutor.shutdown();
+        
+        try {
+            if (!connectionExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+                connectionExecutor.shutdownNow();
+            }
+            if (!retryScheduler.awaitTermination(5, TimeUnit.SECONDS)) {
+                retryScheduler.shutdownNow();
+            }
+            if (!reconnectExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+                reconnectExecutor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            connectionExecutor.shutdownNow();
+            retryScheduler.shutdownNow();
+            reconnectExecutor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+        
+        // WebSocket 세션 종료
+        if (massiveSession != null && massiveSession.isOpen()) {
+            try {
+                massiveSession.close();
+            } catch (IOException e) {
+                log.error("Massive WebSocket 세션 종료 실패: error={}", e.getMessage());
+            }
+        }
+        
+        log.info("Massive WebSocket 매니저 종료 완료");
     }
 }
 
