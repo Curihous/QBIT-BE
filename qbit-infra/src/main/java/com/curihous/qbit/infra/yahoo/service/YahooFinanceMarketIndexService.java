@@ -3,9 +3,9 @@ package com.curihous.qbit.infra.yahoo.service;
 import com.curihous.qbit.common.exception.ErrorCode;
 import com.curihous.qbit.common.exception.QbitException;
 import com.curihous.qbit.domain.stock.entity.MarketIndex;
-import com.curihous.qbit.domain.stock.port.MarketIndexPort;
 import com.curihous.qbit.domain.stock.repository.MarketIndexRepository;
 import com.curihous.qbit.infra.yahoo.client.YahooFinanceClient;
+import com.curihous.qbit.infra.yahoo.dto.response.MarketIndexHistoryData;
 import com.curihous.qbit.infra.yahoo.dto.response.YahooFinanceChartResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,14 +21,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-/**
- * Yahoo Finance를 통한 시장 지수 데이터 조회 Adapter
- * (Hexagonal Architecture - Adapter)
- */
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class YahooFinanceMarketIndexService implements MarketIndexPort {
+public class YahooFinanceMarketIndexService {
 
     private final YahooFinanceClient yahooFinanceClient;
     private final MarketIndexRepository marketIndexRepository;
@@ -76,7 +73,6 @@ public class YahooFinanceMarketIndexService implements MarketIndexPort {
     }
 
     // 특정 지수 데이터 조회 및 업데이트
-    @Override
     @Transactional
     public MarketIndex getOrFetchIndex(String symbol) {
         try {
@@ -174,7 +170,6 @@ public class YahooFinanceMarketIndexService implements MarketIndexPort {
     }
 
     // 과거 데이터 조회
-    @Override
     public MarketIndexHistoryData getIndexHistory(String symbol, String from, String to) {
         try {
             // yyyy-MM-dd → Unix timestamp 변환
@@ -193,7 +188,6 @@ public class YahooFinanceMarketIndexService implements MarketIndexPort {
     }
     
     // 주요 지수 심볼 목록 반환
-    @Override
     public List<String> getMajorIndexSymbols() {
         return MAJOR_INDEX_SYMBOLS;
     }
