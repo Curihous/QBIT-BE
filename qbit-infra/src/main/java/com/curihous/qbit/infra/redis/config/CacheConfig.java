@@ -14,12 +14,16 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 import java.time.Duration;
 
 /**
- * Redis 캐시 설정
+ * Redis 캐시 설정 - BinanceMarketServce, MassiveMarketService에서 사용
  * 
  * 현재 캐시 전략:
- * - quote: 10초 (실시간 시세)
- * - candle: 5분 (차트 데이터)
- * - orderbook: 5초 (호가창)
+ * - binance-ticker: 1초 (Binance 24시간 통계)
+ * - binance-kline: 5분 (Binance 캔들 데이터)
+ * - binance-orderbook: 1초 (Binance 호가창)
+ * - massive-ticker: 1분 (전일 종가 데이터)
+ * - massive-aggregate: 5분 (집계/차트 데이터)
+ * - massive-last-trade: 10초 (최근 거래 데이터)
+ * - massive-last-quote: 10초 (최근 호가 데이터)
  */
 @Configuration
 @EnableCaching
@@ -38,9 +42,13 @@ public class CacheConfig {
 
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(defaultConfig)
-                .withCacheConfiguration("quote", defaultConfig.entryTtl(Duration.ofSeconds(10)))
-                .withCacheConfiguration("candle", defaultConfig.entryTtl(Duration.ofMinutes(5)))
-                .withCacheConfiguration("orderbook", defaultConfig.entryTtl(Duration.ofSeconds(5)))
+                .withCacheConfiguration("binance-ticker", defaultConfig.entryTtl(Duration.ofSeconds(1)))
+                .withCacheConfiguration("binance-kline", defaultConfig.entryTtl(Duration.ofMinutes(5)))
+                .withCacheConfiguration("binance-orderbook", defaultConfig.entryTtl(Duration.ofSeconds(1)))
+                .withCacheConfiguration("massive-ticker", defaultConfig.entryTtl(Duration.ofMinutes(1)))
+                .withCacheConfiguration("massive-aggregate", defaultConfig.entryTtl(Duration.ofMinutes(5)))
+                .withCacheConfiguration("massive-last-trade", defaultConfig.entryTtl(Duration.ofSeconds(10)))
+                .withCacheConfiguration("massive-last-quote", defaultConfig.entryTtl(Duration.ofSeconds(10)))
                 .build();
     }
 }
