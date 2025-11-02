@@ -18,7 +18,8 @@ import org.springframework.scheduling.annotation.EnableAsync;
 @EnableFeignClients(basePackages = {
         "com.curihous.qbit.infra.alpaca.client",
         "com.curihous.qbit.infra.yahoo.client",
-        "com.curihous.qbit.infra.binance.client"
+        "com.curihous.qbit.infra.binance.client",
+        "com.curihous.qbit.infra.massive.client"
 })
 public class QbitApiApplication {
 
