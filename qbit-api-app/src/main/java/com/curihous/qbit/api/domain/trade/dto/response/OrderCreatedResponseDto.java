@@ -1,4 +1,4 @@
-package com.curihous.qbit.api.domain.trading.dto.response;
+package com.curihous.qbit.api.domain.trade.dto.response;
 
 import com.curihous.qbit.domain.order.entity.OrderRequest;
 import io.swagger.v3.oas.annotations.media.Schema;

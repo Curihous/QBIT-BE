@@ -1,4 +1,4 @@
-package com.curihous.qbit.api.domain.trading.dto.request;
+package com.curihous.qbit.api.domain.trade.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;

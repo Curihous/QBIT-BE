@@ -8,7 +8,6 @@ import com.curihous.qbit.common.util.CryptoSymbolConverter;
 import com.curihous.qbit.domain.alpaca.entity.AlpacaOAuthConnection;
 import com.curihous.qbit.domain.alpaca.service.AlpacaOAuthConnectionService;
 import com.curihous.qbit.domain.stock.entity.Stock;
-import com.curihous.qbit.domain.stock.port.StockPort;
 import com.curihous.qbit.domain.stock.repository.StockRepository;
 import com.curihous.qbit.domain.user.entity.User;
 import jakarta.annotation.PostConstruct;
@@ -22,15 +21,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Alpaca API를 통한 주식 데이터 조회 Adapter
- * (Hexagonal Architecture - Adapter)
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class AlpacaStockService implements StockPort {
+public class AlpacaStockService {
 
     private final StockRepository stockRepository;
     private final AlpacaTradingPort alpacaTradingPort;

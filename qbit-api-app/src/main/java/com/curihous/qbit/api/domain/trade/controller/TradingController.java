@@ -1,10 +1,10 @@
-package com.curihous.qbit.api.domain.trading.controller;
+package com.curihous.qbit.api.domain.trade.controller;
 
-import com.curihous.qbit.api.domain.trading.dto.request.CreateOrderRequestDto;
-import com.curihous.qbit.api.domain.trading.dto.request.UpdateOrderRequestDto;
-import com.curihous.qbit.api.domain.trading.dto.response.OrderCreatedResponseDto;
-import com.curihous.qbit.api.domain.trading.dto.response.OrderDetailResponseDto;
-import com.curihous.qbit.api.domain.trading.dto.response.OrderUpdateResponseDto;
+import com.curihous.qbit.api.domain.trade.dto.request.CreateOrderRequestDto;
+import com.curihous.qbit.api.domain.trade.dto.request.UpdateOrderRequestDto;
+import com.curihous.qbit.api.domain.trade.dto.response.OrderCreatedResponseDto;
+import com.curihous.qbit.api.domain.trade.dto.response.OrderDetailResponseDto;
+import com.curihous.qbit.api.domain.trade.dto.response.OrderUpdateResponseDto;
 import com.curihous.qbit.common.dto.PaginatedResponseDto;
 import com.curihous.qbit.common.exception.ErrorCode;
 import com.curihous.qbit.common.exception.QbitException;
@@ -12,8 +12,8 @@ import com.curihous.qbit.common.util.CryptoSymbolConverter;
 import com.curihous.qbit.domain.order.entity.OrderRequest;
 import com.curihous.qbit.domain.order.port.TradingPort;
 import com.curihous.qbit.domain.stock.entity.Stock;
-import com.curihous.qbit.domain.stock.port.StockPort;
 import com.curihous.qbit.domain.user.entity.User;
+import com.curihous.qbit.infra.alpaca.service.AlpacaStockService;
 import com.curihous.qbit.infra.security.facade.UserSecurityFacade;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -38,10 +38,10 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class TradingController {
 
-    private final TradingPort tradingPort;
-    private final StockPort stockPort;
+    private final TradingPort tradingPort; // 헥사고날 아키텍처
+    private final AlpacaStockService alpacaStockService;
     private final UserSecurityFacade userSecurityFacade;
-    private final com.curihous.qbit.api.domain.trading.service.AlpacaOrderSyncService alpacaOrderSyncService;
+    private final com.curihous.qbit.api.domain.trade.service.AlpacaOrderSyncService alpacaOrderSyncService;
     
     @Value("${stock.sync.us-equity}")
     private boolean allowUsEquity;
@@ -56,7 +56,7 @@ public class TradingController {
         User user = userSecurityFacade.getCurrentUser();
         
         // 자산 클래스 허용 여부 체크
-        Stock stock = stockPort.getOrFetchStock(user, request.symbol());
+        Stock stock = alpacaStockService.getOrFetchStock(user, request.symbol());
         validateAssetClassAllowed(stock);
         
         // Binance 심볼 자동 변환 (DB에 없는 경우만)

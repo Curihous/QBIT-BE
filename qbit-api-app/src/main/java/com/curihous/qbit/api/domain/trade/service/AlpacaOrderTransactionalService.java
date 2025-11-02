@@ -1,4 +1,4 @@
-package com.curihous.qbit.api.domain.trading.service;
+package com.curihous.qbit.api.domain.trade.service;
 
 import com.curihous.qbit.domain.order.entity.OrderRequest;
 import com.curihous.qbit.domain.order.entity.OrderStatus;

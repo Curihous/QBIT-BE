@@ -23,35 +23,7 @@ dependencies {
     
     // JSON
     implementation 'com.fasterxml.jackson.core:jackson-databind'
-    
-    // Jetty WebSocket Client (11.0.24)
-    implementation platform('org.eclipse.jetty:jetty-bom:11.0.24')
-    implementation('org.eclipse.jetty:jetty-client') {
-        version {
-            strictly '11.0.24'
-        }
-    }
-    implementation('org.eclipse.jetty.websocket:websocket-jetty-client') {
-        version {
-            strictly '11.0.24'
-        }
-    }
-    implementation('org.eclipse.jetty:jetty-http') {
-        version {
-            strictly '11.0.24'
-        }
-    }
-    implementation('org.eclipse.jetty:jetty-io') {
-        version {
-            strictly '11.0.24'
-        }
-    }
-    implementation('org.eclipse.jetty:jetty-util') {
-        version {
-            strictly '11.0.24'
-        }
-    }
-    
+
     // Lombok
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'

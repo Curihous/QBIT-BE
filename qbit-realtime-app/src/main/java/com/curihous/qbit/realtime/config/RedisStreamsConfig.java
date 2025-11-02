@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.stream.Consumer;
 import org.springframework.data.redis.connection.stream.MapRecord;
@@ -94,25 +95,19 @@ public class RedisStreamsConfig {
         return container;
     }
 
-    // Consumer Group 생성 
+    // Consumer Group 생성 (없을 때만 생성)
     private void createConsumerGroup(String stream) {
-        try {
-            // 기존 Consumer Group 삭제
-            try {
-                connectionFactory.getConnection().streamCommands()
-                        .xGroupDestroy(stream.getBytes(), CONSUMER_GROUP);
-                log.info("기존 Consumer Group 삭제: group={}, stream={}", CONSUMER_GROUP, stream);
-            } catch (Exception e) {
-                log.debug("삭제할 Consumer Group이 없음: group={}, stream={}", CONSUMER_GROUP, stream);
-            }
-            
-            // Consumer Group 생성
-            connectionFactory.getConnection().streamCommands()
+        try (RedisConnection connection = connectionFactory.getConnection()) {
+            connection.streamCommands()
                     .xGroupCreate(stream.getBytes(), CONSUMER_GROUP, ReadOffset.from("0"), true);
             log.info("Consumer Group 생성: group={}, stream={}", CONSUMER_GROUP, stream);
-        } catch (Exception e) {
-            log.error("Consumer Group 생성 실패: group={}, stream={}, error={}", 
-                    CONSUMER_GROUP, stream, e.getMessage());
+        } catch (Exception e) { // BUSYGROUP 에러는 Consumer Group이 이미 존재한다는 의미
+            if (e.getMessage() != null && e.getMessage().contains("BUSYGROUP")) {
+                log.debug("Consumer Group이 이미 존재함: group={}, stream={}", CONSUMER_GROUP, stream);
+            } else {
+                log.error("Consumer Group 생성 실패: group={}, stream={}, error={}", 
+                        CONSUMER_GROUP, stream, e.getMessage());
+            }
         }
     }
 }

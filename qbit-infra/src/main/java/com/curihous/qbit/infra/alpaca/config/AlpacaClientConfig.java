@@ -19,7 +19,7 @@ public class AlpacaClientConfig {
         return Logger.Level.BASIC;
     }
 
-    @Bean
+    @Bean("alpacaRequestInterceptor")
     public RequestInterceptor requestInterceptor() {
         return requestTemplate -> {
             requestTemplate.header("User-Agent", "QBIT-Backend/" + appVersion);

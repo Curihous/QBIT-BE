@@ -5,8 +5,8 @@ import com.curihous.qbit.api.domain.stock.dto.response.StockSearchResponseDto;
 import com.curihous.qbit.common.exception.ErrorCode;
 import com.curihous.qbit.common.exception.QbitException;
 import com.curihous.qbit.domain.stock.entity.Stock;
-import com.curihous.qbit.domain.stock.port.StockPort;
 import com.curihous.qbit.domain.stock.service.StockService;
+import com.curihous.qbit.infra.alpaca.service.AlpacaStockService;
 import com.curihous.qbit.domain.user.entity.User;
 import com.curihous.qbit.infra.security.facade.UserSecurityFacade;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 public class StockController {
 
     private final StockService stockService;
-    private final StockPort stockPort; 
+    private final AlpacaStockService alpacaStockService;
     private final UserSecurityFacade userSecurityFacade;
     
     @Value("${stock.sync.us-equity}")
@@ -58,7 +58,7 @@ public class StockController {
             stocks.isEmpty() && keyword.matches("^[A-Z0-9]{1,10}(/[A-Z]{3,4})?$")) {
             try {
                 User user = userSecurityFacade.getCurrentUser();
-                Stock stock = stockPort.getOrFetchStock(user, keyword);
+                Stock stock = alpacaStockService.getOrFetchStock(user, keyword);
                 
                 // 허용된 자산 클래스만 검색 결과에 포함
                 if ("us_equity".equalsIgnoreCase(stock.getAssetClass())) {
@@ -112,7 +112,7 @@ public class StockController {
     ) {
         User user = userSecurityFacade.getCurrentUser();
         // Cache-Aside: DB 우선 → 없으면 Alpaca API 조회 → 저장
-        Stock stock = stockPort.getOrFetchStock(user, symbol);
+        Stock stock = alpacaStockService.getOrFetchStock(user, symbol);
         
         if (!isAssetClassAllowed(stock)) {
             String assetClass = stock.getAssetClass();

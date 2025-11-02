@@ -7,13 +7,16 @@ import java.math.BigDecimal;
 import java.util.List;
 
 /**
- * Yahoo Finance API 차트 응답 DTO
+ * Yahoo Finance API 차트 응답 내부 DTO
+ * 
+ * Yahoo Finance API의 원시 JSON 응답을 Java 객체로 역직렬화하는 Infra 레이어 내부 DTO
+ * Feign Client에서 사용하며, Service에서 MarketIndex 또는 MarketIndexHistoryData로 변환
  * 
  * 사용 API:
- * - Yahoo Finance: GET /v8/finance/chart/{symbol}
- * - QBIT API: GET /indices
- * - QBIT API: GET /indices/{symbol}
- * - QBIT API: GET /indices/{symbol}/history
+ * - Yahoo Finance API: GET /v8/finance/chart/{symbol}
+ * - QBIT API: GET /indices 
+ * - QBIT API: GET /indices/{symbol} 
+ * - QBIT API: GET /indices/{symbol}/history 
  * 
  * Record가 아닌 Class를 사용한 이유: 중첩 클래스의 역직렬화가 더 쉽게 가능
  */
