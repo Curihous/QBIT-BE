@@ -24,9 +24,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.util.UriComponentsBuilder;
+import org.springframework.data.redis.core.RedisTemplate;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -50,6 +53,9 @@ public class AlpacaOAuthService implements TradingPort {
     private final AlpacaOAuthStateService alpacaOAuthStateService;
     private final AlpacaOrderRequestService alpacaOrderRequestService;
     private final ApplicationEventPublisher eventPublisher;
+    private final RedisTemplate<String, Object> redisTemplate;
+    
+    private static final String LOGIN_SYNC_STREAM = "login-order-sync";
 
     // OAuth 승인 URL 생성
     public String generateAuthUrl(Long userId) {
@@ -96,11 +102,28 @@ public class AlpacaOAuthService implements TradingPort {
             );
 
             // 트랜잭션 커밋 후 로그인 시 주문 상태 동기화 이벤트 발행
+            String finalAccessToken = tokenResponse.accessToken();
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
                     log.info("트랜잭션 커밋 완료, 주문 동기화 이벤트 발행: userId={}", user.getId());
-                    eventPublisher.publishEvent(new LoginOrderSyncEvent(user.getId(), user.getEmail()));
+                    
+                    // Spring 이벤트 (qbit-api-app 내부 처리용): 토큰을 Redis에 저장 + 주문 내역을 DB에 동기화
+                    eventPublisher.publishEvent(new LoginOrderSyncEvent(user.getId(), user.getEmail(), finalAccessToken));
+                    
+                    // Redis Streams 이벤트 (qbit-realtime-app 처리용): Alpaca WebSocket 연결 및 실시간 거래 업데이트 구독
+                    Map<String, String> fields = new HashMap<>();
+                    fields.put("userId", String.valueOf(user.getId()));
+                    fields.put("userEmail", user.getEmail());
+                    fields.put("hasAlpacaToken", "true"); // 토큰은 Redis에 이미 저장되어 있음 (Spring 이벤트에서 저장)
+                    
+                    try {
+                        redisTemplate.opsForStream().add(LOGIN_SYNC_STREAM, fields);
+                        log.info("LoginOrderSyncEvent Redis Streams 발행 완료: userId={}", user.getId());
+                    } catch (Exception e) {
+                        log.error("LoginOrderSyncEvent Redis Streams 발행 실패: userId={}, error={}", 
+                                user.getId(), e.getMessage(), e);
+                    }
                 }
             });
 
