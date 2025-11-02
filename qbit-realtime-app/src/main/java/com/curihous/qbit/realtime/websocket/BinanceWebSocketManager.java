@@ -1,7 +1,6 @@
 package com.curihous.qbit.realtime.websocket;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.curihous.qbit.infra.binance.dto.websocket.BinanceTradeMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.*;
@@ -15,10 +14,10 @@ import java.util.concurrent.CopyOnWriteArraySet;
 
 /**
  * Binance WebSocket 매니저
- * 실시간 체결 데이터 및 호가창 데이터를 수신하고 subscribers에게 브로드캐스트
+ * 실시간 호가창 데이터를 수신하고 subscribers에게 브로드캐스트
  * 
  * 지원 방식: 멀티 스트림 (여러 암호화폐 동시 지원)
- * 스트림 타입: trade (체결), depth (호가창)
+ * 스트림 타입: depth (호가창)
  */
 @Slf4j
 @Component
@@ -26,20 +25,11 @@ public class BinanceWebSocketManager implements WebSocketHandler {
 
     private final ObjectMapper objectMapper;
     
-    // 체결 데이터 구독자
-    private final Map<String, CopyOnWriteArraySet<WebSocketSession>> tradeSubscribers;
-    
     // 호가창 데이터 구독자
     private final Map<String, CopyOnWriteArraySet<WebSocketSession>> depthSubscribers;
     
-    // 심볼별 Binance 세션 관리 (trade)
-    private final Map<String, WebSocketSession> tradeSessions;
-    
     // 심볼별 Binance 세션 관리 (depth)
     private final Map<String, WebSocketSession> depthSessions;
-    
-    // 세션 -> 심볼 + 타입 역매핑
-    private final Map<WebSocketSession, StreamInfo> sessionToInfo;
     
     private volatile WebSocketClient webSocketClient;
     
@@ -51,21 +41,10 @@ public class BinanceWebSocketManager implements WebSocketHandler {
 
     public BinanceWebSocketManager() {
         this.objectMapper = new ObjectMapper();
-        this.tradeSubscribers = new ConcurrentHashMap<>();
         this.depthSubscribers = new ConcurrentHashMap<>();
-        this.tradeSessions = new ConcurrentHashMap<>();
         this.depthSessions = new ConcurrentHashMap<>();
-        this.sessionToInfo = new ConcurrentHashMap<>();
     }
     
-    // 스트림 정보 (심볼 + 타입)
-    private record StreamInfo(String symbol, StreamType type) {}
-    
-    // 스트림 타입
-    private enum StreamType {
-        TRADE,  // 체결 데이터
-        DEPTH   // 호가창 데이터
-    }
 
     // WebSocket 연결 초기화
     public void initialize(WebSocketClient webSocketClient) {
@@ -81,27 +60,14 @@ public class BinanceWebSocketManager implements WebSocketHandler {
         return symbol.toUpperCase(java.util.Locale.ROOT);
     }
 
-    // 특정 심볼의 체결 데이터에 대한 Binance WebSocket 연결
-    private void connectToTradeStream(String symbol) {
-        if (tradeSessions.containsKey(symbol)) {
-            log.debug("이미 연결된 체결 스트림: {}", symbol);
-            return;
-        }
-        connectToBinance(symbol, StreamType.TRADE);
-    }
-    
     // 특정 심볼의 호가창 데이터에 대한 Binance WebSocket 연결
     private void connectToDepthStream(String symbol) {
         if (depthSessions.containsKey(symbol)) {
             log.debug("이미 연결된 호가창 스트림: {}", symbol);
             return;
         }
-        connectToBinance(symbol, StreamType.DEPTH);
-    }
 
-    // Binance WebSocket 연결 (공통 로직)
-    private void connectToBinance(String symbol, StreamType streamType) {
-
+        // Binance WebSocket 연결
         int maxAttempts = 3;
         int attempt = 0;
         long backoffMs = 1000; // 초기 대기 시간 1초
@@ -111,26 +77,22 @@ public class BinanceWebSocketManager implements WebSocketHandler {
             
             try {
                 // Binance WebSocket URL 생성
-                String url = buildWebSocketUrl(symbol, streamType);
+                String symbolLower = symbol.toLowerCase();
+                String url = String.format("wss://stream.binance.com:9443/ws/%s@depth%d@%s", 
+                    symbolLower, DEPTH_LEVELS, DEPTH_UPDATE_SPEED);
                 WebSocketHttpHeaders headers = new WebSocketHttpHeaders();
                 
-                log.info("Binance WebSocket 연결 시도 {}/{}: symbol={}, type={}, url={}", 
-                    attempt, maxAttempts, symbol, streamType, url);
+                log.info("Binance WebSocket 연결 시도 {}/{}: symbol={}, url={}", 
+                    attempt, maxAttempts, symbol, url);
                 
                 // 타임아웃 설정 (10초)
                 WebSocketSession session = webSocketClient
                     .execute(this, headers, URI.create(url))
                     .get(10, java.util.concurrent.TimeUnit.SECONDS);
                 
-                // 스트림 타입에 따라 적절한 맵에 저장
-                if (streamType == StreamType.TRADE) {
-                    tradeSessions.put(symbol, session);
-                } else {
-                    depthSessions.put(symbol, session);
-                }
-                sessionToInfo.put(session, new StreamInfo(symbol, streamType));
+                depthSessions.put(symbol, session);
                 
-                log.info("Binance WebSocket 연결 성공: symbol={}, type={}", symbol, streamType);
+                log.info("Binance WebSocket 연결 성공: symbol={}", symbol);
                 return;
                 
             } catch (java.util.concurrent.TimeoutException e) {
@@ -159,33 +121,8 @@ public class BinanceWebSocketManager implements WebSocketHandler {
             }
         }
         
-        log.error("Binance WebSocket 연결 실패: symbol={}, type={}, 최대 재시도 횟수({})를 초과했습니다.", 
-            symbol, streamType, maxAttempts);
-    }
-    
-    // WebSocket URL 빌드
-    private String buildWebSocketUrl(String symbol, StreamType streamType) {
-        String symbolLower = symbol.toLowerCase();
-        if (streamType == StreamType.TRADE) {
-            return String.format("wss://stream.binance.com:9443/ws/%s@trade", symbolLower);
-        } else {
-            return String.format("wss://stream.binance.com:9443/ws/%s@depth%d@%s", 
-                symbolLower, DEPTH_LEVELS, DEPTH_UPDATE_SPEED);
-        }
-    }
-
-    // 종목 실시간 체결 데이터 subscribe
-    public void subscribeToTrade(String symbol, WebSocketSession clientSession) {
-        String normalizedSymbol = normalizeSymbol(symbol);
-        tradeSubscribers.computeIfAbsent(normalizedSymbol, k -> new CopyOnWriteArraySet<>()).add(clientSession);
-        
-        // 첫 번째 구독자라면 Binance WebSocket 연결
-        if (tradeSubscribers.get(normalizedSymbol).size() == 1) {
-            connectToTradeStream(normalizedSymbol);
-        }
-        
-        log.info("체결 데이터 subscribe 추가: symbol={}, subscribers={}", normalizedSymbol, 
-                tradeSubscribers.get(normalizedSymbol).size());
+        log.error("Binance WebSocket 연결 실패: symbol={}, 최대 재시도 횟수({})를 초과했습니다.", 
+            symbol, maxAttempts);
     }
 
     // 종목 실시간 호가창 데이터 subscribe
@@ -200,24 +137,6 @@ public class BinanceWebSocketManager implements WebSocketHandler {
         
         log.info("호가창 데이터 subscribe 추가: symbol={}, subscribers={}", normalizedSymbol, 
                 depthSubscribers.get(normalizedSymbol).size());
-    }
-
-    // 종목 체결 데이터 subscribe 해제
-    public void unsubscribeFromTrade(String symbol, WebSocketSession clientSession) {
-        String normalizedSymbol = normalizeSymbol(symbol);
-        CopyOnWriteArraySet<WebSocketSession> subscribers = tradeSubscribers.get(normalizedSymbol);
-        if (subscribers != null) {
-            subscribers.remove(clientSession);
-            
-            // 마지막 subscriber가 해제되면 Binance 연결도 해제
-            if (subscribers.isEmpty()) {
-                disconnectFromTradeStream(normalizedSymbol);
-                tradeSubscribers.remove(normalizedSymbol);
-            }
-        }
-        
-        log.info("체결 데이터 subscribe 해제: symbol={}, subscribers={}", normalizedSymbol, 
-                tradeSubscribers.get(normalizedSymbol) != null ? tradeSubscribers.get(normalizedSymbol).size() : 0);
     }
 
     // 종목 호가창 데이터 subscribe 해제
@@ -238,27 +157,10 @@ public class BinanceWebSocketManager implements WebSocketHandler {
                 depthSubscribers.get(normalizedSymbol) != null ? depthSubscribers.get(normalizedSymbol).size() : 0);
     }
 
-    // 특정 심볼의 체결 스트림 연결 해제
-    private void disconnectFromTradeStream(String symbol) {
-        WebSocketSession session = tradeSessions.remove(symbol);
-        if (session != null) {
-            sessionToInfo.remove(session);
-            if (session.isOpen()) {
-                try {
-                    session.close();
-                    log.info("Binance 체결 스트림 연결 해제: symbol={}", symbol);
-                } catch (Exception e) {
-                    log.error("Binance 체결 스트림 연결 해제 실패: symbol={}, error={}", symbol, e.getMessage());
-                }
-            }
-        }
-    }
-    
     // 특정 심볼의 호가창 스트림 연결 해제
     private void disconnectFromDepthStream(String symbol) {
         WebSocketSession session = depthSessions.remove(symbol);
         if (session != null) {
-            sessionToInfo.remove(session);
             if (session.isOpen()) {
                 try {
                     session.close();
@@ -278,28 +180,23 @@ public class BinanceWebSocketManager implements WebSocketHandler {
     @Override
     public void handleMessage(WebSocketSession session, WebSocketMessage<?> message) {
         if (message instanceof TextMessage textMessage) {
-            // 세션 정보로부터 스트림 타입 확인
-            StreamInfo info = sessionToInfo.get(session);
-            if (info != null) {
-                if (info.type() == StreamType.TRADE) {
-                    handleTradeMessage(textMessage.getPayload());
-                } else {
-                    handleDepthMessage(info.symbol(), textMessage.getPayload());
-                }
+            // depthSessions에서 세션에 해당하는 심볼 찾기
+            String symbol = findSymbolBySession(session);
+            if (symbol != null) {
+                handleDepthMessage(symbol, textMessage.getPayload());
             }
         }
     }
-
-    // Binance에서 받은 체결 메시지 처리
-    private void handleTradeMessage(String message) {
-        try {
-            BinanceTradeMessage tradeMessage = objectMapper.readValue(message, BinanceTradeMessage.class);
-            broadcastTradeData(tradeMessage.getSymbol(), tradeMessage);
-        } catch (Exception e) {
-            log.error("Binance 체결 메시지 처리 실패: message={}, error={}", message, e.getMessage());
-        }
-    }
     
+    // 세션으로부터 심볼 찾기 (depthSessions 역조회)
+    private String findSymbolBySession(WebSocketSession session) {
+        return depthSessions.entrySet().stream()
+                .filter(entry -> entry.getValue().equals(session))
+                .map(Map.Entry::getKey)
+                .findFirst()
+                .orElse(null);
+    }
+
     // Binance에서 받은 호가창 메시지 처리
     private void handleDepthMessage(String symbol, String message) {
         try {
@@ -311,57 +208,6 @@ public class BinanceWebSocketManager implements WebSocketHandler {
         }
     }
 
-    // 특정 종목의 체결 데이터를 subscribers에게 브로드캐스트
-    private void broadcastTradeData(String symbol, BinanceTradeMessage tradeMessage) {
-        String normalizedSymbol = normalizeSymbol(symbol);
-        CopyOnWriteArraySet<WebSocketSession> subscribers = tradeSubscribers.get(normalizedSymbol);
-        if (subscribers == null || subscribers.isEmpty()) {
-            return;
-        }
-        
-        try {
-            String broadcastMessage = objectMapper.writeValueAsString(tradeMessage);
-            int removedCount = 0;
-            
-            // 각 subscriber에게 전송
-            for (WebSocketSession subscriber : subscribers) {
-                try {
-                    if (subscriber.isOpen()) {
-                        subscriber.sendMessage(new TextMessage(broadcastMessage));
-                    } else {
-                        // 닫힌 세션 제거
-                        subscribers.remove(subscriber);
-                        removedCount++;
-                        log.debug("닫힌 세션 제거: sessionId={}", subscriber.getId());
-                    }
-                } catch (Exception e) {
-                    // 전송 실패 시 세션 정리
-                    log.warn("체결 데이터 전송 실패 (세션 제거): sessionId={}, error={}", 
-                            subscriber.getId(), e.getMessage());
-                    try {
-                        subscriber.close();
-                    } catch (Exception closeEx) {
-                        // 이미 닫혔을 수 있음
-                    }
-                    subscribers.remove(subscriber);
-                    removedCount++;
-                }
-            }
-            
-            // 정리된 세션 로깅
-            if (removedCount > 0) {
-                log.info("닫힌 세션 정리: symbol={}, removed={}, remaining={}", 
-                        normalizedSymbol, removedCount, subscribers.size());
-            }
-            
-            log.debug("체결 데이터 브로드캐스트: symbol={}, active_subscribers={}", 
-                    normalizedSymbol, subscribers.size());
-                    
-        } catch (Exception e) {
-            log.error("체결 데이터 브로드캐스트 실패: symbol={}, error={}", normalizedSymbol, e.getMessage());
-        }
-    }
-    
     // 특정 종목의 호가창 데이터를 subscribers에게 브로드캐스트
     private void broadcastDepthData(String symbol, com.curihous.qbit.infra.binance.dto.websocket.BinanceDepthMessage depthMessage) {
         String normalizedSymbol = normalizeSymbol(symbol);
@@ -429,33 +275,23 @@ public class BinanceWebSocketManager implements WebSocketHandler {
     
     // 연결 해제 및 재연결 처리
     private void handleDisconnectionAndReconnect(WebSocketSession session) {
-        StreamInfo info = sessionToInfo.get(session);
-        if (info == null) {
+        // depthSessions에서 세션에 해당하는 심볼 찾기
+        String symbol = findSymbolBySession(session);
+        if (symbol == null) {
             return;
         }
         
         // 기존 세션 제거
-        sessionToInfo.remove(session);
-        
-        boolean isTrade = info.type() == StreamType.TRADE;
-        Map<String, WebSocketSession> sessions = isTrade ? tradeSessions : depthSessions;
-        Map<String, CopyOnWriteArraySet<WebSocketSession>> subscribers = isTrade ? tradeSubscribers : depthSubscribers;
-        String streamTypeName = isTrade ? "체결" : "호가창";
-        
-        sessions.remove(info.symbol());
+        depthSessions.remove(symbol);
         
         // 구독자가 있을 때만 재연결
-        CopyOnWriteArraySet<WebSocketSession> activeSubscribers = subscribers.get(info.symbol());
+        CopyOnWriteArraySet<WebSocketSession> activeSubscribers = depthSubscribers.get(symbol);
         if (activeSubscribers != null && !activeSubscribers.isEmpty()) {
-            log.info("Binance {} 스트림 재연결 시도: symbol={}, subscribers={}", 
-                streamTypeName, info.symbol(), activeSubscribers.size());
-            if (isTrade) {
-                connectToTradeStream(info.symbol());
-            } else {
-                connectToDepthStream(info.symbol());
-            }
+            log.info("Binance 호가창 스트림 재연결 시도: symbol={}, subscribers={}", 
+                symbol, activeSubscribers.size());
+            connectToDepthStream(symbol);
         } else {
-            log.info("구독자가 없어 재연결하지 않음: symbol={}, type={}", info.symbol(), info.type());
+            log.info("구독자가 없어 재연결하지 않음: symbol={}", symbol);
         }
     }
 
