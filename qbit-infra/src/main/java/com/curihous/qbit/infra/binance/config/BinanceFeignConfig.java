@@ -18,7 +18,7 @@ public class BinanceFeignConfig {
     }
 
     // 요청 옵션 설정
-    @Bean
+    @Bean("binanceRequestOptions")
     public Request.Options requestOptions() {
         return new Request.Options(
             10, TimeUnit.SECONDS,  // 연결 타임아웃
@@ -27,7 +27,7 @@ public class BinanceFeignConfig {
         );
     }
 
-    @Bean
+    @Bean("binanceErrorDecoder")
     public ErrorDecoder errorDecoder() {
         return new BinanceErrorDecoder();
     }

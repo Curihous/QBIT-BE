@@ -22,7 +22,7 @@ public class MassiveFeignConfig {
     }
 
     // 요청 옵션 설정
-    @Bean
+    @Bean("massiveRequestOptions")
     public Request.Options requestOptions() {
         return new Request.Options(
             10, TimeUnit.SECONDS,  // 연결 타임아웃
@@ -32,14 +32,14 @@ public class MassiveFeignConfig {
     }
 
     // API 키 자동 추가 인터셉터
-    @Bean
+    @Bean("massiveRequestInterceptor")
     public RequestInterceptor requestInterceptor() {
         return requestTemplate -> {
             requestTemplate.query("apiKey", apiKey);
         };
     }
 
-    @Bean
+    @Bean("massiveErrorDecoder")
     public ErrorDecoder errorDecoder() {
         return new MassiveErrorDecoder();
     }
