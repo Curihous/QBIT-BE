@@ -37,8 +37,12 @@ public class LoginOrderSyncConsumer implements StreamListener<String, MapRecord<
             log.info("LoginOrderSyncEvent 수신: userId={}, hasAlpacaToken={}", 
                     userId, hasAlpacaToken);
             
-            // Alpaca WebSocket 구독 - 저장된 토큰(Redis 또는 DB)에서 가져와서 구독
-            alpacaTradeUpdatesManager.subscribeIfHasToken(userId);
+            // hasAlpacaToken이 true일 때만 Redis에서 토큰 조회 및 구독 시도
+            if (hasAlpacaToken) {
+                alpacaTradeUpdatesManager.subscribeIfHasToken(userId);
+            } else {
+                log.info("Alpaca 토큰이 없어 WebSocket 구독 건너뜀: userId={}", userId);
+            }
             
         } catch (Exception e) {
             log.error("LoginOrderSyncEvent 처리 실패: messageId={}, error={}", 

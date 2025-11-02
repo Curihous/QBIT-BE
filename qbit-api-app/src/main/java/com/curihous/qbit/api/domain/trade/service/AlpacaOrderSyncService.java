@@ -25,12 +25,14 @@ import com.curihous.qbit.infra.alpaca.dto.response.AlpacaOrderResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -58,6 +60,10 @@ public class AlpacaOrderSyncService {
     private final AlpacaOAuthConnectionService alpacaOAuthConnectionService;
     private final AlpacaTradingClient alpacaTradingClient;
     private final AlpacaOrderTransactionalService alpacaOrderTransactionalService;
+    private final RedisTemplate<String, Object> redisTemplate;
+    
+    private static final String REDIS_TOKEN_KEY_PREFIX = "alpaca:token:";
+    private static final Duration TOKEN_TTL = Duration.ofDays(7);
 
     // ============== 로그인 시 주문 동기화 ==============
     
@@ -75,11 +81,50 @@ public class AlpacaOrderSyncService {
             }
             
             User user = userOpt.get();
+            
+            // DB에서 Alpaca 토큰 조회 후 Redis에 저장 (JPA 사용 안 하는 realtime-app에서 조회 가능하도록)
+            syncTokenToRedis(user.getId());
+            
+            // 주문 내역 동기화
             syncOrdersOnLogin(user);
             
         } catch (Exception e) {
             log.error("로그인 시 주문 동기화 이벤트 처리 실패: userId={}, error={}", 
                     event.getUserId(), e.getMessage(), e);
+        }
+    }
+    
+    // DB에서 Alpaca 토큰 조회 후 Redis에 저장
+    private void syncTokenToRedis(Long userId) {
+        try {
+            Optional<AlpacaOAuthConnection> connectionOpt = 
+                    alpacaOAuthConnectionService.findByUserId(userId);
+            
+            if (connectionOpt.isEmpty()) {
+                log.debug("Alpaca 연결이 없어 Redis 동기화 건너뜀: userId={}", userId);
+                return;
+            }
+            
+            AlpacaOAuthConnection connection = connectionOpt.get();
+            if (!connection.getAlpacaConnectionStatus().equals(AlpacaConnectionStatus.ACTIVE)) {
+                log.debug("비활성화된 Alpaca 연결: userId={}", userId);
+                return;
+            }
+            
+            String accessToken = connection.getAccessToken();
+            if (accessToken == null || accessToken.isEmpty()) {
+                log.debug("Alpaca 토큰이 없어 Redis 동기화 건너뜀: userId={}", userId);
+                return;
+            }
+            
+            String redisKey = REDIS_TOKEN_KEY_PREFIX + userId;
+            redisTemplate.opsForValue().set(redisKey, accessToken, TOKEN_TTL);
+            
+            log.debug("Alpaca 토큰 Redis 동기화 완료: userId={}, ttl={}일", userId, TOKEN_TTL.toDays());
+            
+        } catch (Exception e) {
+            log.error("Alpaca 토큰 Redis 동기화 실패: userId={}, error={}", 
+                    userId, e.getMessage(), e);
         }
     }
 
