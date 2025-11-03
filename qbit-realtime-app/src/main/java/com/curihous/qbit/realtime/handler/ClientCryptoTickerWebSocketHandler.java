@@ -1,6 +1,6 @@
 package com.curihous.qbit.realtime.handler;
 
-import com.curihous.qbit.realtime.websocket.MassiveWebSocketManager;
+import com.curihous.qbit.realtime.websocket.BinanceWebSocketManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -8,14 +8,14 @@ import org.springframework.web.socket.*;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 /**
- * 미국 주식 실시간 Level1 호가창(NBBO) WebSocket 핸들러 (Massive.io)
+ * 암호화폐 실시간 시세(24시간 통계) WebSocket 핸들러
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class ClientUsEquityQuoteWebSocketHandler extends TextWebSocketHandler {
+public class ClientCryptoTickerWebSocketHandler extends TextWebSocketHandler {
 
-    private final MassiveWebSocketManager massiveWebSocketManager;
+    private final BinanceWebSocketManager binanceWebSocketManager;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
@@ -26,11 +26,11 @@ public class ClientUsEquityQuoteWebSocketHandler extends TextWebSocketHandler {
         }
         
         String uri = session.getUri().toString();
-        String ticker = extractTickerFromUri(uri);
+        String symbol = extractSymbolFromUri(uri);
         
-        if (ticker != null) {
-            massiveWebSocketManager.subscribeToQuote(ticker, session);
-            log.info("클라이언트 시세 WebSocket 연결: ticker={}, sessionId={}", ticker, session.getId());
+        if (symbol != null) {
+            binanceWebSocketManager.subscribeToTicker(symbol, session);
+            log.info("클라이언트 시세 WebSocket 연결: symbol={}, sessionId={}", symbol, session.getId());
         } else {
             log.warn("잘못된 URI: {}", uri);
             session.close(CloseStatus.BAD_DATA);
@@ -54,17 +54,17 @@ public class ClientUsEquityQuoteWebSocketHandler extends TextWebSocketHandler {
         }
         
         String uri = session.getUri().toString();
-        String ticker = extractTickerFromUri(uri);
+        String symbol = extractSymbolFromUri(uri);
         
-        if (ticker != null) {
-            massiveWebSocketManager.unsubscribeFromQuote(ticker, session);
-            log.info("클라이언트 시세 WebSocket 연결 종료: ticker={}, sessionId={}, status={}", 
-                    ticker, session.getId(), status);
+        if (symbol != null) {
+            binanceWebSocketManager.unsubscribeFromTicker(symbol, session);
+            log.info("클라이언트 시세 WebSocket 연결 종료: symbol={}, sessionId={}, status={}", 
+                    symbol, session.getId(), status);
         }
     }
 
-    // URI에서 종목 ticker 추출
-    private String extractTickerFromUri(String uri) {
+    // URI에서 종목 심볼 추출
+    private String extractSymbolFromUri(String uri) {
         if (uri == null) return null;
         
         String[] parts = uri.split("/");
