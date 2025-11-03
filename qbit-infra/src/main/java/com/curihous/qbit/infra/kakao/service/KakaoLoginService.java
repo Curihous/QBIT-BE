@@ -1,5 +1,6 @@
 package com.curihous.qbit.infra.kakao.service;
 
+import com.curihous.qbit.common.event.LoginOrderSyncEvent;
 import com.curihous.qbit.common.exception.ErrorCode;
 import com.curihous.qbit.common.exception.QbitException;
 import com.curihous.qbit.domain.alpaca.entity.AlpacaOAuthConnection;
@@ -14,6 +15,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -38,6 +40,7 @@ public class KakaoLoginService {
     private final RedisTemplate<String, Object> redisTemplate;
     private final JwtUtil jwtUtil;
     private final CookieUtil cookieUtil;
+    private final ApplicationEventPublisher eventPublisher;
     
     private static final String LOGIN_SYNC_STREAM = "login-order-sync";
     
@@ -89,6 +92,11 @@ public class KakaoLoginService {
                 log.info("트랜잭션 커밋 완료, 주문 동기화 이벤트 발행: userId={}, hasAlpacaToken={}", 
                     user.getId(), hasAlpacaToken);
                 
+                // Spring Event 발행 (qbit-api-app에서 Redis에 토큰 저장 + 주문 동기화)
+                // accessToken이 없으므로 null로 전달 (AlpacaOrderSyncService에서 DB 조회 후 Redis 저장)
+                eventPublisher.publishEvent(new LoginOrderSyncEvent(user.getId(), user.getEmail(), null));
+                
+                // Redis Streams 이벤트 발행 (qbit-realtime-app에서 Alpaca WebSocket 연결)
                 Map<String, String> fields = new HashMap<>();
                 fields.put("userId", String.valueOf(user.getId()));
                 fields.put("userEmail", user.getEmail());
@@ -96,9 +104,10 @@ public class KakaoLoginService {
                 
                 try {
                     redisTemplate.opsForStream().add(LOGIN_SYNC_STREAM, fields);
-                    log.info("LoginOrderSyncEvent 발행 완료: userId={}", user.getId());
+                    log.info("LoginOrderSyncEvent Redis Streams 발행 완료: userId={}", user.getId());
                 } catch (Exception e) {
-                    log.error("LoginOrderSyncEvent 발행 실패: userId={}, error={}", user.getId(), e.getMessage(), e);
+                    log.error("LoginOrderSyncEvent Redis Streams 발행 실패: userId={}, error={}", 
+                            user.getId(), e.getMessage(), e);
                 }
             }
         });
