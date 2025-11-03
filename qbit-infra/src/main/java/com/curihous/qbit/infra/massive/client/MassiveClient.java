@@ -33,8 +33,8 @@ public interface MassiveClient {
         @RequestParam(value = "limit", defaultValue = "5000") Integer limit
     );
 
-    // 최근 거래 조회
-    @GetMapping("/last/trade/{ticker}")
-    MassiveLastQuoteResponse getLastTrade(@PathVariable("ticker") String ticker);
+    // 최근 호가 조회 (NBBO)
+    @GetMapping("/last/nbbo/{ticker}")
+    MassiveLastQuoteResponse getLastQuote(@PathVariable("ticker") String ticker);
 }
 

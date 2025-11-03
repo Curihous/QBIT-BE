@@ -47,16 +47,33 @@ public record QuoteResponseDto(
     
     public static QuoteResponseDto fromMassive(String ticker,
                                                 MassiveTickerResponse previousClose,
-                                                MassiveLastQuoteResponse lastTrade) {
+                                                MassiveLastQuoteResponse lastQuote) {
         // 전일 데이터 추출
         MassiveTickerResponse.AggregateResult prevData = previousClose.getResults() != null 
                 && !previousClose.getResults().isEmpty()
                 ? previousClose.getResults().get(0)
                 : null;
         
-        Double currentPrice = lastTrade.getLast() != null 
-                ? lastTrade.getLast().getPrice()
-                : (prevData != null ? prevData.getClosePrice() : null);
+        // NBBO에서 현재가 추출 (bid와 ask의 중간값 사용)
+        Double currentPrice = null;
+        if (lastQuote.getResults() != null) {
+            Double bid = lastQuote.getResults().getBid() != null 
+                    ? lastQuote.getResults().getBid().getPrice() : null;
+            Double ask = lastQuote.getResults().getAsk() != null 
+                    ? lastQuote.getResults().getAsk().getPrice() : null;
+            
+            if (bid != null && ask != null) {
+                currentPrice = (bid + ask) / 2.0;
+            } else if (ask != null) {
+                currentPrice = ask;
+            } else if (bid != null) {
+                currentPrice = bid;
+            }
+        }
+        // NBBO에서 값을 찾지 못한 경우 전일 종가 사용
+        if (currentPrice == null && prevData != null) {
+            currentPrice = prevData.getClosePrice();
+        }
         
         Double highPrice = prevData != null ? prevData.getHighPrice() : null;
         Double lowPrice = prevData != null ? prevData.getLowPrice() : null;

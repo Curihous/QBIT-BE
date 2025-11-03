@@ -47,26 +47,23 @@ public class MassiveLastQuoteResponse {
     
     @Data
     public static class LastQuoteResult {
+        @JsonProperty("b")
+        private QuoteLevel bid;
+        
+        @JsonProperty("a")
+        private QuoteLevel ask;
+        
+        @JsonProperty("t")
+        private Long timestamp;
+    }
+    
+    @Data
+    public static class QuoteLevel {
         @JsonProperty("p")
         private Double price;
         
         @JsonProperty("s")
         private Integer size;
-        
-        @JsonProperty("t")
-        private Long timestamp;
-        
-        @JsonProperty("y")
-        private Long exchangeTimestamp;
-        
-        @JsonProperty("f")
-        private Long exchangeTimestamp2;
-        
-        @JsonProperty("q")
-        private Integer quoteCondition;
-        
-        @JsonProperty("T")
-        private Integer tape;
     }
 }
 

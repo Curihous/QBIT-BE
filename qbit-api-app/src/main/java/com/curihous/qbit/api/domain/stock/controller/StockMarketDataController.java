@@ -74,9 +74,9 @@ public class StockMarketDataController {
         @PathVariable String ticker
     ) {
         var previousClose = massiveMarketService.getPreviousClose(ticker);
-        var lastTrade = massiveMarketService.getLastTrade(ticker);
+        var lastQuote = massiveMarketService.getLastQuote(ticker);
         
-        QuoteResponseDto quote = QuoteResponseDto.fromMassive(ticker, previousClose, lastTrade);
+        QuoteResponseDto quote = QuoteResponseDto.fromMassive(ticker, previousClose, lastQuote);
         return ResponseEntity.ok(quote);
     }
 

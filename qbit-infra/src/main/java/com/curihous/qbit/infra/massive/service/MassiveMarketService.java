@@ -57,17 +57,17 @@ public class MassiveMarketService {
         }
     }
 
-    // 최근 거래 조회
-    @Cacheable(value = "massive-last-trade")
-    public MassiveLastQuoteResponse getLastTrade(String ticker) {
-        log.debug("Massive 최근 거래 조회 시작: ticker={}", ticker);
+    // 최근 호가 조회 (NBBO)
+    @Cacheable(value = "massive-last-quote")
+    public MassiveLastQuoteResponse getLastQuote(String ticker) {
+        log.debug("Massive 최근 호가 조회 시작: ticker={}", ticker);
         
         try {
-            MassiveLastQuoteResponse response = massiveClient.getLastTrade(ticker);
-            log.debug("Massive 최근 거래 조회 성공: ticker={}", ticker);
+            MassiveLastQuoteResponse response = massiveClient.getLastQuote(ticker);
+            log.debug("Massive 최근 호가 조회 성공: ticker={}", ticker);
             return response;
         } catch (Exception e) {
-            log.error("Massive 최근 거래 조회 실패: ticker={}, error={}", ticker, e.getMessage());
+            log.error("Massive 최근 호가 조회 실패: ticker={}, error={}", ticker, e.getMessage());
             throw e;
         }
     }
