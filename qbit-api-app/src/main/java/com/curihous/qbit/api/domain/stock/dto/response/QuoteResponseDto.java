@@ -1,7 +1,6 @@
 package com.curihous.qbit.api.domain.stock.dto.response;
 
-import com.curihous.qbit.infra.massive.dto.response.MassiveLastQuoteResponse;
-import com.curihous.qbit.infra.massive.dto.response.MassiveTickerResponse;
+import com.curihous.qbit.infra.massive.dto.response.MassiveSnapshotResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
@@ -45,40 +44,25 @@ public record QuoteResponseDto(
                                   previousClose, priceChange, priceChangePercentage, timestamp);
     }
     
-    public static QuoteResponseDto fromMassive(String ticker,
-                                                MassiveTickerResponse previousClose,
-                                                MassiveLastQuoteResponse lastQuote) {
-        // 전일 데이터 추출
-        MassiveTickerResponse.AggregateResult prevData = previousClose.getResults() != null 
-                && !previousClose.getResults().isEmpty()
-                ? previousClose.getResults().get(0)
-                : null;
-        
-        // NBBO에서 현재가 추출 (bid와 ask의 중간값 사용)
-        Double currentPrice = null;
-        if (lastQuote.getResults() != null) {
-            Double bid = lastQuote.getResults().getBid() != null 
-                    ? lastQuote.getResults().getBid().getPrice() : null;
-            Double ask = lastQuote.getResults().getAsk() != null 
-                    ? lastQuote.getResults().getAsk().getPrice() : null;
-            
-            if (bid != null && ask != null) {
-                currentPrice = (bid + ask) / 2.0;
-            } else if (ask != null) {
-                currentPrice = ask;
-            } else if (bid != null) {
-                currentPrice = bid;
-            }
-        }
-        // NBBO에서 값을 찾지 못한 경우 전일 종가 사용
-        if (currentPrice == null && prevData != null) {
-            currentPrice = prevData.getClosePrice();
+    // Massive.io Snapshot API에서 시세 정보 추출
+    public static QuoteResponseDto fromMassiveSnapshot(String ticker, MassiveSnapshotResponse snapshot) {
+        if (snapshot == null || snapshot.getTicker() == null) {
+            throw new IllegalArgumentException("Invalid snapshot response");
         }
         
-        Double highPrice = prevData != null ? prevData.getHighPrice() : null;
-        Double lowPrice = prevData != null ? prevData.getLowPrice() : null;
-        Double openPrice = prevData != null ? prevData.getOpenPrice() : null;
-        Double previousClosePrice = prevData != null ? prevData.getClosePrice() : null;
+        MassiveSnapshotResponse.TickerData tickerData = snapshot.getTicker();
+        MassiveSnapshotResponse.DayData day = tickerData.getDay();
+        MassiveSnapshotResponse.PrevDayData prevDay = tickerData.getPrevDay();
+        
+        // 당일 데이터
+        Double currentPrice = day != null ? day.getClose() : null;  // 종가 = 현재가
+        Double highPrice = day != null ? day.getHigh() : null;
+        Double lowPrice = day != null ? day.getLow() : null;
+        Double openPrice = day != null ? day.getOpen() : null;
+        Long timestamp = day != null ? day.getTimestamp() : null;
+        
+        // 전일 종가
+        Double previousClosePrice = prevDay != null ? prevDay.getClose() : null;
         
         // 변동가 및 변동률 계산
         Double priceChange = null;
@@ -90,8 +74,6 @@ public record QuoteResponseDto(
                 priceChangePercentage = (priceChange / previousClosePrice) * 100;
             }
         }
-        
-        Long timestamp = prevData != null ? prevData.getTimestamp() : null;
         
         return new QuoteResponseDto(
             ticker,

@@ -2,7 +2,7 @@ package com.curihous.qbit.infra.massive.client;
 
 import com.curihous.qbit.infra.massive.config.MassiveFeignConfig;
 import com.curihous.qbit.infra.massive.dto.response.MassiveAggregateResponse;
-import com.curihous.qbit.infra.massive.dto.response.MassiveLastQuoteResponse;
+import com.curihous.qbit.infra.massive.dto.response.MassiveSnapshotResponse;
 import com.curihous.qbit.infra.massive.dto.response.MassiveTickerResponse;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,8 +33,8 @@ public interface MassiveClient {
         @RequestParam(value = "limit", defaultValue = "5000") Integer limit
     );
 
-    // 최근 호가 조회 (NBBO)
-    @GetMapping("/last/nbbo/{ticker}")
-    MassiveLastQuoteResponse getLastQuote(@PathVariable("ticker") String ticker);
+    // Snapshot 조회 (현재가, 고가, 저가, 시가, 전일 종가 포함)
+    @GetMapping("/snapshot/locale/us/markets/stocks/tickers/{ticker}")
+    MassiveSnapshotResponse getSnapshot(@PathVariable("ticker") String ticker);
 }
 

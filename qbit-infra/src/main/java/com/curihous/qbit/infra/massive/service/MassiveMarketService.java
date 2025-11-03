@@ -2,7 +2,7 @@ package com.curihous.qbit.infra.massive.service;
 
 import com.curihous.qbit.infra.massive.client.MassiveClient;
 import com.curihous.qbit.infra.massive.dto.response.MassiveAggregateResponse;
-import com.curihous.qbit.infra.massive.dto.response.MassiveLastQuoteResponse;
+import com.curihous.qbit.infra.massive.dto.response.MassiveSnapshotResponse;
 import com.curihous.qbit.infra.massive.dto.response.MassiveTickerResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -57,17 +57,17 @@ public class MassiveMarketService {
         }
     }
 
-    // 최근 호가 조회 (NBBO)
-    @Cacheable(value = "massive-last-quote")
-    public MassiveLastQuoteResponse getLastQuote(String ticker) {
-        log.debug("Massive 최근 호가 조회 시작: ticker={}", ticker);
+    // Snapshot 조회 (현재가, 고가, 저가, 시가, 전일 종가 포함)
+    @Cacheable(value = "massive-snapshot")
+    public MassiveSnapshotResponse getSnapshot(String ticker) {
+        log.debug("Massive Snapshot 조회 시작: ticker={}", ticker);
         
         try {
-            MassiveLastQuoteResponse response = massiveClient.getLastQuote(ticker);
-            log.debug("Massive 최근 호가 조회 성공: ticker={}", ticker);
+            MassiveSnapshotResponse response = massiveClient.getSnapshot(ticker);
+            log.debug("Massive Snapshot 조회 성공: ticker={}", ticker);
             return response;
         } catch (Exception e) {
-            log.error("Massive 최근 호가 조회 실패: ticker={}, error={}", ticker, e.getMessage());
+            log.error("Massive Snapshot 조회 실패: ticker={}, error={}", ticker, e.getMessage());
             throw e;
         }
     }

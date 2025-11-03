@@ -22,11 +22,11 @@ import java.util.concurrent.*;
  * 실시간 체결 데이터 및 호가 데이터를 수신하고 subscribers에게 브로드캐스트
  * 
  * 지원 방식: 단일 연결에서 여러 종목 동시 구독
- * 1. WebSocket 연결: wss://socket.polygon.io/stocks
+ * 1. WebSocket 연결: wss://delayed.massive.com/stocks ($29 플랜 - 15분 지연 데이터)
  * 2. 인증 메시지 전송: {"action":"auth","params":"API_KEY"}
  * 3. 구독 메시지 전송: {"action":"subscribe","params":"T.AAPL"} (체결)
- *                      {"action":"subscribe","params":"Q.AAPL"} (호가)
- *   - T = Trade (체결), Q = Quote (호가)
+ *                      {"action":"subscribe","params":"Q.AAPL"} (호가/NBBO)
+ *   - T = Trade (체결), Q = Quote (호가/NBBO)
  * 
  */
 @Slf4j
@@ -52,7 +52,7 @@ public class MassiveWebSocketManager implements WebSocketHandler {
     @Value("${massive.api-key}")
     private String apiKey;
     
-    private static final String MASSIVE_WEBSOCKET_URL = "wss://socket.polygon.io/stocks";
+    private static final String MASSIVE_WEBSOCKET_URL = "wss://delayed.massive.com/stocks";
     
     // 비동기 작업용 ExecutorService
     private final ExecutorService connectionExecutor;

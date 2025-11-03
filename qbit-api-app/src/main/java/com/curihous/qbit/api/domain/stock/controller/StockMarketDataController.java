@@ -68,17 +68,17 @@ public class StockMarketDataController {
     }
 
     @Operation(
-        summary = "미국 주식 실시간 시세 조회", 
+        summary = "미국 주식 실시간 시세 조회(15분 지연)", 
         description = "미국 주식의 현재가, 고가, 저가, 시가, 전일가 등 실시간 시세 정보를 조회합니다. (Massive.io API)"
     )
     @GetMapping("/us-equity/quote/{ticker}")
     public ResponseEntity<QuoteResponseDto> getUsEquityQuote(
+        @Parameter(description = "종목 티커 심볼", example = "AAPL", required = true)
         @PathVariable String ticker
     ) {
-        var previousClose = massiveMarketService.getPreviousClose(ticker);
-        var lastQuote = massiveMarketService.getLastQuote(ticker);
+        var snapshot = massiveMarketService.getSnapshot(ticker);
         
-        QuoteResponseDto quote = QuoteResponseDto.fromMassive(ticker, previousClose, lastQuote);
+        QuoteResponseDto quote = QuoteResponseDto.fromMassiveSnapshot(ticker, snapshot);
         return ResponseEntity.ok(quote);
     }
 
