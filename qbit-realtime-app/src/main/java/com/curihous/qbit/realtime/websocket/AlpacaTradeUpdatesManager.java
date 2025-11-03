@@ -118,11 +118,25 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
                         log.info("Redis에서 Alpaca 토큰 조회 성공: userId={}", userId);
                     } else {
                         log.info("Redis에도 토큰이 없음: userId={}", userId);
-                        log.info("알림: 로그인 시 LoginOrderSyncEvent가 발행되어야 토큰이 저장됩니다.");
+                        log.info("알림: 로그인 시 LoginOrderSyncEvent가 발행되어야 토큰이 저장됩니다. 5초 후 재시도 예정: userId={}", userId);
+                        // 토큰이 없을 때 5초 후 재시도 (LoginOrderSyncEvent가 늦게 발행될 수 있음)
+                        reconnectScheduler.schedule(() -> {
+                            if (!userSessions.containsKey(userId)) {
+                                log.info("토큰 재조회 및 구독 재시도: userId={}", userId);
+                                subscribeIfHasToken(userId);
+                            }
+                        }, 5, TimeUnit.SECONDS);
                         return;
                     }
                 } catch (Exception e) {
                     log.error("Redis에서 토큰 조회 실패: userId={}, error={}", userId, e.getMessage(), e);
+                    // 조회 실패 시에도 5초 후 재시도
+                    reconnectScheduler.schedule(() -> {
+                        if (!userSessions.containsKey(userId)) {
+                            log.info("토큰 재조회 및 구독 재시도 (조회 실패 복구): userId={}", userId);
+                            subscribeIfHasToken(userId);
+                        }
+                    }, 5, TimeUnit.SECONDS);
                     return;
                 }
             }
@@ -134,6 +148,13 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
                 connectToAlpaca(userId, accessToken);
             } else {
                 log.info("Alpaca 구독 불가: Access Token 없음: userId={}", userId);
+                // 토큰이 비어있을 때도 5초 후 재시도
+                reconnectScheduler.schedule(() -> {
+                    if (!userSessions.containsKey(userId)) {
+                        log.info("토큰 재조회 및 구독 재시도 (빈 토큰 복구): userId={}", userId);
+                        subscribeIfHasToken(userId);
+                    }
+                }, 5, TimeUnit.SECONDS);
             }
         }
     }
@@ -259,7 +280,7 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
         }
     }
     
-    // Heartbeat 시작 (20초마다 ping 전송)
+    // Heartbeat 시작 (10초마다 ping 전송)
     private void startHeartbeat(WebSocketSession session) {
         // 기존 heartbeat가 있으면 취소
         ScheduledFuture<?> existingHeartbeat = sessionHeartbeats.remove(session);
@@ -268,7 +289,7 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
             log.debug("기존 heartbeat 취소: sessionId={}", session.getId());
         }
         
-        // 새 heartbeat 시작 (20초 간격)
+        // 새 heartbeat 시작 (10초 간격)
         ScheduledFuture<?> heartbeatFuture = heartbeatScheduler.scheduleAtFixedRate(() -> {
             try {
                 if (session.isOpen()) {
@@ -282,10 +303,10 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
                 log.error("Alpaca ping 전송 실패: sessionId={}, error={}", session.getId(), e.getMessage());
                 stopHeartbeat(session);
             }
-        }, 20, 20, TimeUnit.SECONDS);
+        }, 10, 10, TimeUnit.SECONDS);
         
         sessionHeartbeats.put(session, heartbeatFuture);
-        log.debug("Alpaca heartbeat 시작: sessionId={}, interval=20초", session.getId());
+        log.debug("Alpaca heartbeat 시작: sessionId={}, interval=10초", session.getId());
     }
     
     // Heartbeat 중지
