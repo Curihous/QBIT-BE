@@ -2,6 +2,7 @@ package com.curihous.qbit.api.domain.stock.controller;
 
 import com.curihous.qbit.api.domain.stock.dto.response.QuoteResponseDto;
 import com.curihous.qbit.api.domain.stock.dto.response.CandleResponseDto;
+import com.curihous.qbit.common.util.TimeZoneConverter;
 import com.curihous.qbit.infra.binance.service.BinanceMarketService;
 import com.curihous.qbit.infra.massive.service.MassiveMarketService;
 import java.time.LocalDate;
@@ -68,14 +69,19 @@ public class StockMarketDataController {
         @Parameter(description = "캔들 간격 (1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 6h, 8h, 12h, 1d, 3d, 1w, 1M)", example = "1d")
         @RequestParam(defaultValue = "1d") String interval,
         
-        @Parameter(description = "시작 시간 (Unix 타임스탬프, 밀리초 단위). 선택적. startTime만 제공하면 endTime은 자동으로 설정됩니다 (최대 200일 후, 현재 시간 초과 불가).", example = "1735689600000")
+        @Parameter(description = "시작 시간 (Unix 타임스탬프, 밀리초 단위, 한국 시간 KST 기준). 선택적. startTime만 제공하면 endTime은 자동으로 설정됩니다 (최대 200일 후, 현재 시간 초과 불가).", example = "1735689600000")
         @RequestParam(required = false) Long startTime,
         
-        @Parameter(description = "종료 시간 (Unix 타임스탬프, 밀리초 단위). 선택적. endTime만 제공하면 startTime은 자동으로 설정됩니다 (최대 200일 전).", example = "1735776000000")
+        @Parameter(description = "종료 시간 (Unix 타임스탬프, 밀리초 단위, 한국 시간 KST 기준). 선택적. endTime만 제공하면 startTime은 자동으로 설정됩니다 (최대 200일 전).", example = "1735776000000")
         @RequestParam(required = false) Long endTime
     ) {
-        var binanceKlines = binanceMarketService.getKlines(binanceSymbol, interval, startTime, endTime);
+        // 한국 시간(KST)을 UTC로 변환하여 Binance API 호출
+        Long utcStartTime = TimeZoneConverter.kstToUtc(startTime);
+        Long utcEndTime = TimeZoneConverter.kstToUtc(endTime);
         
+        var binanceKlines = binanceMarketService.getKlines(binanceSymbol, interval, utcStartTime, utcEndTime);
+        
+        // Binance 응답(UTC)을 한국 시간(KST)으로 변환하여 반환
         CandleResponseDto candle = CandleResponseDto.fromBinance(binanceSymbol, interval, binanceKlines);
         return ResponseEntity.ok(candle);
     }

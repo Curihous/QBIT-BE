@@ -1,5 +1,6 @@
 package com.curihous.qbit.api.domain.stock.dto.response;
 
+import com.curihous.qbit.common.util.TimeZoneConverter;
 import com.curihous.qbit.infra.massive.dto.response.MassiveAggregateResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.Collections;
@@ -24,7 +25,7 @@ public record CandleResponseDto(
 ) {
     
     public record CandleData(
-        @Schema(description = "타임스탬프", example = "1696800000")
+        @Schema(description = "타임스탬프 (Unix 타임스탬프, 밀리초 단위, 한국 시간 KST 기준)", example = "1696800000")
         Long timestamp,
         
         @Schema(description = "시가", example = "172.10")
@@ -51,14 +52,20 @@ public record CandleResponseDto(
     // Kline = Binance API 용어로 캔들스틱 차트 데이터 (OHLCV)
     public static CandleResponseDto fromBinance(String symbol, String interval, List<List<String>> binanceKlines) {
         List<CandleData> candles = binanceKlines.stream()
-                .map(kline -> new CandleData(
-                    Long.parseLong(kline.get(0)),      // openTime
-                    Double.parseDouble(kline.get(1)),  // open
-                    Double.parseDouble(kline.get(2)),  // high
-                    Double.parseDouble(kline.get(3)),  // low
-                    Double.parseDouble(kline.get(4)),  // close
-                    Double.parseDouble(kline.get(5))   // volume
-                ))
+                .map(kline -> {
+                    // Binance API는 UTC 시간을 반환하므로, 한국 시간(KST)으로 변환
+                    long utcTimestamp = Long.parseLong(kline.get(0));  // openTime (UTC)
+                    long kstTimestamp = TimeZoneConverter.utcToKst(utcTimestamp);
+                    
+                    return new CandleData(
+                        kstTimestamp,                  // openTime (KST로 변환)
+                        Double.parseDouble(kline.get(1)),  // open
+                        Double.parseDouble(kline.get(2)),  // high
+                        Double.parseDouble(kline.get(3)),  // low
+                        Double.parseDouble(kline.get(4)),  // close
+                        Double.parseDouble(kline.get(5))   // volume
+                    );
+                })
                 .collect(Collectors.toList());
         
         return new CandleResponseDto(symbol, interval, candles);

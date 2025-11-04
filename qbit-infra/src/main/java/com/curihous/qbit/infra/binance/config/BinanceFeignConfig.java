@@ -14,7 +14,7 @@ public class BinanceFeignConfig {
     // Feign 로깅 레벨 설정
     @Bean("binanceFeignLoggerLevel")
     public Logger.Level feignLoggerLevel() {
-        return Logger.Level.BASIC;
+        return Logger.Level.FULL;
     }
 
     // 요청 옵션 설정
