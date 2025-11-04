@@ -56,10 +56,17 @@ public class StockMarketDataController {
     )
     @GetMapping("/crypto/candle/{binanceSymbol}")
     public ResponseEntity<CandleResponseDto> getCandle(
+        @Parameter(description = "Binance 심볼 (예: BTCUSDT, ETHUSDT)", example = "BTCUSDT", required = true)
         @PathVariable String binanceSymbol,
+        
+        @Parameter(description = "캔들 간격 (1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 6h, 8h, 12h, 1d, 3d, 1w, 1M)", example = "1d")
         @RequestParam(defaultValue = "1d") String interval,
-        @RequestParam long startTime,
-        @RequestParam long endTime
+        
+        @Parameter(description = "시작 시간 (Unix 타임스탬프, 밀리초 단위). 필수.", example = "1735689600000", required = true)
+        @RequestParam Long startTime,
+        
+        @Parameter(description = "종료 시간 (Unix 타임스탬프, 밀리초 단위). 선택적. 제공하지 않으면 startTime부터 최대 200일 후까지 데이터 반환.", example = "1735776000000")
+        @RequestParam(required = false) Long endTime
     ) {
         var binanceKlines = binanceMarketService.getKlines(binanceSymbol, interval, startTime, endTime);
         
