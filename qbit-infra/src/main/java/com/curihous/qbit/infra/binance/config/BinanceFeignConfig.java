@@ -2,6 +2,7 @@ package com.curihous.qbit.infra.binance.config;
 
 import feign.Logger;
 import feign.Request;
+import feign.RequestInterceptor;
 import feign.codec.ErrorDecoder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,6 +26,16 @@ public class BinanceFeignConfig {
             30, TimeUnit.SECONDS,  // 읽기 타임아웃
             true                   // 연결 유지
         );
+    }
+
+    // null 파라미터 제거 인터셉터
+    @Bean("binanceRequestInterceptor")
+    public RequestInterceptor requestInterceptor() {
+        return requestTemplate -> {
+            requestTemplate.queries().entrySet().removeIf(entry -> 
+                entry.getValue() != null && entry.getValue().contains("null")
+            );
+        };
     }
 
     @Bean("binanceErrorDecoder")
