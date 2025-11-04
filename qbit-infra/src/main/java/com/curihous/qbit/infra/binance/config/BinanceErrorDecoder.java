@@ -6,6 +6,9 @@ import feign.Response;
 import feign.codec.ErrorDecoder;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+
 @Slf4j
 public class BinanceErrorDecoder implements ErrorDecoder {
 
@@ -13,8 +16,18 @@ public class BinanceErrorDecoder implements ErrorDecoder {
 
     @Override
     public Exception decode(String methodKey, Response response) {
-        log.error("Binance API 에러: method={}, status={}, reason={}", 
-                 methodKey, response.status(), response.reason());
+        String errorBody = null;
+        try {
+            if (response.body() != null) {
+                byte[] bodyBytes = response.body().asInputStream().readAllBytes();
+                errorBody = new String(bodyBytes, StandardCharsets.UTF_8);
+            }
+        } catch (IOException e) {
+            log.warn("Binance API 에러 응답 본문 읽기 실패", e);
+        }
+        
+        log.error("Binance API 에러: method={}, status={}, reason={}, body={}", 
+                 methodKey, response.status(), response.reason(), errorBody);
         
         return switch (response.status()) {
             case 400 -> new QbitException(ErrorCode.INVALID_INPUT_VALUE, "Binance API 요청 형식이 잘못되었습니다.");
