@@ -4,12 +4,14 @@ import feign.Logger;
 import feign.Request;
 import feign.RequestInterceptor;
 import feign.codec.ErrorDecoder;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @Configuration
 public class BinanceFeignConfig {
 
@@ -33,6 +35,10 @@ public class BinanceFeignConfig {
     @Bean("binanceRequestInterceptor")
     public RequestInterceptor requestInterceptor() {
         return requestTemplate -> {
+            // 필터링 전 URL 로그
+            log.info("Binance Kline 요청 - 필터링 전 URL: {}", requestTemplate.url());
+            log.info("Binance Kline 요청 - 필터링 전 쿼리 파라미터: {}", requestTemplate.queries());
+
             Map<String, Collection<String>> filtered = new HashMap<>();
 
             requestTemplate.queries().forEach((key, values) -> {
@@ -53,6 +59,10 @@ public class BinanceFeignConfig {
             // 기존 쿼리를 모두 초기화 후 새로 설정
             requestTemplate.queries(null);
             filtered.forEach(requestTemplate::query);
+
+            // 필터링 후 최종 URL 로그
+            log.info("Binance Kline 요청 - 필터링 후 최종 URL: {}", requestTemplate.url());
+            log.info("Binance Kline 요청 - 필터링 후 쿼리 파라미터: {}", filtered);
         };
     }
 
