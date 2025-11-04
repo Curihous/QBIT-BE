@@ -58,7 +58,8 @@ public class StockMarketDataController {
             - startTime과 endTime은 모두 optional입니다.
             - startTime만 제공: endTime은 자동으로 startTime부터 최대 200일 후로 설정됩니다 (현재 시간 초과 불가).
             - endTime만 제공: startTime은 자동으로 endTime부터 최대 200일 전으로 설정됩니다.
-            - 둘 다 제공하지 않으면 최근 데이터를 반환합니다 (limit로 개수 제한, 기본값 500, 최대 1000).
+            - 둘 다 제공하지 않으면 최근 데이터를 반환합니다.
+            - limit: 반환할 캔들 개수 (기본값 500, 최대 1500)
             """
     )
     @GetMapping("/crypto/candle/{binanceSymbol}")
@@ -72,8 +73,11 @@ public class StockMarketDataController {
         @Parameter(description = "시작 시간 (Unix 타임스탬프, 밀리초 단위, 한국 시간 KST 기준). 선택적. startTime만 제공하면 endTime은 자동으로 설정됩니다 (최대 200일 후, 현재 시간 초과 불가).", example = "1735689600000")
         @RequestParam(required = false) Long startTime,
         
-        @Parameter(description = "종료 시간 (Unix 타임스탬프, 밀리초 단위, 한국 시간 KST 기준). 선택적. endTime만 제공하면 startTime은 자동으로 설정됩니다 (최대 200일 전).", example = "1735776000000")
-        @RequestParam(required = false) Long endTime
+        @Parameter(description = "종료 시간 (Unix 타임스탬프, 밀리초 단위, 한국 시간 KST 기준). 선택적. endTime만 제공하면 startTime은 자동으로 설정됩니다 (최대 200일 전).")
+        @RequestParam(required = false) Long endTime,
+        
+        @Parameter(description = "반환할 캔들 개수 (기본값 500, 최대 1500)", example = "500")
+        @RequestParam(defaultValue = "500") Integer limit
     ) {
         // 한국 시간(KST)을 UTC로 변환하여 Binance API 호출
         Long utcStartTime = TimeZoneConverter.kstToUtc(startTime);
@@ -81,7 +85,7 @@ public class StockMarketDataController {
         log.info("시간 변환: KST startTime={}, endTime={} -> UTC startTime={}, endTime={}", 
                  startTime, endTime, utcStartTime, utcEndTime);
         
-        var binanceKlines = binanceMarketService.getKlines(binanceSymbol, interval, utcStartTime, utcEndTime);
+        var binanceKlines = binanceMarketService.getKlines(binanceSymbol, interval, utcStartTime, utcEndTime, limit);
         
         // Binance 응답(UTC)을 한국 시간(KST)으로 변환하여 반환
         CandleResponseDto candle = CandleResponseDto.fromBinance(binanceSymbol, interval, binanceKlines);
