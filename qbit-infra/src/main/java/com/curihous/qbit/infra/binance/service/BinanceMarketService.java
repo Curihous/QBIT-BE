@@ -39,11 +39,13 @@ public class BinanceMarketService {
         log.info("Binance Kline 조회 시작: symbol={}, interval={}, startTime={}, endTime={}, limit={}", 
                 symbol, interval, startTime, endTime, limit);
         
+        Integer actualLimit = limit != null ? limit : 500;
+        
         log.info("Binance Kline API 호출 URL 확인: symbol={}, interval={}, startTime={}, endTime={}, limit={}", 
-                 symbol, interval, startTime, endTime, limit);
+                 symbol, interval, startTime, endTime, actualLimit);
         
         try {
-            List<List<String>> response = binanceClient.getKlines(symbol, interval, startTime, endTime, limit);
+            List<List<String>> response = binanceClient.getKlines(symbol, interval, startTime, endTime, actualLimit);
             log.info("Binance Kline 조회 성공: symbol={}, interval={}, count={}", 
                     symbol, interval, response.size());
             return response;

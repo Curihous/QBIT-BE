@@ -23,11 +23,11 @@ public interface BinanceClient {
     // Kline(캔들) 데이터 조회
     @GetMapping("/klines")
     List<List<String>> getKlines(
-        @RequestParam("symbol") String symbol,
-        @RequestParam("interval") String interval,
-        @RequestParam(value = "startTime", required = false) Long startTime,
-        @RequestParam(value = "endTime", required = false) Long endTime,
-        @RequestParam(value = "limit", defaultValue = "500") Integer limit
+        @RequestParam(name = "symbol") String symbol,
+        @RequestParam(name = "interval") String interval,
+        @RequestParam(name = "startTime", required = false) Long startTime,
+        @RequestParam(name = "endTime", required = false) Long endTime,
+        @RequestParam(name = "limit", required = false) Integer limit
     );
 
 }
