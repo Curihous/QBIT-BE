@@ -104,8 +104,7 @@ public class AiDataService {
                 binanceSymbol, 
                 interval,
                 startTime, 
-                endTime,
-                500  // limit
+                endTime
             );
             
             // Binance Kline 데이터를 DTO로 변환
