@@ -35,38 +35,27 @@ public class BinanceFeignConfig {
     @Bean("binanceRequestInterceptor")
     public RequestInterceptor requestInterceptor() {
         return requestTemplate -> {
-
-            // 기존 쿼리를 복사 
             Map<String, Collection<String>> queries = new HashMap<>(requestTemplate.queries());
 
-            // 불필요한 키 제거 (인증 파라미터)
-            queries.remove("timestamp");
-            queries.remove("signature");
+            // Binance 허용 파라미터만 whitelist로 남기기
+            Set<String> allowed = Set.of("symbol", "interval", "startTime", "endTime", "limit");
 
-            // null, 빈 값, "null" 문자열 제거
             Map<String, Collection<String>> filtered = new HashMap<>();
             queries.forEach((key, values) -> {
-                // 키가 null이거나 빈 문자열이면 제거
-                if (key == null || key.isBlank() || values == null) return;
+                if (key == null || key.isBlank() || !allowed.contains(key)) return;
 
-                // 값이 null, 빈 문자열, "null" 문자열인 경우 제거
                 List<String> cleaned = values.stream()
                         .filter(v -> v != null && !"null".equalsIgnoreCase(v) && !v.isBlank())
                         .toList();
 
-                // 필터링된 값이 비어있지 않으면 추가
-                if (!cleaned.isEmpty()) {
-                    filtered.put(key, cleaned);
-                }
+                if (!cleaned.isEmpty()) filtered.put(key, cleaned);
             });
 
-            // 완전히 교체
-            requestTemplate.queries(new HashMap<>()); // 초기화
+            // 교체
+            requestTemplate.queries(new HashMap<>());
             filtered.forEach(requestTemplate::query);
 
-            // 필터링 후 최종 URL 로그
-            log.info("Binance Kline 요청 - 필터링 후 최종 URL: {}", requestTemplate.url());
-            log.info("Binance Kline 요청 - 필터링 후 쿼리 파라미터: {}", filtered);
+            log.info("Binance 최종 요청 파라미터(whitelist 적용): {}", filtered);
         };
     }
 
