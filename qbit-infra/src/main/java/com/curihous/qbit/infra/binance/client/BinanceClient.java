@@ -25,7 +25,7 @@ public interface BinanceClient {
     List<List<String>> getKlines(
         @RequestParam("symbol") String symbol,
         @RequestParam("interval") String interval,
-        @RequestParam(value = "startTime") Long startTime,
+        @RequestParam(value = "startTime", required = false) Long startTime,
         @RequestParam(value = "endTime", required = false) Long endTime,
         @RequestParam(value = "limit", defaultValue = "500") Integer limit
     );

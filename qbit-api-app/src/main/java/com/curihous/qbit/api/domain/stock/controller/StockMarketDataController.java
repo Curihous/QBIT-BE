@@ -52,7 +52,13 @@ public class StockMarketDataController {
 
     @Operation(
         summary = "암호화폐 차트 데이터 조회", 
-        description = "암호화폐의 OHLCV 캔들 데이터를 조회합니다. (Binance API - 1분봉, 5분봉, 1시간봉, 일봉 등)"
+        description = """
+            암호화폐의 OHLCV 캔들 데이터를 조회합니다. (Binance API - 1분봉, 5분봉, 1시간봉, 일봉 등)
+            - startTime과 endTime은 모두 optional입니다.
+            - startTime만 제공: endTime은 자동으로 startTime부터 최대 200일 후로 설정됩니다 (현재 시간 초과 불가).
+            - endTime만 제공: startTime은 자동으로 endTime부터 최대 200일 전으로 설정됩니다.
+            - 둘 다 제공하지 않으면 최근 데이터를 반환합니다 (limit로 개수 제한, 기본값 500, 최대 1000).
+            """
     )
     @GetMapping("/crypto/candle/{binanceSymbol}")
     public ResponseEntity<CandleResponseDto> getCandle(
@@ -62,10 +68,10 @@ public class StockMarketDataController {
         @Parameter(description = "캔들 간격 (1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 6h, 8h, 12h, 1d, 3d, 1w, 1M)", example = "1d")
         @RequestParam(defaultValue = "1d") String interval,
         
-        @Parameter(description = "시작 시간 (Unix 타임스탬프, 밀리초 단위). 필수.", example = "1735689600000", required = true)
-        @RequestParam Long startTime,
+        @Parameter(description = "시작 시간 (Unix 타임스탬프, 밀리초 단위). 선택적. startTime만 제공하면 endTime은 자동으로 설정됩니다 (최대 200일 후, 현재 시간 초과 불가).", example = "1735689600000")
+        @RequestParam(required = false) Long startTime,
         
-        @Parameter(description = "종료 시간 (Unix 타임스탬프, 밀리초 단위). 선택적. 제공하지 않으면 startTime부터 최대 200일 후까지 데이터 반환.", example = "1735776000000")
+        @Parameter(description = "종료 시간 (Unix 타임스탬프, 밀리초 단위). 선택적. endTime만 제공하면 startTime은 자동으로 설정됩니다 (최대 200일 전).", example = "1735776000000")
         @RequestParam(required = false) Long endTime
     ) {
         var binanceKlines = binanceMarketService.getKlines(binanceSymbol, interval, startTime, endTime);
