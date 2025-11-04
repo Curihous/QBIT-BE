@@ -35,15 +35,17 @@ public class BinanceFeignConfig {
     @Bean("binanceRequestInterceptor")
     public RequestInterceptor requestInterceptor() {
         return requestTemplate -> {
-            // 필터링 전 URL 로그
-            log.info("Binance Kline 요청 - 필터링 전 URL: {}", requestTemplate.url());
-            log.info("Binance Kline 요청 - 필터링 전 쿼리 파라미터: {}", requestTemplate.queries());
 
-            requestTemplate.queries().remove("timestamp");
-            requestTemplate.queries().remove("signature");
+            // 기존 쿼리를 복사 
+            Map<String, Collection<String>> queries = new HashMap<>(requestTemplate.queries());
 
+            // 불필요한 키 제거 (인증 파라미터)
+            queries.remove("timestamp");
+            queries.remove("signature");
+
+            // null, 빈 값, "null" 문자열 제거
             Map<String, Collection<String>> filtered = new HashMap<>();
-            requestTemplate.queries().forEach((key, values) -> {
+            queries.forEach((key, values) -> {
                 // 키가 null이거나 빈 문자열이면 제거
                 if (key == null || key.isBlank() || values == null) return;
 
@@ -54,11 +56,12 @@ public class BinanceFeignConfig {
 
                 // 필터링된 값이 비어있지 않으면 추가
                 if (!cleaned.isEmpty()) {
-                    filtered.put(key.trim(), cleaned);
+                    filtered.put(key, cleaned);
                 }
             });
 
-            requestTemplate.queries(new HashMap<>());
+            // 완전히 교체
+            requestTemplate.queries(new HashMap<>()); // 초기화
             filtered.forEach(requestTemplate::query);
 
             // 필터링 후 최종 URL 로그
