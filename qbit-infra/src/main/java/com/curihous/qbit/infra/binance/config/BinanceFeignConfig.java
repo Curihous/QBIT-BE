@@ -28,25 +28,24 @@ public class BinanceFeignConfig {
             true                   // 연결 유지
         );
     }
-    // null 파라미터 제거 인터셉터
-    // Binance API는 null 값이 쿼리 파라미터로 포함되면 오류를 발생시킴
+    // null 및 빈 파라미터 제거 인터셉터
     @Bean("binanceRequestInterceptor")
     public RequestInterceptor requestInterceptor() {
         return requestTemplate -> {
             Map<String, Collection<String>> filtered = new HashMap<>();
 
             requestTemplate.queries().forEach((key, values) -> {
-                if (values == null) return;
-                // 값이 null이거나 문자열 "null"인 경우 제거
+                if (key == null || key.isBlank() || values == null) return;
+
                 List<String> cleaned = values.stream()
-                        .filter(v -> v != null && !"null".equalsIgnoreCase(v))
+                        .filter(v -> v != null && !"null".equalsIgnoreCase(v) && !v.isBlank())
                         .toList();
+
                 if (!cleaned.isEmpty()) {
-                    filtered.put(key, cleaned);
+                    filtered.put(key.trim(), cleaned);
                 }
             });
 
-            // 기존 쿼리를 모두 초기화 후 새로 설정
             requestTemplate.queries(null);
             filtered.forEach(requestTemplate::query);
         };
