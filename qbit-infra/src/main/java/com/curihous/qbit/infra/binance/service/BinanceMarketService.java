@@ -7,7 +7,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -43,8 +45,14 @@ public class BinanceMarketService {
                  symbol, interval, startTime, endTime, limit != null ? limit : 500);
         
         try {
-            Integer actualLimit = limit != null ? limit : 500;
-            List<List<String>> response = binanceClient.getKlines(symbol, interval, startTime, endTime, actualLimit);
+            Map<String, Object> params = new HashMap<>();
+            params.put("symbol", symbol);
+            params.put("interval", interval);
+            if (startTime != null) params.put("startTime", startTime);
+            if (endTime != null) params.put("endTime", endTime);
+            params.put("limit", limit != null ? limit : 500);
+
+            List<List<String>> response = binanceClient.getKlinesDynamic(params);
             log.info("Binance Kline 조회 성공: symbol={}, interval={}, count={}", 
                     symbol, interval, response.size());
             return response;
