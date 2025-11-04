@@ -54,28 +54,10 @@ public class BinanceFeignConfig {
             // 교체
             requestTemplate.queries(new HashMap<>());
             filtered.forEach(requestTemplate::query);
-
-            // 실제 HTTP 요청 URL 확인
-            String fullUrl = requestTemplate.url();
-            if (requestTemplate.queries() != null && !requestTemplate.queries().isEmpty()) {
-                StringBuilder urlBuilder = new StringBuilder(requestTemplate.url());
-                if (!requestTemplate.url().contains("?")) {
-                    urlBuilder.append("?");
-                } else {
-                    urlBuilder.append("&");
-                }
-                requestTemplate.queries().forEach((key, values) -> {
-                    if (values != null) {
-                        for (String value : values) {
-                            urlBuilder.append(key).append("=").append(value).append("&");
-                        }
-                    }
-                });
-                fullUrl = urlBuilder.toString();
-            }
             
             log.info("Binance 최종 요청 파라미터(whitelist 적용): {}", filtered);
-            log.info("Binance 실제 HTTP 요청 URL: {}", fullUrl);
+            log.info("Binance Interceptor 후 쿼리 파라미터: {}", requestTemplate.queries());
+            log.info("Binance Interceptor 후 URL: {}", requestTemplate.url());
         };
     }
 
