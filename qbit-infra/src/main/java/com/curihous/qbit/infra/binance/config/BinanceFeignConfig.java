@@ -39,15 +39,17 @@ public class BinanceFeignConfig {
             log.info("Binance Kline 요청 - 필터링 전 URL: {}", requestTemplate.url());
             log.info("Binance Kline 요청 - 필터링 전 쿼리 파라미터: {}", requestTemplate.queries());
 
-            Map<String, Collection<String>> filtered = new HashMap<>();
+            requestTemplate.queries().remove("timestamp");
+            requestTemplate.queries().remove("signature");
 
+            Map<String, Collection<String>> filtered = new HashMap<>();
             requestTemplate.queries().forEach((key, values) -> {
                 // 키가 null이거나 빈 문자열이면 제거
                 if (key == null || key.isBlank() || values == null) return;
 
                 // 값이 null, 빈 문자열, "null" 문자열인 경우 제거
                 List<String> cleaned = values.stream()
-                        .filter(v -> v != null && !v.isBlank() && !"null".equalsIgnoreCase(v))
+                        .filter(v -> v != null && !"null".equalsIgnoreCase(v) && !v.isBlank())
                         .toList();
 
                 // 필터링된 값이 비어있지 않으면 추가
@@ -56,8 +58,7 @@ public class BinanceFeignConfig {
                 }
             });
 
-            // 기존 쿼리를 모두 초기화 후 새로 설정
-            requestTemplate.queries(null);
+            requestTemplate.queries(new HashMap<>());
             filtered.forEach(requestTemplate::query);
 
             // 필터링 후 최종 URL 로그
