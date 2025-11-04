@@ -7,7 +7,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -35,12 +37,21 @@ public class BinanceMarketService {
     // Kline(캔들) 데이터 조회 (5분 캐싱)
     // 사용 API: GET /api/v3/klines
     @Cacheable(value = "binance-kline")
-    public List<List<String>> getKlines(String symbol, String interval, Long startTime, Long endTime) {
-        log.info("Binance Kline 조회 시작: symbol={}, interval={}, startTime={}, endTime={}", 
-                symbol, interval, startTime, endTime);
+    public List<List<String>> getKlines(String symbol, String interval, Long startTime, Long endTime, Integer limit) {
+        log.info("Binance Kline 조회 시작: symbol={}, interval={}, startTime={}, endTime={}, limit={}", 
+                symbol, interval, startTime, endTime, limit);
         
         try {
-            List<List<String>> response = binanceClient.getKlines(symbol, interval, startTime, endTime, 500);
+            Map<String, String> params = new HashMap<>();
+            params.put("symbol", symbol);
+            params.put("interval", interval);
+            if (startTime != null) params.put("startTime", String.valueOf(startTime));
+            if (endTime != null) params.put("endTime", String.valueOf(endTime));
+            if (limit != null) params.put("limit", String.valueOf(limit));
+
+            log.info("Binance Kline API 호출 URL 확인: {}", params);
+            
+            List<List<String>> response = binanceClient.getKlinesDynamic(params);
             log.info("Binance Kline 조회 성공: symbol={}, interval={}, count={}", 
                     symbol, interval, response.size());
             return response;

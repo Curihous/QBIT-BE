@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
+import java.util.Map;
 
 // Binance API Feign 클라이언트
 @FeignClient(
@@ -22,12 +23,6 @@ public interface BinanceClient {
 
     // Kline(캔들) 데이터 조회
     @GetMapping("/klines")
-    List<List<String>> getKlines(
-        @RequestParam("symbol") String symbol,
-        @RequestParam("interval") String interval,
-        @RequestParam(value = "startTime", required = false) Long startTime,
-        @RequestParam(value = "endTime", required = false) Long endTime,
-        @RequestParam(value = "limit", required = false) Integer limit
-    );
+    List<List<String>> getKlinesDynamic(@RequestParam Map<String, String> params);
 
 }
