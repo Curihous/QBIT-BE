@@ -43,7 +43,8 @@ public class BinanceMarketService {
                  symbol, interval, startTime, endTime, limit != null ? limit : 500);
         
         try {
-            List<List<String>> response = binanceClient.getKlines(symbol, interval, startTime, endTime, limit != null ? limit : 500);
+            Integer actualLimit = limit != null ? limit : 500;
+            List<List<String>> response = binanceClient.getKlines(symbol, interval, startTime, endTime, actualLimit);
             log.info("Binance Kline 조회 성공: symbol={}, interval={}, count={}", 
                     symbol, interval, response.size());
             return response;
