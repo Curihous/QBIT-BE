@@ -7,6 +7,7 @@ import feign.codec.ErrorDecoder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
 
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -40,6 +41,7 @@ public class BinanceFeignConfig {
     
     // null 및 빈 파라미터 제거 인터셉터
     @Bean("binanceRequestInterceptor")
+    @org.springframework.core.annotation.Order(Ordered.HIGHEST_PRECEDENCE) // 최우선실행
     public RequestInterceptor requestInterceptor() {
         return requestTemplate -> {
             // Body 로깅 (디버깅용)
@@ -49,23 +51,38 @@ public class BinanceFeignConfig {
                         requestTemplate.body().length, bodyStr);
             }
             
-            Map<String, Collection<String>> queries = new HashMap<>(requestTemplate.queries());
-
             // Binance 허용 파라미터(whitelist)
             Set<String> allowed = Set.of("symbol", "interval", "startTime", "endTime", "limit");
-       
+            
             // blacklist
-            Set<String> forbidden = Set.of("apikey", "signature", "timestamp", "recvWindow");
+            Set<String> forbidden = Set.of("apikey", "apiKey", "api_key", "signature", "timestamp", "recvWindow");
+            
+            // 현재 쿼리 파라미터 가져오기
+            Map<String, Collection<String>> queries = new HashMap<>(requestTemplate.queries());
+            
+            // 필터링 전 로그
+            if (queries.containsKey("apikey") || queries.containsKey("apiKey") || queries.containsKey("api_key")) {
+                log.warn("Binance 인터셉터 실행 전에 apikey 파라미터 감지: {}", queries.keySet());
+            }
             
             Map<String, Collection<String>> filtered = new HashMap<>();
             queries.forEach((key, values) -> {
-                if (key == null || key.isBlank() || forbidden.contains(key) || !allowed.contains(key)) {
-                    if (forbidden.contains(key)) {
-                        log.warn("Binance Market Data 엔드포인트에서 금지된 파라미터 제거: {}", key);
-                    }
+                // null, 빈 키 체크
+                if (key == null || key.isBlank()) return;
+                
+                // Blacklist 체크
+                if (forbidden.contains(key)) {
+                    log.warn("Binance Market Data 엔드포인트에서 금지된 파라미터 제거: {}", key);
+                    return;
+                }
+                
+                // Whitelist 체크
+                if (!allowed.contains(key)) {
+                    log.debug("Binance 허용되지 않은 파라미터 제거: {}", key);
                     return;
                 }
 
+                // 값 정리
                 List<String> cleaned = values.stream()
                         .filter(v -> v != null && !"null".equalsIgnoreCase(v) && !v.isBlank())
                         .toList();
@@ -73,13 +90,9 @@ public class BinanceFeignConfig {
                 if (!cleaned.isEmpty()) filtered.put(key, cleaned);
             });
 
-            // 교체
+            // 쿼리 파라미터 교체
             requestTemplate.queries(new HashMap<>());
             filtered.forEach(requestTemplate::query);
-            
-            log.info("Binance 최종 요청 파라미터(whitelist 적용): {}", filtered);
-            log.info("Binance Interceptor 후 쿼리 파라미터: {}", requestTemplate.queries());
-            log.info("Binance Interceptor 후 URL: {}", requestTemplate.url());
         };
     }
 
