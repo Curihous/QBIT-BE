@@ -183,6 +183,24 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
     
     // 연결
     private void connectToAlpaca(Long userId, String accessToken) {
+        // 재연결 전 기존 세션 정리 (다중 세션 방지)
+        WebSocketSession existingSession = userSessions.get(userId);
+        if (existingSession != null) {
+            log.info("기존 세션 정리 중: userId={}, sessionId={}", userId, existingSession.getId());
+            try {
+                stopHeartbeat(existingSession);
+                sessionToUserId.remove(existingSession);
+                if (existingSession.isOpen()) {
+                    existingSession.close();
+                    log.info("기존 세션 종료 완료: userId={}, sessionId={}", userId, existingSession.getId());
+                }
+            } catch (IOException e) {
+                log.warn("기존 세션 종료 실패: userId={}, sessionId={}, error={}", 
+                        userId, existingSession.getId(), e.getMessage());
+            }
+            userSessions.remove(userId);
+        }
+        
         String url = ALPACA_STREAM_URL;
         
         int maxAttempts = 3;

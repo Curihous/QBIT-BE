@@ -36,4 +36,5 @@ logging:
     org.springframework.web.socket: DEBUG
     org.springframework.messaging: DEBUG
     org.springframework.messaging.simp: DEBUG
+    javax.net.ssl: DEBUG 
 
