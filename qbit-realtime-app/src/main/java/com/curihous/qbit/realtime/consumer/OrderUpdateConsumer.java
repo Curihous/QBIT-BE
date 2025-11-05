@@ -2,6 +2,7 @@ package com.curihous.qbit.realtime.consumer;
 
 import com.curihous.qbit.common.event.TradeUpdateEvent;
 import com.curihous.qbit.realtime.websocket.OrderUpdateWebSocketManager;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.connection.stream.MapRecord;
@@ -21,6 +22,7 @@ import java.util.Map;
 public class OrderUpdateConsumer implements StreamListener<String, MapRecord<String, Object, Object>> {
 
     private final OrderUpdateWebSocketManager webSocketManager;
+    private final ObjectMapper objectMapper;
     
     @Override
     public void onMessage(MapRecord<String, Object, Object> message) {
@@ -34,13 +36,18 @@ public class OrderUpdateConsumer implements StreamListener<String, MapRecord<Str
                 return;
             }
             
-            if (!(valueObj instanceof TradeUpdateEvent)) {
-                log.warn("주문 업데이트 메시지의 value가 TradeUpdateEvent 타입이 아닙니다: messageId={}, type={}", 
+            // value가 String인 경우 역직렬화, TradeUpdateEvent인 경우 그대로 사용
+            TradeUpdateEvent event;
+            if (valueObj instanceof TradeUpdateEvent) {
+                event = (TradeUpdateEvent) valueObj;
+            } else if (valueObj instanceof String) {
+                // JSON 문자열을 역직렬화
+                event = objectMapper.readValue((String) valueObj, TradeUpdateEvent.class);
+            } else {
+                log.warn("주문 업데이트 메시지의 value가 알 수 없는 타입입니다: messageId={}, type={}", 
                         message.getId(), valueObj.getClass().getName());
                 return;
             }
-            
-            TradeUpdateEvent event = (TradeUpdateEvent) valueObj;
             
             log.info("주문 업데이트 이벤트 수신: userId={}, event={}, symbol={}, orderId={}", 
                     event.getUserId(), event.getEvent(), event.getSymbol(), event.getAlpacaOrderId());
