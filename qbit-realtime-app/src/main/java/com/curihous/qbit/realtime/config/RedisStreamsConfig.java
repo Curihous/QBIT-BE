@@ -46,13 +46,16 @@ public class RedisStreamsConfig {
 
     // Trade Update Stream 구독
     @Bean
-    public StreamMessageListenerContainer<String, MapRecord<String, String, String>> tradeUpdateStreamContainer() {
+    public StreamMessageListenerContainer<String, MapRecord<String, Object, Object>> tradeUpdateStreamContainer() {
         var options = StreamMessageListenerContainer.StreamMessageListenerContainerOptions
                 .builder()
                 .pollTimeout(POLL_TIMEOUT)
                 .build();
 
-        var container = StreamMessageListenerContainer.<String, MapRecord<String, String, String>>create(connectionFactory, options);
+        @SuppressWarnings("unchecked")
+        StreamMessageListenerContainer<String, MapRecord<String, Object, Object>> container = 
+                (StreamMessageListenerContainer<String, MapRecord<String, Object, Object>>) 
+                (StreamMessageListenerContainer<?, ?>) StreamMessageListenerContainer.create(connectionFactory, options);
         createConsumerGroup(TRADE_UPDATE_STREAM);
         
         container.receive(

@@ -2,7 +2,6 @@ package com.curihous.qbit.realtime.consumer;
 
 import com.curihous.qbit.common.event.TradeUpdateEvent;
 import com.curihous.qbit.realtime.websocket.OrderUpdateWebSocketManager;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.connection.stream.MapRecord;
@@ -19,24 +18,29 @@ import java.util.Map;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class OrderUpdateConsumer implements StreamListener<String, MapRecord<String, String, String>> {
+public class OrderUpdateConsumer implements StreamListener<String, MapRecord<String, Object, Object>> {
 
     private final OrderUpdateWebSocketManager webSocketManager;
-    private final ObjectMapper objectMapper;
     
     @Override
-    public void onMessage(MapRecord<String, String, String> message) {
+    public void onMessage(MapRecord<String, Object, Object> message) {
         try {
-            // MapRecord에서 value 필드 추출 및 수동 역직렬화
-            Map<String, String> valueMap = message.getValue();
-            String json = valueMap.get("value");
+            // MapRecord에서 value 필드 추출 
+            Map<Object, Object> valueMap = message.getValue();
+            Object valueObj = valueMap.get("value");
             
-            if (json == null || json.isBlank()) {
+            if (valueObj == null) {
                 log.warn("주문 업데이트 메시지에 value 필드가 없습니다: messageId={}", message.getId());
                 return;
             }
             
-            TradeUpdateEvent event = objectMapper.readValue(json, TradeUpdateEvent.class);
+            if (!(valueObj instanceof TradeUpdateEvent)) {
+                log.warn("주문 업데이트 메시지의 value가 TradeUpdateEvent 타입이 아닙니다: messageId={}, type={}", 
+                        message.getId(), valueObj.getClass().getName());
+                return;
+            }
+            
+            TradeUpdateEvent event = (TradeUpdateEvent) valueObj;
             
             log.info("주문 업데이트 이벤트 수신: userId={}, event={}, symbol={}, orderId={}", 
                     event.getUserId(), event.getEvent(), event.getSymbol(), event.getAlpacaOrderId());

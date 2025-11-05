@@ -2,7 +2,6 @@ package com.curihous.qbit.api.config;
 
 import com.curihous.qbit.api.consumer.TradeUpdateConsumer;
 import com.curihous.qbit.common.event.TradeUpdateEvent;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
@@ -39,11 +38,10 @@ public class RedisStreamsConfig {
 
     private final RedisConnectionFactory connectionFactory;
     private final TradeUpdateConsumer tradeUpdateConsumer;
-    private final ObjectMapper objectMapper;
 
     // Trade Update Stream 구독
     @Bean
-    public StreamMessageListenerContainer<String, MapRecord<String, String, String>> tradeUpdateStreamContainer() {
+    public StreamMessageListenerContainer<String, MapRecord<String, Object, Object>> tradeUpdateStreamContainer() {
         var options = StreamMessageListenerContainer.StreamMessageListenerContainerOptions
                 .builder()
                 .pollTimeout(POLL_TIMEOUT)
@@ -53,7 +51,10 @@ public class RedisStreamsConfig {
                 })
                 .build();
 
-        var container = StreamMessageListenerContainer.<String, MapRecord<String, String, String>>create(connectionFactory, options);
+        @SuppressWarnings("unchecked")
+        StreamMessageListenerContainer<String, MapRecord<String, Object, Object>> container = 
+                (StreamMessageListenerContainer<String, MapRecord<String, Object, Object>>) 
+                (StreamMessageListenerContainer<?, ?>) StreamMessageListenerContainer.create(connectionFactory, options);
         createConsumerGroup(TRADE_UPDATE_STREAM);
         
         container.receive(
@@ -64,17 +65,25 @@ public class RedisStreamsConfig {
                         log.info("Trade Update 메시지 수신: messageId={}, stream={}", 
                                 message.getId(), message.getStream());
                         
-                        // MapRecord에서 value 필드 추출 및 수동 역직렬화
-                        Map<String, String> valueMap = message.getValue();
-                        String json = valueMap.get("value");
+                        // MapRecord에서 value 필드 추출
+                        Map<Object, Object> valueMap = message.getValue();
+                        Object valueObj = valueMap.get("value");
                         
-                        if (json == null || json.isBlank()) {
+                        if (valueObj == null) {
                             log.warn("Trade Update 메시지에 value 필드가 없습니다: messageId={}", message.getId());
                             ackMessage(message.getId());
                             return;
                         }
                         
-                        TradeUpdateEvent event = objectMapper.readValue(json, TradeUpdateEvent.class);
+                        // value가 이미 TradeUpdateEvent 객체로 역직렬화되어 있음
+                        if (!(valueObj instanceof TradeUpdateEvent)) {
+                            log.warn("Trade Update 메시지의 value가 TradeUpdateEvent 타입이 아닙니다: messageId={}, type={}", 
+                                    message.getId(), valueObj.getClass().getName());
+                            ackMessage(message.getId());
+                            return;
+                        }
+                        
+                        TradeUpdateEvent event = (TradeUpdateEvent) valueObj;
                         
                         log.info("Trade Update 이벤트 수신: userId={}, event={}, symbol={}, orderId={}", 
                                 event.getUserId(), event.getEvent(), event.getSymbol(), event.getAlpacaOrderId());
