@@ -1,6 +1,7 @@
 package com.curihous.qbit.api.domain.portfolio.controller;
 
 import com.curihous.qbit.api.domain.portfolio.dto.response.PositionResponseDto;
+import com.curihous.qbit.api.domain.portfolio.dto.response.PositionWithAccountResponseDto;
 import com.curihous.qbit.common.dto.PaginatedResponseDto;
 import com.curihous.qbit.domain.order.port.TradingPort;
 import com.curihous.qbit.domain.user.entity.User;
@@ -14,6 +15,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -46,6 +48,21 @@ public class PortfolioController {
         Page<TradingPort.PositionInfo> positionsPage = tradingPort.getPositions(user, pageable);
         Page<PositionResponseDto> responsePage = positionsPage.map(PositionResponseDto::from);
         PaginatedResponseDto<PositionResponseDto> response = PaginatedResponseDto.from(responsePage);
+        return ResponseEntity.ok(response);
+    }
+    
+    @Operation(
+        summary = "특정 종목 포지션 조회", 
+        description = "특정 종목의 포지션 정보와 계정 정보를 조회합니다. 매도 시 최대 수량, 매수 시 최대 금액을 계산할 수 있습니다."
+    )
+    @GetMapping("/positions/{symbol}")
+    public ResponseEntity<PositionWithAccountResponseDto> getPositionBySymbol(
+        @Parameter(description = "종목 심볼", example = "AAPL")
+        @PathVariable String symbol
+    ) {
+        User user = userSecurityFacade.getCurrentUser();
+        TradingPort.SimplePositionWithAccountInfo result = tradingPort.getPositionBySymbol(user, symbol);
+        PositionWithAccountResponseDto response = PositionWithAccountResponseDto.from(result);
         return ResponseEntity.ok(response);
     }
 }

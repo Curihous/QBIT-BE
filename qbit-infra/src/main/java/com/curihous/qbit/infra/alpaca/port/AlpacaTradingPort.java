@@ -35,4 +35,7 @@ public interface AlpacaTradingPort {
     
     // 포지션 목록 조회
     List<AlpacaPositionResponse> getPositions(String authorization);
+    
+    // 특정 종목 포지션 조회
+    AlpacaPositionResponse getPosition(String authorization, String symbol);
 }

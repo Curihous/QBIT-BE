@@ -218,6 +218,11 @@ public class AlpacaOAuthService implements TradingPort {
     public Page<TradingPort.PositionInfo> getPositions(User user, Pageable pageable) {
         return alpacaOrderRequestService.getPositions(user, pageable);
     }
+    
+    @Override
+    public TradingPort.SimplePositionWithAccountInfo getPositionBySymbol(User user, String symbol) {
+        return alpacaOrderRequestService.getPositionBySymbol(user, symbol);
+    }
 
     @Override
     public TradingPort.OrderUpdateResult updateOrder(User user, Long orderId, TradingPort.UpdateOrderCommand command) {

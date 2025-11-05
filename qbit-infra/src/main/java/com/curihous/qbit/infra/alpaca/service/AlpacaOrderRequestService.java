@@ -5,6 +5,8 @@ import com.curihous.qbit.infra.alpaca.port.AlpacaTradingPort;
 import com.curihous.qbit.infra.alpaca.dto.request.CreateOrderRequest;
 import com.curihous.qbit.infra.alpaca.dto.request.UpdateOrderRequest;
 import com.curihous.qbit.infra.alpaca.dto.response.AlpacaOrderResponse;
+import com.curihous.qbit.infra.alpaca.dto.response.AlpacaPositionResponse;
+import com.curihous.qbit.infra.alpaca.dto.response.AlpacaAccountResponse;
 import com.curihous.qbit.common.exception.ErrorCode;
 import com.curihous.qbit.common.exception.QbitException;
 import com.curihous.qbit.domain.alpaca.entity.AlpacaOAuthConnection;
@@ -145,15 +147,15 @@ public class AlpacaOrderRequestService {
             var positions = alpacaTradingPort.getPositions(authorization);
             List<TradingPort.PositionInfo> positionInfoList = positions.stream()
                     .map(pos -> new TradingPort.PositionInfo(
-                            pos.symbol(),
-                            pos.quantity(),
-                            pos.avgEntryPrice(),
-                            pos.marketValue(),
-                            pos.costBasis(),
-                            pos.unrealizedPl(),
-                            pos.unrealizedPlpc(),
-                            pos.currentPrice(),
-                            pos.side()
+                            pos.symbol(), // 심볼
+                            pos.quantity(), // 보유 수량
+                            pos.avgEntryPrice(), // 평균 매수가
+                            pos.marketValue(), // 시장 가치
+                            pos.costBasis(), // 원가 기준
+                            pos.unrealizedPl(), // 미실현 손익
+                            pos.unrealizedPlpc(), // 미실현 손익률
+                            pos.currentPrice(), // 현재 가격
+                            pos.side() // 포지션 방향
                     ))
                     .toList();
             
@@ -165,6 +167,37 @@ public class AlpacaOrderRequestService {
             return new PageImpl<>(pagedPositions, pageable, positionInfoList.size());
         } catch (Exception e) {
             log.error("Alpaca 포지션 조회 실패: {}", e.getMessage(), e);
+            throw new QbitException(ErrorCode.EXTERNAL_API_ERROR, "포지션 조회에 실패했습니다: " + e.getMessage());
+        }
+    }
+    
+    // 특정 종목 포지션 조회 - 주문에서 필요한 정보 제공
+    @Transactional(readOnly = true)
+    public TradingPort.SimplePositionWithAccountInfo getPositionBySymbol(User user, String symbol) {
+        AlpacaOAuthConnection connection = alpacaOAuthConnectionService.getValidConnection(user.getId());
+        String authorization = "Bearer " + connection.getAccessToken();
+        
+        try {
+            // 포지션 조회 - symbol, quantity, side
+            AlpacaPositionResponse positionResponse = alpacaTradingPort.getPosition(authorization, symbol);
+            TradingPort.SimplePositionInfo positionInfo = new TradingPort.SimplePositionInfo(
+                    positionResponse.symbol(),
+                    positionResponse.quantity(),
+                    positionResponse.side()
+            );
+            
+            // 계정 정보 조회 - buyingPower만 사용
+            AlpacaAccountResponse accountResponse = alpacaTradingPort.getAccount(authorization);
+            TradingPort.SimpleAccountInfo accountInfo = new TradingPort.SimpleAccountInfo(
+                    accountResponse.buyingPower() != null ? accountResponse.buyingPower().toString() : null
+            );
+            
+            return new TradingPort.SimplePositionWithAccountInfo(positionInfo, accountInfo);
+        } catch (FeignException.NotFound e) {
+            log.warn("포지션을 찾을 수 없음: symbol={}", symbol);
+            throw new QbitException(ErrorCode.ORDER_REQUEST_NOT_FOUND, "해당 종목의 포지션을 찾을 수 없습니다: " + symbol);
+        } catch (Exception e) {
+            log.error("Alpaca 포지션 조회 실패: symbol={}, error={}", symbol, e.getMessage(), e);
             throw new QbitException(ErrorCode.EXTERNAL_API_ERROR, "포지션 조회에 실패했습니다: " + e.getMessage());
         }
     }

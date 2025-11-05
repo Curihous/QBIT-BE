@@ -34,6 +34,9 @@ public interface TradingPort {
     // 포지션(보유 주식) 목록 조회 
     Page<PositionInfo> getPositions(User user, Pageable pageable);
     
+    // 특정 종목 포지션 조회 (자산 정보 포함)
+    SimplePositionWithAccountInfo getPositionBySymbol(User user, String symbol);
+    
     // 계정 정보 조회
     AccountInfo getAccountInfo(User user);
     
@@ -103,6 +106,29 @@ public interface TradingPort {
         String unrealizedPlpc,       // 미실현 손익률
         String currentPrice,         // 현재 가격
         String side                  // 포지션 방향 (long/short)
+    ) {}
+    
+    record PositionWithAccountInfo(
+        PositionInfo position,       // 포지션 정보
+        AccountInfo account          // 계정 정보 (매수 최대치 계산용)
+    ) {}
+    
+    // 주문용 간단한 포지션 정보 
+    record SimplePositionInfo(
+        String symbol,               // 종목 심볼
+        String quantity,             // 보유 수량
+        String side                  // 포지션 방향
+    ) {}
+    
+    // 주문용 간단한 계정 정보
+    record SimpleAccountInfo(
+        String buyingPower           // 매수 가능 금액
+    ) {}
+    
+    // 주문용 간단한 포지션+계정 정보
+    record SimplePositionWithAccountInfo(
+        SimplePositionInfo position,
+        SimpleAccountInfo account
     ) {}
     
     record AccountInfo(
