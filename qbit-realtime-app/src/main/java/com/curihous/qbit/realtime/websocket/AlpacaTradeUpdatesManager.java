@@ -196,9 +196,10 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
                 log.info("Alpaca WebSocket 연결 시도 {}/{}: userId={}, url={}", 
                         attempt, maxAttempts, userId, url);
                 
+                // 연결 타임아웃
                 WebSocketSession session = webSocketClient
                     .execute(this, new WebSocketHttpHeaders(), URI.create(url))
-                    .get(10, TimeUnit.SECONDS);
+                    .get(5, TimeUnit.SECONDS);
                 
                 userSessions.put(userId, session);
                 sessionToUserId.put(session, userId);
@@ -280,7 +281,7 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
         }
     }
     
-    // Heartbeat 시작 (10초마다 ping 전송)
+    // Heartbeat 시작(30초 간격)
     private void startHeartbeat(WebSocketSession session) {
         // 기존 heartbeat가 있으면 취소
         ScheduledFuture<?> existingHeartbeat = sessionHeartbeats.remove(session);
@@ -289,7 +290,7 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
             log.debug("기존 heartbeat 취소: sessionId={}", session.getId());
         }
         
-        // 새 heartbeat 시작 (10초 간격)
+        // 새 heartbeat 시작
         ScheduledFuture<?> heartbeatFuture = heartbeatScheduler.scheduleAtFixedRate(() -> {
             try {
                 if (session.isOpen()) {
@@ -303,10 +304,10 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
                 log.error("Alpaca ping 전송 실패: sessionId={}, error={}", session.getId(), e.getMessage());
                 stopHeartbeat(session);
             }
-        }, 10, 10, TimeUnit.SECONDS);
+        }, 30, 30, TimeUnit.SECONDS);
         
         sessionHeartbeats.put(session, heartbeatFuture);
-        log.debug("Alpaca heartbeat 시작: sessionId={}, interval=10초", session.getId());
+        log.debug("Alpaca heartbeat 시작: sessionId={}, interval=30초", session.getId());
     }
     
     // Heartbeat 중지

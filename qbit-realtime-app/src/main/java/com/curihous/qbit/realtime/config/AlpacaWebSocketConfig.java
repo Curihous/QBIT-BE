@@ -21,7 +21,12 @@ public class AlpacaWebSocketConfig {
     public WebSocketClient alpacaWebSocketClient() {
         try {
             WebSocketContainer container = ContainerProvider.getWebSocketContainer();
-            log.info("Alpaca WebSocketClient 초기화 완료 (StandardWebSocketClient)");
+            
+            container.setDefaultMaxSessionIdleTimeout(90000); // 90초
+            container.setDefaultMaxTextMessageBufferSize(8192);
+            container.setDefaultMaxBinaryMessageBufferSize(8192);
+            
+            log.info("Alpaca WebSocketClient 초기화 완료");
             return new StandardWebSocketClient(container);
         } catch (Exception e) {
             log.error("Alpaca WebSocketClient 초기화 실패: {}", e.getMessage(), e);
