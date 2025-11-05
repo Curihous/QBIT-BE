@@ -74,8 +74,12 @@ public class RedisStreamsConfig {
                     .xGroupCreate(stream.getBytes(), CONSUMER_GROUP, ReadOffset.from("0"), true);
             log.info("Consumer Group 생성: group={}, stream={}", CONSUMER_GROUP, stream);
         } catch (Exception e) {
-            String errorMessage = e.getMessage();
-            if (errorMessage != null && errorMessage.contains("BUSYGROUP")) {
+            Throwable cause = e.getCause();
+            String errorMessage = cause != null ? cause.getMessage() : e.getMessage();
+            
+            // BUSYGROUP 오류는 정상 (그룹이 이미 존재함)
+            if (cause instanceof io.lettuce.core.RedisBusyException || 
+                (errorMessage != null && errorMessage.contains("BUSYGROUP"))) {
                 log.debug("Consumer Group이 이미 존재: group={}, stream={}", CONSUMER_GROUP, stream);
             } else if (errorMessage != null && (errorMessage.contains("no such key") || errorMessage.contains("NOSTREAM"))) {
                 log.warn("Stream이 존재하지 않아 Consumer Group을 생성할 수 없습니다: stream={}. " +

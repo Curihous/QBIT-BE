@@ -101,12 +101,20 @@ public class RedisStreamsConfig {
             connection.streamCommands()
                     .xGroupCreate(stream.getBytes(), CONSUMER_GROUP, ReadOffset.from("0"), true);
             log.info("Consumer Group 생성: group={}, stream={}", CONSUMER_GROUP, stream);
-        } catch (Exception e) { // BUSYGROUP 에러는 Consumer Group이 이미 존재한다는 의미
-            if (e.getMessage() != null && e.getMessage().contains("BUSYGROUP")) {
-                log.debug("Consumer Group이 이미 존재함: group={}, stream={}", CONSUMER_GROUP, stream);
+        } catch (Exception e) {
+            Throwable cause = e.getCause();
+            String errorMessage = cause != null ? cause.getMessage() : e.getMessage();
+            
+            // BUSYGROUP 오류는 정상 (그룹이 이미 존재함)
+            if (cause instanceof io.lettuce.core.RedisBusyException || 
+                (errorMessage != null && errorMessage.contains("BUSYGROUP"))) {
+                log.debug("Consumer Group이 이미 존재: group={}, stream={}", CONSUMER_GROUP, stream);
+            } else if (errorMessage != null && (errorMessage.contains("no such key") || errorMessage.contains("NOSTREAM"))) {
+                log.warn("Stream이 존재하지 않아 Consumer Group을 생성할 수 없습니다: stream={}. " +
+                        "첫 번째 메시지가 발행되면 자동으로 생성됩니다.", stream);
             } else {
                 log.error("Consumer Group 생성 실패: group={}, stream={}, error={}", 
-                        CONSUMER_GROUP, stream, e.getMessage());
+                        CONSUMER_GROUP, stream, errorMessage, e);
             }
         }
     }

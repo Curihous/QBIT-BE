@@ -1,5 +1,7 @@
 package com.curihous.qbit.infra.redis.config;
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -16,8 +18,16 @@ public class RedisConfig {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(connectionFactory);
         
+        // ObjectMapper 설정 (null 값 처리)
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.activateDefaultTyping(
+            objectMapper.getPolymorphicTypeValidator(),
+            ObjectMapper.DefaultTyping.NON_FINAL,
+            JsonTypeInfo.As.PROPERTY
+        );
+        
         // JSON 직렬화 설정
-        var jsonSerializer = new GenericJackson2JsonRedisSerializer();
+        var jsonSerializer = new GenericJackson2JsonRedisSerializer(objectMapper);
         
         // Key serializer
         template.setKeySerializer(new StringRedisSerializer());
