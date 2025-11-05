@@ -14,6 +14,7 @@ import com.curihous.qbit.domain.order.entity.*;
 import com.curihous.qbit.domain.order.port.TradingPort;
 import com.curihous.qbit.domain.order.repository.OrderRequestRepository;
 import com.curihous.qbit.domain.user.entity.User;
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -53,6 +54,19 @@ public class AlpacaOrderRequestService {
         AlpacaOrderResponse alpacaResponse;
         try {
             alpacaResponse = alpacaTradingPort.createOrder(authorization, request);
+        } catch (FeignException.Forbidden e) {
+            // 403 Forbidden 에러 처리 
+            String errorMessage = e.contentUTF8();
+            if (errorMessage != null && (
+                errorMessage.contains("potential wash trade") || 
+                errorMessage.contains("opposite side") ||
+                errorMessage.contains("existing_order_id")
+            )) {
+                log.error("Alpaca 주문 생성 실패 (반대쪽 주문 존재): {}", errorMessage);
+                throw new QbitException(ErrorCode.OPPOSITE_SIDE_ORDER_EXISTS);
+            }
+            log.error("Alpaca 주문 생성 실패 (403 Forbidden): {}", errorMessage);
+            throw new QbitException(ErrorCode.EXTERNAL_API_ERROR, "주문 생성에 실패했습니다: " + errorMessage);
         } catch (Exception e) {
             log.error("Alpaca 주문 생성 실패: {}", e.getMessage(), e);
             throw new QbitException(ErrorCode.EXTERNAL_API_ERROR, "주문 생성에 실패했습니다: " + e.getMessage());
