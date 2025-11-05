@@ -175,7 +175,7 @@ public class AlpacaOrderSyncService {
             
             // Alpaca에서 최신 주문 목록 가져오기
             String authorization = "Bearer " + connection.getAccessToken();
-            log.info("Alpaca 주문 조회 시작: userId={}, status=all, limit=500", user.getId());
+            log.info("Alpaca 주문 조회 시작: userId={}, status=null(전체), limit=500", user.getId());
             
             List<AlpacaOrderResponse> alpacaOrders;
             try {
