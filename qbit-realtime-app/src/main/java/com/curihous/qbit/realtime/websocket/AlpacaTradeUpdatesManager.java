@@ -55,6 +55,12 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
     // 세션별 heartbeat 작업 관리 (종료 시 취소용)
     private final Map<WebSocketSession, ScheduledFuture<?>> sessionHeartbeats = new ConcurrentHashMap<>();
     
+    // 세션별 인증 완료 상태
+    private final Map<WebSocketSession, Boolean> sessionAuthenticated = new ConcurrentHashMap<>();
+    
+    // 세션별 인증 타임아웃 fallback 작업 (인증 응답 시 취소용)
+    private final Map<WebSocketSession, ScheduledFuture<?>> authFallbackTasks = new ConcurrentHashMap<>();
+    
     public AlpacaTradeUpdatesManager(
             TradeUpdatesEventHandler eventHandler,
             RedisTemplate<String, Object> redisTemplate) {
@@ -165,8 +171,7 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
             WebSocketSession session = userSessions.remove(userId);
             
             if (session != null) {
-                // Heartbeat 중지
-                stopHeartbeat(session);
+                cleanupSession(session);
                 sessionToUserId.remove(session);
                 if (session.isOpen()) {
                     try {
@@ -188,7 +193,7 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
         if (existingSession != null) {
             log.info("기존 세션 정리 중: userId={}, sessionId={}", userId, existingSession.getId());
             try {
-                stopHeartbeat(existingSession);
+                cleanupSession(existingSession);
                 sessionToUserId.remove(existingSession);
                 if (existingSession.isOpen()) {
                     existingSession.close();
@@ -250,6 +255,9 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
     // 인증 메시지 전송
     private void sendAuthMessage(WebSocketSession session, String accessToken) {
         try {
+            // 인증 상태 초기화
+            sessionAuthenticated.put(session, false);
+            
             Map<String, Object> authMessage = Map.of(
                 "action", "authenticate",
                 "data", Map.of(
@@ -262,6 +270,15 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
             log.info("Alpaca 인증 메시지 전송 시작: sessionId={}, message={}", session.getId(), json);
             session.sendMessage(new TextMessage(json));
             log.info("Alpaca 인증 메시지 전송 완료: sessionId={}", session.getId());
+            
+            // 인증 응답 확인을 위한 타임아웃 모니터링
+            reconnectScheduler.schedule(() -> {
+                Boolean authenticated = sessionAuthenticated.get(session);
+                if (authenticated == null || !authenticated) {
+                    log.error("인증 응답을 받지 못함: sessionId={}, isOpen={}, 연결 상태 확인 필요", 
+                            session.getId(), session.isOpen());
+                }
+            }, 10, TimeUnit.SECONDS);
             
         } catch (IOException e) {
             log.error("Alpaca 인증 메시지 전송 실패: sessionId={}, error={}", 
@@ -337,17 +354,42 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
         }
     }
     
+    // 세션 정리 (인증 상태, fallback 작업 등)
+    private void cleanupSession(WebSocketSession session) {
+        stopHeartbeat(session);
+        sessionAuthenticated.remove(session);
+        ScheduledFuture<?> fallbackTask = authFallbackTasks.remove(session);
+        if (fallbackTask != null && !fallbackTask.isDone()) {
+            fallbackTask.cancel(false);
+            log.debug("인증 타임아웃 fallback 취소: sessionId={}", session.getId());
+        }
+    }
+    
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
-        log.info("Alpaca WebSocket 연결 확립: sessionId={}", session.getId());
+        log.info("Alpaca WebSocket 연결 확립: sessionId={}, uri={}, localAddress={}, remoteAddress={}", 
+                session.getId(), session.getUri(), session.getLocalAddress(), session.getRemoteAddress());
     }
     
     @Override
     public void handleMessage(WebSocketSession session, WebSocketMessage<?> message) {
+        // 모든 메시지 수신을 로깅 (인증 응답 확인용)
+        log.info("Alpaca WebSocket 메시지 수신: sessionId={}, type={}, payloadLength={}", 
+                session.getId(), message.getClass().getSimpleName(), 
+                message instanceof TextMessage ? ((TextMessage) message).getPayload().length() : 
+                message instanceof BinaryMessage ? ((BinaryMessage) message).getPayloadLength() : 0);
+        
         if (message instanceof TextMessage textMessage) {
-            handleTextMessage(session, textMessage.getPayload());
+            String payload = textMessage.getPayload();
+            log.info("Alpaca 텍스트 메시지 원본: sessionId={}, payload={}", session.getId(), payload);
+            handleTextMessage(session, payload);
         } else if (message instanceof BinaryMessage binaryMessage) {
+            log.info("Alpaca 바이너리 메시지 수신: sessionId={}, length={}", 
+                    session.getId(), binaryMessage.getPayloadLength());
             handleBinaryMessage(session, binaryMessage.getPayload().array());
+        } else {
+            log.warn("Alpaca 알 수 없는 메시지 타입: sessionId={}, type={}", 
+                    session.getId(), message.getClass().getName());
         }
     }
     
@@ -445,6 +487,15 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
     // 인증 성공 응답 처리 (T=success 형태)
     private void handleAuthenticatedResponse(WebSocketSession session) {
         log.info("Alpaca 인증 성공 처리 시작: sessionId={}", session.getId());
+        
+        // 인증 완료 플래그 설정 및 fallback 취소
+        sessionAuthenticated.put(session, true);
+        ScheduledFuture<?> fallbackTask = authFallbackTasks.remove(session);
+        if (fallbackTask != null && !fallbackTask.isDone()) {
+            fallbackTask.cancel(false);
+            log.debug("인증 타임아웃 fallback 취소: sessionId={}", session.getId());
+        }
+        
         reconnectScheduler.schedule(() -> {
             try {
                 if (session.isOpen()) {
@@ -485,6 +536,15 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
         
         if ("authorized".equals(status) && "authenticate".equals(action)) {
             log.info("Alpaca 인증 성공: sessionId={}", session.getId());
+            
+            // 인증 완료 플래그 설정 및 fallback 취소
+            sessionAuthenticated.put(session, true);
+            ScheduledFuture<?> fallbackTask = authFallbackTasks.remove(session);
+            if (fallbackTask != null && !fallbackTask.isDone()) {
+                fallbackTask.cancel(false);
+                log.debug("인증 타임아웃 fallback 취소: sessionId={}", session.getId());
+            }
+            
             reconnectScheduler.schedule(() -> {
                 try {
                     if (session.isOpen()) {
@@ -591,10 +651,8 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
             return;
         }
         
-        // Heartbeat 중지
-        stopHeartbeat(session);
-        
         // 세션 정리
+        cleanupSession(session);
         sessionToUserId.remove(session);
         userSessions.remove(userId);
         
