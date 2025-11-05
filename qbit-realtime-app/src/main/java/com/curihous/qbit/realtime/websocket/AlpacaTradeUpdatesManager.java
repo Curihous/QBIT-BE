@@ -514,15 +514,25 @@ public class AlpacaTradeUpdatesManager implements WebSocketHandler {
     private void handleBinaryMessage(WebSocketSession session, byte[] payload) {
         try {
             String jsonString = new String(payload);
+            log.info("Alpaca 바이너리 메시지 원본: sessionId={}, payload={}", session.getId(), jsonString);
+            
             JsonNode root = objectMapper.readTree(jsonString);
             
-            String stream = root.path("stream").asText();
-            if ("trade_updates".equals(stream)) {
-                handleTradeUpdatesMessage(session, root);
+            // 배열 형식 처리
+            if (root.isArray()) {
+                log.info("Alpaca 배열 형식 바이너리 메시지 수신: sessionId={}, arraySize={}", session.getId(), root.size());
+                for (JsonNode message : root) {
+                    handleSingleMessage(session, message);
+                }
+                return;
             }
             
+            // 단일 메시지 처리 (인증 응답, trade_updates 등 모두 처리)
+            handleSingleMessage(session, root);
+            
         } catch (Exception e) {
-            log.error("Alpaca 바이너리 메시지 처리 실패: error={}", e.getMessage(), e);
+            log.error("Alpaca 바이너리 메시지 처리 실패: sessionId={}, error={}", 
+                    session.getId(), e.getMessage(), e);
         }
     }
     
