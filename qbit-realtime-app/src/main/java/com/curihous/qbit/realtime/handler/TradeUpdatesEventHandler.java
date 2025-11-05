@@ -43,21 +43,21 @@ public class TradeUpdatesEventHandler {
     private TradeUpdateEvent buildTradeUpdateEvent(Long userId, String event, 
                                                    JsonNode data, JsonNode orderNode) {
         try {
-            String alpacaOrderId = orderNode.path("id").asText();
-            String symbol = orderNode.path("symbol").asText();
-            String side = orderNode.path("side").asText();
-            String status = orderNode.path("status").asText();
+            String alpacaOrderId = getTextOrEmpty(orderNode.path("id"));
+            String symbol = getTextOrEmpty(orderNode.path("symbol"));
+            String side = getTextOrEmpty(orderNode.path("side"));
+            String status = getTextOrEmpty(orderNode.path("status"));
             
             // 체결 정보
-            String filledQty = orderNode.path("filled_qty").asText();
-            String filledAvgPrice = orderNode.path("filled_avg_price").asText();
-            String filledAt = orderNode.path("filled_at").asText();
+            String filledQty = getTextOrEmpty(orderNode.path("filled_qty"));
+            String filledAvgPrice = getTextOrEmpty(orderNode.path("filled_avg_price"));
+            String filledAt = getTextOrEmpty(orderNode.path("filled_at"));
             
             // 이벤트별 추가 정보 (fill, partial_fill)
-            String eventQty = data.path("qty").asText();
-            String eventPrice = data.path("price").asText();
-            String eventTimestamp = data.path("timestamp").asText();
-            String positionQty = data.path("position_qty").asText();
+            String eventQty = getTextOrEmpty(data.path("qty"));
+            String eventPrice = getTextOrEmpty(data.path("price"));
+            String eventTimestamp = getTextOrEmpty(data.path("timestamp"));
+            String positionQty = getTextOrEmpty(data.path("position_qty"));
             
             // 전체 order JSON
             String orderJson = objectMapper.writeValueAsString(orderNode);
@@ -74,5 +74,14 @@ public class TradeUpdatesEventHandler {
                     userId, event, e.getMessage(), e);
             throw new RuntimeException("TradeUpdateEvent 생성 실패", e);
         }
+    }
+    
+    // JsonNode에서 텍스트를 추출하되, null이면 빈 문자열 반환
+    private String getTextOrEmpty(JsonNode node) {
+        if (node == null || node.isNull() || node.isMissingNode()) {
+            return "";
+        }
+        String text = node.asText();
+        return text != null ? text : "";
     }
 }
