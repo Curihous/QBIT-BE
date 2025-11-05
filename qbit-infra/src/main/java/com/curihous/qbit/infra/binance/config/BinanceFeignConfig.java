@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -19,6 +20,12 @@ public class BinanceFeignConfig {
     @Bean("binanceFeignLoggerLevel")
     public Logger.Level feignLoggerLevel() {
         return Logger.Level.FULL;
+    }
+
+    // 커스텀 Feign Logger 빈 등록 (실제 HTTP 요청/응답 상세 로깅)
+    @Bean("binanceFeignLogger")
+    public Logger feignLogger() {
+        return new BinanceFeignLogger();
     }
 
     // 요청 옵션 설정
@@ -35,6 +42,13 @@ public class BinanceFeignConfig {
     @Bean("binanceRequestInterceptor")
     public RequestInterceptor requestInterceptor() {
         return requestTemplate -> {
+            // Body 로깅 (디버깅용)
+            if (requestTemplate.body() != null && requestTemplate.body().length > 0) {
+                String bodyStr = new String(requestTemplate.body(), StandardCharsets.UTF_8);
+                log.warn("Binance GET 요청에 body가 감지됨! body 길이: {}, 내용: {}", 
+                        requestTemplate.body().length, bodyStr);
+            }
+            
             Map<String, Collection<String>> queries = new HashMap<>(requestTemplate.queries());
 
             // Binance 허용 파라미터만 whitelist로 남기기
