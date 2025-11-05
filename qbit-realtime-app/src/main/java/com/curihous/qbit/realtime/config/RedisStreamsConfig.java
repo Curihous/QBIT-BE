@@ -79,13 +79,27 @@ public class RedisStreamsConfig {
                 .pollTimeout(POLL_TIMEOUT)
                 .build();
 
-        var container = StreamMessageListenerContainer.create(connectionFactory, options);
+        var container = StreamMessageListenerContainer.<String, MapRecord<String, String, String>>create(connectionFactory, options);
         createConsumerGroup(LOGIN_SYNC_STREAM);
         
+        // MapRecord를 직접 처리
         container.receive(
                 Consumer.from(CONSUMER_GROUP, CONSUMER_LOGIN),
                 StreamOffset.create(LOGIN_SYNC_STREAM, ReadOffset.from(">")),
-                loginOrderSyncConsumer
+                message -> {
+                    try {
+                        if (message instanceof MapRecord) {
+                            MapRecord<String, String, String> mapRecord = (MapRecord<String, String, String>) message;
+                            loginOrderSyncConsumer.onMessage(mapRecord);
+                        } else {
+                            log.warn("LoginOrderSyncEvent 메시지가 MapRecord 형식이 아닙니다: messageId={}, type={}", 
+                                    message.getId(), message.getClass().getName());
+                        }
+                    } catch (Exception e) {
+                        log.error("LoginOrderSyncEvent 처리 실패: messageId={}, error={}", 
+                                message.getId(), e.getMessage(), e);
+                    }
+                }
         );
 
         container.start();
