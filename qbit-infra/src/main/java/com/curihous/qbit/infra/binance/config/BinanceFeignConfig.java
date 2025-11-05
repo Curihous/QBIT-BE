@@ -51,12 +51,20 @@ public class BinanceFeignConfig {
             
             Map<String, Collection<String>> queries = new HashMap<>(requestTemplate.queries());
 
-            // Binance 허용 파라미터만 whitelist로 남기기
+            // Binance 허용 파라미터(whitelist)
             Set<String> allowed = Set.of("symbol", "interval", "startTime", "endTime", "limit");
-
+       
+            // blacklist
+            Set<String> forbidden = Set.of("apikey", "signature", "timestamp", "recvWindow");
+            
             Map<String, Collection<String>> filtered = new HashMap<>();
             queries.forEach((key, values) -> {
-                if (key == null || key.isBlank() || !allowed.contains(key)) return;
+                if (key == null || key.isBlank() || forbidden.contains(key) || !allowed.contains(key)) {
+                    if (forbidden.contains(key)) {
+                        log.warn("Binance Market Data 엔드포인트에서 금지된 파라미터 제거: {}", key);
+                    }
+                    return;
+                }
 
                 List<String> cleaned = values.stream()
                         .filter(v -> v != null && !"null".equalsIgnoreCase(v) && !v.isBlank())
