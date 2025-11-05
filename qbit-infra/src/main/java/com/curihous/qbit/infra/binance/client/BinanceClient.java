@@ -3,7 +3,6 @@ package com.curihous.qbit.infra.binance.client;
 import com.curihous.qbit.infra.binance.config.BinanceFeignConfig;
 import com.curihous.qbit.infra.binance.dto.response.BinanceTickerResponse;
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.cloud.openfeign.SpringQueryMap;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -24,6 +23,6 @@ public interface BinanceClient {
 
     // Kline(캔들) 데이터 조회
     @GetMapping("/klines")
-    List<List<String>> getKlinesDynamic(@SpringQueryMap Map<String, String> params);
+    List<List<String>> getKlinesDynamic(@RequestParam Map<String, String> params);
 
 }
