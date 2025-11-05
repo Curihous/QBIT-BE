@@ -1,6 +1,5 @@
 package com.curihous.qbit.realtime.config;
 
-import com.curihous.qbit.common.event.TradeUpdateEvent;
 import com.curihous.qbit.realtime.consumer.LoginOrderSyncConsumer;
 import com.curihous.qbit.realtime.consumer.OrderUpdateConsumer;
 import lombok.RequiredArgsConstructor;
@@ -11,7 +10,6 @@ import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.stream.Consumer;
 import org.springframework.data.redis.connection.stream.MapRecord;
-import org.springframework.data.redis.connection.stream.ObjectRecord;
 import org.springframework.data.redis.connection.stream.ReadOffset;
 import org.springframework.data.redis.connection.stream.StreamOffset;
 import org.springframework.data.redis.stream.StreamMessageListenerContainer;
@@ -48,14 +46,13 @@ public class RedisStreamsConfig {
 
     // Trade Update Stream 구독
     @Bean
-    public StreamMessageListenerContainer<String, ObjectRecord<String, TradeUpdateEvent>> tradeUpdateStreamContainer() {
+    public StreamMessageListenerContainer<String, MapRecord<String, String, String>> tradeUpdateStreamContainer() {
         var options = StreamMessageListenerContainer.StreamMessageListenerContainerOptions
                 .builder()
                 .pollTimeout(POLL_TIMEOUT)
-                .targetType(TradeUpdateEvent.class)
                 .build();
 
-        var container = StreamMessageListenerContainer.create(connectionFactory, options);
+        var container = StreamMessageListenerContainer.<String, MapRecord<String, String, String>>create(connectionFactory, options);
         createConsumerGroup(TRADE_UPDATE_STREAM);
         
         container.receive(

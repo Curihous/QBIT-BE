@@ -1,11 +1,14 @@
 package com.curihous.qbit.realtime.producer;
 
 import com.curihous.qbit.common.event.TradeUpdateEvent;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.connection.stream.ObjectRecord;
+import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
+
+import java.util.Map;
 
 /**
  * Redis Streams Producer
@@ -17,14 +20,18 @@ import org.springframework.stereotype.Component;
 public class TradeUpdateProducer {
 
     private final RedisTemplate<String, Object> redisTemplate;
+    private final ObjectMapper objectMapper;
     
     private static final String STREAM_KEY = "trade-updates";
     
     // Trade Update 이벤트 발행
     public void publishTradeUpdate(TradeUpdateEvent event) {
         try {
+            // MapRecord로 JSON 문자열을 value 필드에 저장
+            String json = objectMapper.writeValueAsString(event);
+            Map<String, String> map = Map.of("value", json);
             redisTemplate.opsForStream()
-                    .add(ObjectRecord.create(STREAM_KEY, event));
+                    .add(MapRecord.create(STREAM_KEY, map));
             
             log.info("Trade Update 이벤트 발행: userId={}, event={}, symbol={}, orderId={}", 
                     event.getUserId(), event.getEvent(), event.getSymbol(), event.getAlpacaOrderId());
