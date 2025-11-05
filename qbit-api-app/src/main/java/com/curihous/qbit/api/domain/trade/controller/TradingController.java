@@ -13,8 +13,6 @@ import com.curihous.qbit.domain.order.entity.OrderRequest;
 import com.curihous.qbit.domain.order.port.TradingPort;
 import com.curihous.qbit.domain.stock.entity.Stock;
 import com.curihous.qbit.domain.user.entity.User;
-import com.curihous.qbit.domain.alpaca.service.AlpacaOAuthConnectionService;
-import com.curihous.qbit.infra.alpaca.client.AlpacaTradingClient;
 import com.curihous.qbit.infra.alpaca.service.AlpacaStockService;
 import com.curihous.qbit.api.domain.trade.service.AlpacaOrderSyncService;
 import com.curihous.qbit.infra.security.facade.UserSecurityFacade;
@@ -46,8 +44,6 @@ public class TradingController {
     private final AlpacaStockService alpacaStockService;
     private final UserSecurityFacade userSecurityFacade;
     private final AlpacaOrderSyncService alpacaOrderSyncService;
-    private final AlpacaTradingClient alpacaTradingClient;
-    private final AlpacaOAuthConnectionService alpacaOAuthConnectionService;
     
     @Value("${stock.sync.us-equity}")
     private boolean allowUsEquity;
@@ -76,7 +72,7 @@ public class TradingController {
         }
         
         // 최소 주문 금액 및 수량 검증
-        validateMinimumOrderRequirements(user, stock, request.quantity(), request.limitPrice(), request.stopPrice());
+        validateMinimumOrderRequirements(stock, request.quantity(), request.limitPrice(), request.stopPrice());
         
         // 클라이언트 주문 ID 자동 생성
         String clientOrderId = generateClientOrderId(user.getId());
@@ -193,19 +189,19 @@ public class TradingController {
     }
     
     // 최소 주문 금액 및 수량 검증
-    private void validateMinimumOrderRequirements(User user, Stock stock, String quantityStr, String limitPriceStr, String stopPriceStr) {
+    private void validateMinimumOrderRequirements(Stock stock, String quantityStr, String limitPriceStr, String stopPriceStr) {
         BigDecimal quantity = new BigDecimal(quantityStr);
         String assetClass = stock.getAssetClass();
         
         if ("crypto".equalsIgnoreCase(assetClass)) {
-            validateCryptoOrderRequirements(user, stock, quantity, limitPriceStr, stopPriceStr);
+            validateCryptoOrderRequirements(stock, quantity, limitPriceStr, stopPriceStr);
         } else if ("us_equity".equalsIgnoreCase(assetClass)) {
             validateStockOrderRequirements(stock, quantity);
         }
     }
     
     // 암호화폐 주문 검증
-    private void validateCryptoOrderRequirements(User user, Stock stock, BigDecimal quantity, String limitPriceStr, String stopPriceStr) {
+    private void validateCryptoOrderRequirements(Stock stock, BigDecimal quantity, String limitPriceStr, String stopPriceStr) {
         // 1. 최소 주문 수량 검증 (minOrderSize)
         if (stock.getMinOrderSize() != null && !stock.getMinOrderSize().isBlank()) {
             BigDecimal minOrderSize = new BigDecimal(stock.getMinOrderSize());
@@ -263,42 +259,10 @@ public class TradingController {
             }
         }
         
-        // 4. 최소 주문 금액 검증 ($10) - Alpaca API로 현재 가격 조회
-        var connection = alpacaOAuthConnectionService.getValidConnection(user.getId());
-        String authorization = "Bearer " + connection.getAccessToken();
+        // 수량/증분/가격 증분 검증만 수행하고, 금액 검증은 Alpaca에 맡김
         
-        try {
-            // Alpaca 포지션 조회 API로 현재 가격 조회
-            var position = alpacaTradingClient.getPosition(authorization, stock.getSymbol());
-            if (position.currentPrice() == null || position.currentPrice().isBlank()) {
-                log.error("Alpaca API에서 현재 가격을 가져올 수 없습니다: symbol={}", stock.getSymbol());
-                throw new QbitException(ErrorCode.EXTERNAL_API_ERROR, 
-                        String.format("주문 검증을 위해 현재 가격을 조회할 수 없습니다. symbol: %s", stock.getSymbol()));
-            }
-            
-            BigDecimal currentPrice = new BigDecimal(position.currentPrice());
-            BigDecimal orderAmount = quantity.multiply(currentPrice);
-            
-            // 암호화폐 최소 주문 금액: $10
-            BigDecimal minOrderAmount = new BigDecimal("10.00");
-            if (orderAmount.compareTo(minOrderAmount) < 0) {
-                log.warn("암호화폐 주문 금액이 최소 요구사항 미만: symbol={}, quantity={}, price={}, amount={}, min={}", 
-                        stock.getSymbol(), quantity, currentPrice, orderAmount, minOrderAmount);
-                throw new QbitException(ErrorCode.INVALID_ORDER_PRICE, 
-                        String.format("주문 금액이 최소 요구사항($%s) 미만입니다. 현재 주문 금액: $%.2f (수량: %s × 가격: $%s)", 
-                                minOrderAmount, orderAmount, quantity, currentPrice));
-            }
-            
-            log.debug("암호화폐 주문 검증 통과: symbol={}, quantity={}, price={}, amount={}", 
-                    stock.getSymbol(), quantity, currentPrice, orderAmount);
-        } catch (QbitException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("Alpaca API로 현재 가격 조회 실패: symbol={}, error={}", stock.getSymbol(), e.getMessage(), e);
-            throw new QbitException(ErrorCode.EXTERNAL_API_ERROR, 
-                    String.format("주문 검증을 위해 현재 가격을 조회할 수 없습니다. symbol: %s, error: %s", 
-                            stock.getSymbol(), e.getMessage()));
-        }
+        log.debug("암호화폐 주문 검증 통과: symbol={}, quantity={}", 
+                stock.getSymbol(), quantity);
     }
     
     // 주식 주문 검증 
