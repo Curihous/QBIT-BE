@@ -56,7 +56,7 @@ public class RedisStreamsConfig {
         
         container.receive(
                 Consumer.from(CONSUMER_GROUP, CONSUMER_TRADE),
-                StreamOffset.create(TRADE_UPDATE_STREAM, ReadOffset.from("0")),
+                StreamOffset.create(TRADE_UPDATE_STREAM, ReadOffset.from(">")), // 처리되지 않은 새 메시지만 읽기
                 message -> {
                     try {
                         log.info("Trade Update 메시지 수신: messageId={}, stream={}", 

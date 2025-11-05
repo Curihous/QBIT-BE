@@ -13,7 +13,10 @@ import com.curihous.qbit.domain.order.entity.OrderRequest;
 import com.curihous.qbit.domain.order.port.TradingPort;
 import com.curihous.qbit.domain.stock.entity.Stock;
 import com.curihous.qbit.domain.user.entity.User;
+import com.curihous.qbit.domain.alpaca.service.AlpacaOAuthConnectionService;
+import com.curihous.qbit.infra.alpaca.client.AlpacaTradingClient;
 import com.curihous.qbit.infra.alpaca.service.AlpacaStockService;
+import com.curihous.qbit.api.domain.trade.service.AlpacaOrderSyncService;
 import com.curihous.qbit.infra.security.facade.UserSecurityFacade;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -28,6 +31,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.Map;
 import java.util.UUID;
 
@@ -41,7 +45,9 @@ public class TradingController {
     private final TradingPort tradingPort; // 헥사고날 아키텍처
     private final AlpacaStockService alpacaStockService;
     private final UserSecurityFacade userSecurityFacade;
-    private final com.curihous.qbit.api.domain.trade.service.AlpacaOrderSyncService alpacaOrderSyncService;
+    private final AlpacaOrderSyncService alpacaOrderSyncService;
+    private final AlpacaTradingClient alpacaTradingClient;
+    private final AlpacaOAuthConnectionService alpacaOAuthConnectionService;
     
     @Value("${stock.sync.us-equity}")
     private boolean allowUsEquity;
@@ -68,6 +74,9 @@ public class TradingController {
                         stock.getSymbol(), stock.getAssetClass(), binanceSymbol);
             }
         }
+        
+        // 최소 주문 금액 및 수량 검증
+        validateMinimumOrderRequirements(user, stock, request.quantity(), request.limitPrice(), request.stopPrice());
         
         // 클라이언트 주문 ID 자동 생성
         String clientOrderId = generateClientOrderId(user.getId());
@@ -181,6 +190,143 @@ public class TradingController {
             log.warn("지원하지 않는 자산 클래스 거래 시도: symbol={}, assetClass={}", stock.getSymbol(), assetClass);
             throw new QbitException(ErrorCode.ASSET_CLASS_NOT_SUPPORTED);
         }
+    }
+    
+    // 최소 주문 금액 및 수량 검증
+    private void validateMinimumOrderRequirements(User user, Stock stock, String quantityStr, String limitPriceStr, String stopPriceStr) {
+        BigDecimal quantity = new BigDecimal(quantityStr);
+        String assetClass = stock.getAssetClass();
+        
+        if ("crypto".equalsIgnoreCase(assetClass)) {
+            validateCryptoOrderRequirements(user, stock, quantity, limitPriceStr, stopPriceStr);
+        } else if ("us_equity".equalsIgnoreCase(assetClass)) {
+            validateStockOrderRequirements(stock, quantity);
+        }
+    }
+    
+    // 암호화폐 주문 검증
+    private void validateCryptoOrderRequirements(User user, Stock stock, BigDecimal quantity, String limitPriceStr, String stopPriceStr) {
+        // 1. 최소 주문 수량 검증 (minOrderSize)
+        if (stock.getMinOrderSize() != null && !stock.getMinOrderSize().isBlank()) {
+            BigDecimal minOrderSize = new BigDecimal(stock.getMinOrderSize());
+            if (quantity.compareTo(minOrderSize) < 0) {
+                log.warn("암호화폐 주문 수량이 최소 요구사항 미만: symbol={}, quantity={}, minOrderSize={}", 
+                        stock.getSymbol(), quantity, minOrderSize);
+                throw new QbitException(ErrorCode.INVALID_ORDER_PRICE, 
+                        String.format("주문 수량이 최소 요구사항(%s) 미만입니다. 현재 주문 수량: %s", 
+                                minOrderSize, quantity));
+            }
+        }
+        
+        // 2. 최소 거래 증분 검증 (minTradeIncrement)
+        if (stock.getMinTradeIncrement() != null && !stock.getMinTradeIncrement().isBlank()) {
+            BigDecimal minTradeIncrement = new BigDecimal(stock.getMinTradeIncrement());
+            // 주문 수량이 minTradeIncrement의 배수인지 확인
+            BigDecimal remainder = quantity.remainder(minTradeIncrement);
+            if (remainder.compareTo(BigDecimal.ZERO) != 0) {
+                log.warn("암호화폐 주문 수량이 최소 거래 증분의 배수가 아님: symbol={}, quantity={}, minTradeIncrement={}", 
+                        stock.getSymbol(), quantity, minTradeIncrement);
+                throw new QbitException(ErrorCode.INVALID_ORDER_PRICE, 
+                        String.format("주문 수량이 최소 거래 증분(%s)의 배수가 아닙니다. 현재 주문 수량: %s", 
+                                minTradeIncrement, quantity));
+            }
+        }
+        
+        // 3. 가격 증분 검증 (priceIncrement) - 지정가/손절지정가 주문에서만
+        if (stock.getPriceIncrement() != null && !stock.getPriceIncrement().isBlank()) {
+            BigDecimal priceIncrement = new BigDecimal(stock.getPriceIncrement());
+            
+            // limitPrice 검증 (limit/stop_limit 주문)
+            if (limitPriceStr != null && !limitPriceStr.isBlank()) {
+                BigDecimal limitPrice = new BigDecimal(limitPriceStr);
+                BigDecimal priceRemainder = limitPrice.remainder(priceIncrement);
+                if (priceRemainder.compareTo(BigDecimal.ZERO) != 0) {
+                    log.warn("암호화폐 지정가가 가격 증분의 배수가 아님: symbol={}, limitPrice={}, priceIncrement={}", 
+                            stock.getSymbol(), limitPrice, priceIncrement);
+                    throw new QbitException(ErrorCode.INVALID_ORDER_PRICE, 
+                            String.format("지정가가 가격 증분(%s)의 배수가 아닙니다. 현재 지정가: %s", 
+                                    priceIncrement, limitPrice));
+                }
+            }
+            
+            // stopPrice 검증 (stop/stop_limit 주문)
+            if (stopPriceStr != null && !stopPriceStr.isBlank()) {
+                BigDecimal stopPrice = new BigDecimal(stopPriceStr);
+                BigDecimal priceRemainder = stopPrice.remainder(priceIncrement);
+                if (priceRemainder.compareTo(BigDecimal.ZERO) != 0) {
+                    log.warn("암호화폐 손절가가 가격 증분의 배수가 아님: symbol={}, stopPrice={}, priceIncrement={}", 
+                            stock.getSymbol(), stopPrice, priceIncrement);
+                    throw new QbitException(ErrorCode.INVALID_ORDER_PRICE, 
+                            String.format("손절가가 가격 증분(%s)의 배수가 아닙니다. 현재 손절가: %s", 
+                                    priceIncrement, stopPrice));
+                }
+            }
+        }
+        
+        // 4. 최소 주문 금액 검증 ($10) - Alpaca API로 현재 가격 조회
+        var connection = alpacaOAuthConnectionService.getValidConnection(user.getId());
+        String authorization = "Bearer " + connection.getAccessToken();
+        
+        try {
+            // Alpaca 포지션 조회 API로 현재 가격 조회
+            var position = alpacaTradingClient.getPosition(authorization, stock.getSymbol());
+            if (position.currentPrice() == null || position.currentPrice().isBlank()) {
+                log.error("Alpaca API에서 현재 가격을 가져올 수 없습니다: symbol={}", stock.getSymbol());
+                throw new QbitException(ErrorCode.EXTERNAL_API_ERROR, 
+                        String.format("주문 검증을 위해 현재 가격을 조회할 수 없습니다. symbol: %s", stock.getSymbol()));
+            }
+            
+            BigDecimal currentPrice = new BigDecimal(position.currentPrice());
+            BigDecimal orderAmount = quantity.multiply(currentPrice);
+            
+            // 암호화폐 최소 주문 금액: $10
+            BigDecimal minOrderAmount = new BigDecimal("10.00");
+            if (orderAmount.compareTo(minOrderAmount) < 0) {
+                log.warn("암호화폐 주문 금액이 최소 요구사항 미만: symbol={}, quantity={}, price={}, amount={}, min={}", 
+                        stock.getSymbol(), quantity, currentPrice, orderAmount, minOrderAmount);
+                throw new QbitException(ErrorCode.INVALID_ORDER_PRICE, 
+                        String.format("주문 금액이 최소 요구사항($%s) 미만입니다. 현재 주문 금액: $%.2f (수량: %s × 가격: $%s)", 
+                                minOrderAmount, orderAmount, quantity, currentPrice));
+            }
+            
+            log.debug("암호화폐 주문 검증 통과: symbol={}, quantity={}, price={}, amount={}", 
+                    stock.getSymbol(), quantity, currentPrice, orderAmount);
+        } catch (QbitException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Alpaca API로 현재 가격 조회 실패: symbol={}, error={}", stock.getSymbol(), e.getMessage(), e);
+            throw new QbitException(ErrorCode.EXTERNAL_API_ERROR, 
+                    String.format("주문 검증을 위해 현재 가격을 조회할 수 없습니다. symbol: %s, error: %s", 
+                            stock.getSymbol(), e.getMessage()));
+        }
+    }
+    
+    // 주식 주문 검증 
+    private void validateStockOrderRequirements(Stock stock, BigDecimal quantity) {
+        // 1. 최소 주문 수량 검증
+        BigDecimal minOrderSize = BigDecimal.ONE; // 1주
+        if (quantity.compareTo(minOrderSize) < 0) {
+            log.warn("주식 주문 수량이 최소 요구사항 미만: symbol={}, quantity={}, minOrderSize={}", 
+                    stock.getSymbol(), quantity, minOrderSize);
+            throw new QbitException(ErrorCode.INVALID_ORDER_PRICE, 
+                    String.format("주문 수량이 최소 요구사항(%s주) 미만입니다. 현재 주문 수량: %s주", 
+                            minOrderSize, quantity));
+        }
+        
+        // 2. 소수점 거래 가능 여부 확인
+        if (!Boolean.TRUE.equals(stock.getFractionable())) {
+            // 소수점 거래 불가능한 경우 정수 단위로만 거래 가능
+            if (quantity.stripTrailingZeros().scale() > 0) {
+                log.warn("주식이 소수점 거래를 지원하지 않음: symbol={}, quantity={}", 
+                        stock.getSymbol(), quantity);
+                throw new QbitException(ErrorCode.INVALID_ORDER_PRICE, 
+                        String.format("이 종목은 소수점 거래를 지원하지 않습니다. 주문 수량은 정수 주 단위여야 합니다. 현재 주문 수량: %s", 
+                                quantity));
+            }
+        }
+        
+        log.debug("주식 주문 검증 통과: symbol={}, quantity={}", 
+                stock.getSymbol(), quantity);
     }
     
     // 클라이언트 주문 ID 자동 생성

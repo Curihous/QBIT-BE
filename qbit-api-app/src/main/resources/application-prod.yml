@@ -49,7 +49,7 @@ websocket:
 
 logging:
   level:
-    com.curihous.qbit: INFO
+    com.curihous.qbit: DEBUG
     org.springframework.web: WARN
     org.springframework.data.redis: WARN
     org.springframework.web.socket: WARN
