@@ -64,6 +64,53 @@ public class CryptoSymbolConverter {
         
         return null;
     }
+    
+    /**
+     * Assets API (/v2/assets): BTC/USD 형식 (슬래시 포함)
+     * Positions API (/v2/positions): BTCUSD 형식 (슬래시 없음)
+     * 로 둘이 다름.. 일부 업데이트가 덜 된듯하다. 
+     */
+    // Alpaca Assets 형식 (BTC/USD) → Alpaca Positions 형식 (BTCUSD) 변환
+    public static String alpacaAssetToPositionFormat(String alpacaAssetSymbol) {
+        if (alpacaAssetSymbol == null || alpacaAssetSymbol.isBlank()) {
+            return alpacaAssetSymbol;
+        }
+        
+        var matcher = ALPACA_CRYPTO_PATTERN.matcher(alpacaAssetSymbol);
+        if (matcher.matches()) {
+            String baseAsset = matcher.group(1);
+            String quoteAsset = matcher.group(2);
+            return baseAsset + quoteAsset;
+        }
+        
+        // 암호화폐 형식이 아니면 그대로 반환
+        return alpacaAssetSymbol;
+    }
+    
+    // Alpaca Positions 형식 (BTCUSD) → Alpaca Assets 형식 (BTC/USD) 변환
+    public static String alpacaPositionToAssetFormat(String alpacaPositionSymbol) {
+        if (alpacaPositionSymbol == null || alpacaPositionSymbol.isBlank()) {
+            return alpacaPositionSymbol;
+        }
+        
+        // 이미 슬래시가 있으면 그대로 반환
+        if (alpacaPositionSymbol.contains("/")) {
+            return alpacaPositionSymbol;
+        }
+        
+        // 암호화폐 패턴 체크 (BTCUSD, ETHUSD 등)
+        var matcher = BINANCE_CRYPTO_PATTERN.matcher(alpacaPositionSymbol);
+        if (matcher.matches()) {
+            String baseAsset = matcher.group(1);
+            String quoteAsset = matcher.group(2);
+            // USDT → USD로 변환
+            String alpacaQuote = quoteAsset.equals("USDT") ? "USD" : quoteAsset;
+            return baseAsset + "/" + alpacaQuote;
+        }
+        
+        // 암호화폐 형식이 아니면 그대로 반환
+        return alpacaPositionSymbol;
+    }
 
 }
 
