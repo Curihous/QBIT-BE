@@ -2,18 +2,22 @@ package com.curihous.qbit.api.config;
 
 import com.curihous.qbit.api.consumer.TradeUpdateConsumer;
 import com.curihous.qbit.common.event.TradeUpdateEvent;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.stream.Consumer;
-import org.springframework.data.redis.connection.stream.ObjectRecord;
+import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.connection.stream.ReadOffset;
 import org.springframework.data.redis.connection.stream.StreamOffset;
+import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.stream.StreamMessageListenerContainer;
 
 import java.time.Duration;
+import java.util.Map;
 
 /**
  * Redis Streams 이벤트 구독 설정
@@ -38,13 +42,22 @@ public class RedisStreamsConfig {
     private final RedisConnectionFactory connectionFactory;
     private final TradeUpdateConsumer tradeUpdateConsumer;
 
+    // ObjectMapper 생성 
+    private ObjectMapper createObjectMapper() {
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.activateDefaultTyping(
+            LaissezFaireSubTypeValidator.instance,
+            ObjectMapper.DefaultTyping.NON_FINAL
+        );
+        return objectMapper;
+    }
+
     // Trade Update Stream 구독
     @Bean
-    public StreamMessageListenerContainer<String, ObjectRecord<String, TradeUpdateEvent>> tradeUpdateStreamContainer() {
+    public StreamMessageListenerContainer<String, MapRecord<String, String, String>> tradeUpdateStreamContainer() {
         var options = StreamMessageListenerContainer.StreamMessageListenerContainerOptions
                 .builder()
                 .pollTimeout(POLL_TIMEOUT)
-                .targetType(TradeUpdateEvent.class) // JSON 자동 역직렬화
                 .errorHandler(throwable -> {
                     log.error("Trade Update Stream 처리 중 오류 발생: error={}", 
                             throwable.getMessage(), throwable);
@@ -54,6 +67,9 @@ public class RedisStreamsConfig {
         var container = StreamMessageListenerContainer.create(connectionFactory, options);
         createConsumerGroup(TRADE_UPDATE_STREAM);
         
+        ObjectMapper objectMapper = createObjectMapper();
+        GenericJackson2JsonRedisSerializer serializer = new GenericJackson2JsonRedisSerializer(objectMapper);
+        
         container.receive(
                 Consumer.from(CONSUMER_GROUP, CONSUMER_TRADE),
                 StreamOffset.create(TRADE_UPDATE_STREAM, ReadOffset.lastConsumed()),
@@ -62,8 +78,36 @@ public class RedisStreamsConfig {
                         log.info("Trade Update 메시지 수신: messageId={}, stream={}", 
                                 message.getId(), message.getStream());
                         
-                        // ObjectRecord에서 직접 TradeUpdateEvent 추출
-                        TradeUpdateEvent event = message.getValue();
+                        Map<String, String> valueMap = message.getValue();
+                        
+                        String serializedValue = null;
+                        for (String key : valueMap.keySet()) {
+                            String value = valueMap.get(key);
+                            if (value != null && value.startsWith("{")) {
+                                serializedValue = value;
+                                break;
+                            }
+                        }
+                        
+                        if (serializedValue == null) {
+                            log.warn("Trade Update 메시지에서 직렬화된 값을 찾을 수 없습니다: messageId={}", 
+                                    message.getId());
+                            ackMessage(message.getId());
+                            return;
+                        }
+                        
+                        // GenericJackson2JsonRedisSerializer로 역직렬화
+                        byte[] bytes = serializedValue.getBytes();
+                        Object deserialized = serializer.deserialize(bytes);
+                        
+                        if (!(deserialized instanceof TradeUpdateEvent)) {
+                            log.warn("Trade Update 메시지 역직렬화 결과가 TradeUpdateEvent가 아닙니다: messageId={}, type={}", 
+                                    message.getId(), deserialized != null ? deserialized.getClass() : "null");
+                            ackMessage(message.getId());
+                            return;
+                        }
+                        
+                        TradeUpdateEvent event = (TradeUpdateEvent) deserialized;
                         
                         log.info("Trade Update 이벤트 수신: userId={}, event={}, symbol={}, orderId={}", 
                                 event.getUserId(), event.getEvent(), event.getSymbol(), event.getAlpacaOrderId());
