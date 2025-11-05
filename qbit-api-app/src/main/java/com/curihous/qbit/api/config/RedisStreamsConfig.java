@@ -2,20 +2,18 @@ package com.curihous.qbit.api.config;
 
 import com.curihous.qbit.api.consumer.TradeUpdateConsumer;
 import com.curihous.qbit.common.event.TradeUpdateEvent;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.stream.Consumer;
-import org.springframework.data.redis.connection.stream.MapRecord;
+import org.springframework.data.redis.connection.stream.ObjectRecord;
 import org.springframework.data.redis.connection.stream.ReadOffset;
 import org.springframework.data.redis.connection.stream.StreamOffset;
 import org.springframework.data.redis.stream.StreamMessageListenerContainer;
 
 import java.time.Duration;
-import java.util.Map;
 
 /**
  * Redis Streams 이벤트 구독 설정
@@ -39,14 +37,14 @@ public class RedisStreamsConfig {
 
     private final RedisConnectionFactory connectionFactory;
     private final TradeUpdateConsumer tradeUpdateConsumer;
-    private final ObjectMapper objectMapper;
 
     // Trade Update Stream 구독
     @Bean
-    public StreamMessageListenerContainer<String, MapRecord<String, String, String>> tradeUpdateStreamContainer() {
+    public StreamMessageListenerContainer<String, ObjectRecord<String, TradeUpdateEvent>> tradeUpdateStreamContainer() {
         var options = StreamMessageListenerContainer.StreamMessageListenerContainerOptions
                 .builder()
                 .pollTimeout(POLL_TIMEOUT)
+                .targetType(TradeUpdateEvent.class) // JSON 자동 역직렬화
                 .errorHandler(throwable -> {
                     log.error("Trade Update Stream 처리 중 오류 발생: error={}", 
                             throwable.getMessage(), throwable);
@@ -64,19 +62,8 @@ public class RedisStreamsConfig {
                         log.info("Trade Update 메시지 수신: messageId={}, stream={}", 
                                 message.getId(), message.getStream());
                         
-                        // MapRecord에서 "value" 필드 추출
-                        Map<String, String> valueMap = message.getValue();
-                        String json = valueMap != null ? valueMap.get("value") : null;
-                        if (json == null || json.isEmpty()) {
-                            log.warn("Trade Update 메시지에 'value' 필드가 없습니다: messageId={}", 
-                                    message.getId());
-                            // value 필드가 없어도 Ack 처리 (재처리 방지)
-                            ackMessage(message.getId());
-                            return;
-                        }
-                        
-                        // JSON을 TradeUpdateEvent로 역직렬화
-                        TradeUpdateEvent event = objectMapper.readValue(json, TradeUpdateEvent.class);
+                        // ObjectRecord에서 직접 TradeUpdateEvent 추출
+                        TradeUpdateEvent event = message.getValue();
                         
                         log.info("Trade Update 이벤트 수신: userId={}, event={}, symbol={}, orderId={}", 
                                 event.getUserId(), event.getEvent(), event.getSymbol(), event.getAlpacaOrderId());
