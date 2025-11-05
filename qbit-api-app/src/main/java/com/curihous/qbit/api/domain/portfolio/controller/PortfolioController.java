@@ -15,7 +15,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -55,10 +54,10 @@ public class PortfolioController {
         summary = "특정 종목 포지션 조회", 
         description = "특정 종목의 포지션 정보와 계정 정보를 조회합니다. 매도 시 최대 수량, 매수 시 최대 금액을 계산할 수 있습니다."
     )
-    @GetMapping("/positions/{symbol}")
+    @GetMapping("/positions/detail")
     public ResponseEntity<PositionWithAccountResponseDto> getPositionBySymbol(
         @Parameter(description = "종목 심볼", example = "AAPL")
-        @PathVariable String symbol
+        @RequestParam(value = "symbol") String symbol
     ) {
         User user = userSecurityFacade.getCurrentUser();
         TradingPort.SimplePositionWithAccountInfo result = tradingPort.getPositionBySymbol(user, symbol);

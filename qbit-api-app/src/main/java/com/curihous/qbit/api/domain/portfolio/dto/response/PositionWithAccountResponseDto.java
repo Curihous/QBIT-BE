@@ -6,7 +6,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 /**
  * 포트폴리오 포지션 정보 응답 DTO (자산 정보 포함) - 주문용
  * 
- * QBIT API: GET /portfolios/positions/{symbol}
+ * QBIT API: GET /portfolios/positions/detail?symbol={symbol}
  */
 public record PositionWithAccountResponseDto(
     @Schema(description = "포지션 정보")
