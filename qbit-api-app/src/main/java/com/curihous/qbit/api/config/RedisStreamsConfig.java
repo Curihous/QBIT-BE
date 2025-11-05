@@ -2,18 +2,20 @@ package com.curihous.qbit.api.config;
 
 import com.curihous.qbit.api.consumer.TradeUpdateConsumer;
 import com.curihous.qbit.common.event.TradeUpdateEvent;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.stream.Consumer;
-import org.springframework.data.redis.connection.stream.ObjectRecord;
+import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.connection.stream.ReadOffset;
 import org.springframework.data.redis.connection.stream.StreamOffset;
 import org.springframework.data.redis.stream.StreamMessageListenerContainer;
 
 import java.time.Duration;
+import java.util.Map;
 
 /**
  * Redis Streams 이벤트 구독 설정
@@ -37,14 +39,14 @@ public class RedisStreamsConfig {
 
     private final RedisConnectionFactory connectionFactory;
     private final TradeUpdateConsumer tradeUpdateConsumer;
+    private final ObjectMapper objectMapper;
 
     // Trade Update Stream 구독
     @Bean
-    public StreamMessageListenerContainer<String, ObjectRecord<String, TradeUpdateEvent>> tradeUpdateStreamContainer() {
+    public StreamMessageListenerContainer<String, MapRecord<String, String, String>> tradeUpdateStreamContainer() {
         var options = StreamMessageListenerContainer.StreamMessageListenerContainerOptions
                 .builder()
                 .pollTimeout(POLL_TIMEOUT)
-                .targetType(TradeUpdateEvent.class)
                 .errorHandler(throwable -> {
                     log.error("Trade Update Stream 처리 중 오류 발생: error={}", 
                             throwable.getMessage(), throwable);
@@ -56,8 +58,46 @@ public class RedisStreamsConfig {
         
         container.receive(
                 Consumer.from(CONSUMER_GROUP, CONSUMER_TRADE),
-                StreamOffset.create(TRADE_UPDATE_STREAM, ReadOffset.from("0")),
-                tradeUpdateConsumer
+                StreamOffset.create(TRADE_UPDATE_STREAM, ReadOffset.lastConsumed()),
+                message -> {
+                    try {
+                        log.info("Trade Update 메시지 수신: messageId={}, stream={}", 
+                                message.getId(), message.getStream());
+                        
+                        // MapRecord에서 "value" 필드 추출
+                        Map<String, String> valueMap = message.getValue();
+                        String json = valueMap != null ? valueMap.get("value") : null;
+                        if (json == null || json.isEmpty()) {
+                            log.warn("Trade Update 메시지에 'value' 필드가 없습니다: messageId={}", 
+                                    message.getId());
+                            // value 필드가 없어도 Ack 처리 (재처리 방지)
+                            ackMessage(message.getId());
+                            return;
+                        }
+                        
+                        // JSON을 TradeUpdateEvent로 역직렬화
+                        TradeUpdateEvent event = objectMapper.readValue(json, TradeUpdateEvent.class);
+                        
+                        log.info("Trade Update 이벤트 수신: userId={}, event={}, symbol={}, orderId={}", 
+                                event.getUserId(), event.getEvent(), event.getSymbol(), event.getAlpacaOrderId());
+                        
+                        // 이벤트 처리
+                        tradeUpdateConsumer.onMessage(event);
+                        
+                        // 메시지 정상 처리 후 Ack
+                        ackMessage(message.getId());
+                        
+                        log.debug("Trade Update 메시지 처리 완료 및 Ack: messageId={}", message.getId());
+                        
+                    } catch (Exception e) {
+                        log.error("Trade Update 이벤트 처리 실패: messageId={}, error={}", 
+                                message != null ? message.getId() : "unknown", e.getMessage(), e);
+                        // 오류 발생 시에도 Ack 처리 (무한 재시도 방지)
+                        if (message != null) {
+                            ackMessage(message.getId());
+                        }
+                    }
+                }
         );
 
         container.start();
@@ -88,6 +128,18 @@ public class RedisStreamsConfig {
                 log.error("Consumer Group 생성 실패: group={}, stream={}, error={}", 
                         CONSUMER_GROUP, stream, errorMessage, e);
             }
+        }
+    }
+    
+    // 메시지 Ack 처리
+    private void ackMessage(org.springframework.data.redis.connection.stream.RecordId messageId) {
+        try {
+            connectionFactory.getConnection().streamCommands()
+                    .xAck(TRADE_UPDATE_STREAM.getBytes(), CONSUMER_GROUP, messageId.getValue());
+            log.debug("Trade Update 메시지 Ack 처리: messageId={}", messageId);
+        } catch (Exception e) {
+            log.error("Trade Update 메시지 Ack 처리 실패: messageId={}, error={}", 
+                    messageId, e.getMessage(), e);
         }
     }
 }

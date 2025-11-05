@@ -4,8 +4,6 @@ import com.curihous.qbit.api.domain.trade.service.AlpacaOrderSyncService;
 import com.curihous.qbit.common.event.TradeUpdateEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.connection.stream.ObjectRecord;
-import org.springframework.data.redis.stream.StreamListener;
 import org.springframework.stereotype.Component;
 
 /**
@@ -15,27 +13,27 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class TradeUpdateConsumer implements StreamListener<String, ObjectRecord<String, TradeUpdateEvent>> {
+public class TradeUpdateConsumer {
 
     private final AlpacaOrderSyncService alpacaOrderSyncService;
     
-    @Override
-    public void onMessage(ObjectRecord<String, TradeUpdateEvent> message) {
+    public void onMessage(TradeUpdateEvent event) {
         try {
-            log.info("Trade Update 메시지 수신: messageId={}, stream={}", 
-                    message.getId(), message.getStream());
-            
-            TradeUpdateEvent event = message.getValue();
-            
-            log.info("Trade Update 이벤트 수신: userId={}, event={}, symbol={}, orderId={}", 
+            log.info("Trade Update Consumer 처리 시작: userId={}, event={}, symbol={}, orderId={}",
                     event.getUserId(), event.getEvent(), event.getSymbol(), event.getAlpacaOrderId());
             
             // 이벤트 처리
             alpacaOrderSyncService.processTradeUpdate(event);
             
+            log.debug("Trade Update Consumer 처리 완료: userId={}, event={}", 
+                    event.getUserId(), event.getEvent());
+            
         } catch (Exception e) {
-            log.error("Trade Update 이벤트 처리 실패: messageId={}, error={}", 
-                    message != null ? message.getId() : "unknown", e.getMessage(), e);
+            log.error("Trade Update 처리 중 오류: userId={}, event={}, error={}", 
+                    event != null ? event.getUserId() : "unknown",
+                    event != null ? event.getEvent() : "unknown", 
+                    e.getMessage(), e);
+            throw e; // 상위에서 Ack 처리를 위해
         }
     }
 }
