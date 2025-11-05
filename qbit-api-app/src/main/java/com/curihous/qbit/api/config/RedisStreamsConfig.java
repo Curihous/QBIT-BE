@@ -45,6 +45,10 @@ public class RedisStreamsConfig {
                 .builder()
                 .pollTimeout(POLL_TIMEOUT)
                 .targetType(TradeUpdateEvent.class)
+                .errorHandler(throwable -> {
+                    log.error("Trade Update Stream 처리 중 오류 발생: error={}", 
+                            throwable.getMessage(), throwable);
+                })
                 .build();
 
         var container = StreamMessageListenerContainer.create(connectionFactory, options);
@@ -57,8 +61,8 @@ public class RedisStreamsConfig {
         );
 
         container.start();
-        log.info("Trade Update Stream 구독 시작: stream={}, consumer={}", 
-                TRADE_UPDATE_STREAM, CONSUMER_TRADE);
+        log.info("Trade Update Stream 구독 시작: stream={}, consumer={}, group={}", 
+                TRADE_UPDATE_STREAM, CONSUMER_TRADE, CONSUMER_GROUP);
 
         return container;
     }

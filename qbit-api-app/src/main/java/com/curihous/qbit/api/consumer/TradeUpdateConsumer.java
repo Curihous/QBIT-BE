@@ -22,6 +22,9 @@ public class TradeUpdateConsumer implements StreamListener<String, ObjectRecord<
     @Override
     public void onMessage(ObjectRecord<String, TradeUpdateEvent> message) {
         try {
+            log.info("Trade Update 메시지 수신: messageId={}, stream={}", 
+                    message.getId(), message.getStream());
+            
             TradeUpdateEvent event = message.getValue();
             
             log.info("Trade Update 이벤트 수신: userId={}, event={}, symbol={}, orderId={}", 
@@ -32,7 +35,7 @@ public class TradeUpdateConsumer implements StreamListener<String, ObjectRecord<
             
         } catch (Exception e) {
             log.error("Trade Update 이벤트 처리 실패: messageId={}, error={}", 
-                    message.getId(), e.getMessage(), e);
+                    message != null ? message.getId() : "unknown", e.getMessage(), e);
         }
     }
 }
