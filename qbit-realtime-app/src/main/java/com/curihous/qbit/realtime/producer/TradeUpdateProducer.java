@@ -4,7 +4,6 @@ import com.curihous.qbit.common.event.TradeUpdateEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.connection.stream.ObjectRecord;
-import org.springframework.data.redis.connection.stream.StreamRecords;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -24,10 +23,7 @@ public class TradeUpdateProducer {
     // Trade Update 이벤트 발행
     public void publishTradeUpdate(TradeUpdateEvent event) {
         try {
-            ObjectRecord<String, TradeUpdateEvent> record = StreamRecords
-                    .newRecord()
-                    .ofObject(event)
-                    .withStreamKey(STREAM_KEY);
+            ObjectRecord<String, TradeUpdateEvent> record = ObjectRecord.create(STREAM_KEY, event);
             
             redisTemplate.opsForStream().add(record);
             
