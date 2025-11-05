@@ -82,7 +82,7 @@ public class StockMarketDataController {
         // 한국 시간(KST)을 UTC로 변환하여 Binance API 호출
         Long utcStartTime = TimeZoneConverter.kstToUtc(startTime);
         Long utcEndTime = TimeZoneConverter.kstToUtc(endTime);
-        log.info("시간 변환: KST startTime={}, endTime={} -> UTC startTime={}, endTime={}", 
+        log.debug("시간 변환: KST startTime={}, endTime={} -> UTC startTime={}, endTime={}", 
                  startTime, endTime, utcStartTime, utcEndTime);
         
         var binanceKlines = binanceMarketService.getKlines(binanceSymbol, interval, utcStartTime, utcEndTime, limit);
