@@ -56,7 +56,7 @@ public class RedisStreamsConfig {
         
         container.receive(
                 Consumer.from(CONSUMER_GROUP, CONSUMER_TRADE),
-                StreamOffset.create(TRADE_UPDATE_STREAM, ReadOffset.lastConsumed()),
+                StreamOffset.create(TRADE_UPDATE_STREAM, ReadOffset.from("0")),
                 tradeUpdateConsumer
         );
 
@@ -74,7 +74,16 @@ public class RedisStreamsConfig {
                     .xGroupCreate(stream.getBytes(), CONSUMER_GROUP, ReadOffset.from("0"), true);
             log.info("Consumer Group 생성: group={}, stream={}", CONSUMER_GROUP, stream);
         } catch (Exception e) {
-            log.debug("Consumer Group이 이미 존재: group={}, stream={}", CONSUMER_GROUP, stream);
+            String errorMessage = e.getMessage();
+            if (errorMessage != null && errorMessage.contains("BUSYGROUP")) {
+                log.debug("Consumer Group이 이미 존재: group={}, stream={}", CONSUMER_GROUP, stream);
+            } else if (errorMessage != null && (errorMessage.contains("no such key") || errorMessage.contains("NOSTREAM"))) {
+                log.warn("Stream이 존재하지 않아 Consumer Group을 생성할 수 없습니다: stream={}. " +
+                        "첫 번째 메시지가 발행되면 자동으로 생성됩니다.", stream);
+            } else {
+                log.error("Consumer Group 생성 실패: group={}, stream={}, error={}", 
+                        CONSUMER_GROUP, stream, errorMessage, e);
+            }
         }
     }
 }

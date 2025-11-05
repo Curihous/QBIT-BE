@@ -204,9 +204,22 @@ public class AlpacaOrderSyncService {
             
             // Alpaca에서 최신 주문 목록 가져오기
             String authorization = "Bearer " + connection.getAccessToken();
-            List<AlpacaOrderResponse> alpacaOrders = alpacaTradingClient.getOrders(authorization, "all", 500, "desc", true);
+            log.info("Alpaca 주문 조회 시작: userId={}, status=all, limit=500", user.getId());
             
-            log.info("Alpaca에서 주문 조회 완료: userId={}, 주문 수={}", user.getId(), alpacaOrders.size());
+            List<AlpacaOrderResponse> alpacaOrders;
+            try {
+                // status=null로 모든 상태의 주문 조회 시도
+                alpacaOrders = alpacaTradingClient.getOrders(authorization, null, 500, "desc", true);
+                log.info("Alpaca에서 주문 조회 완료: userId={}, 주문 수={}", user.getId(), alpacaOrders != null ? alpacaOrders.size() : 0);
+                
+                if (alpacaOrders == null) {
+                    log.warn("Alpaca 주문 조회 결과가 null입니다: userId={}", user.getId());
+                    alpacaOrders = List.of();
+                }
+            } catch (Exception e) {
+                log.error("Alpaca 주문 조회 실패: userId={}, error={}", user.getId(), e.getMessage(), e);
+                return;
+            }
             
             // 각 주문을 DB와 동기화
             int syncedCount = 0;
