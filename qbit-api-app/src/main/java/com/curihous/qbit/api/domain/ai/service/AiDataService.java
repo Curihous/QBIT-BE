@@ -1,11 +1,11 @@
 package com.curihous.qbit.api.domain.ai.service;
 
 import com.curihous.qbit.api.domain.ai.dto.response.ReportTradeCycleResponseDto;
-import com.curihous.qbit.domain.trade.entity.TradeExecution;
-import com.curihous.qbit.domain.trade.service.TradeExecutionService;
+import com.curihous.qbit.domain.order.entity.OrderRequest;
+import com.curihous.qbit.domain.order.entity.OrderStatus;
+import com.curihous.qbit.domain.order.repository.OrderRequestRepository;
 import com.curihous.qbit.domain.tradecycle.entity.TradeCycle;
 import com.curihous.qbit.domain.tradecycle.service.TradeCycleService;
-import com.curihous.qbit.domain.user.entity.User;
 import com.curihous.qbit.infra.binance.service.BinanceMarketService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 public class AiDataService {
     
     private final TradeCycleService tradeCycleService;
-    private final TradeExecutionService tradeExecutionService;
+    private final OrderRequestRepository orderRequestRepository;
     private final BinanceMarketService binanceMarketService;
     
     // AI 서버용 특정 TradeCycle 데이터 조회
@@ -53,13 +53,8 @@ public class AiDataService {
             interval
         );
         
-        // 2. 매수/매도 지점 조회 (TradeExecution)
-        List<ReportTradeCycleResponseDto.TradePoint> tradePoints = fetchTradePoints(
-            tradeCycle.getUser(), 
-            symbol, 
-            tradeCycle.getStartDate(), 
-            tradeCycle.getEndDate()
-        );
+        // 2. 매수/매도 지점 조회 (OrderRequest의 FILLED 상태)
+        List<ReportTradeCycleResponseDto.TradePoint> tradePoints = fetchTradePoints(tradeCycle.getId());
         
         // 3. DTO 조합
         return ReportTradeCycleResponseDto.builder()
@@ -124,31 +119,25 @@ public class AiDataService {
         }
     }
     
-    // TradeExecution에서 매수/매도 지점 조회
-    private List<ReportTradeCycleResponseDto.TradePoint> fetchTradePoints(
-        User user, 
-        String symbol, 
-        java.time.LocalDateTime startDate, 
-        java.time.LocalDateTime endDate
-    ) {
-        List<TradeExecution> executions = tradeExecutionService.getTradeExecutionsByPeriod(
-            user, 
-            symbol, 
-            startDate, 
-            endDate
+    // OrderRequest의 FILLED 상태에서 매수/매도 지점 조회 
+    private List<ReportTradeCycleResponseDto.TradePoint> fetchTradePoints(Long tradeCycleId) {
+        // TradeCycle에 연결된 체결된 주문 조회 
+        List<OrderRequest> filledOrders = orderRequestRepository.findByTradeCycleIdAndStatusIn(
+            tradeCycleId,
+            List.of(OrderStatus.FILLED, OrderStatus.PARTIALLY_FILLED)
         );
         
-        return executions.stream()
-            .map(execution -> ReportTradeCycleResponseDto.TradePoint.builder()
-                .timestamp(execution.getExecutedAt()
-                    .atZone(ZoneId.systemDefault())
-                    .toInstant()
-                    .toEpochMilli())
-                .side(execution.getOrderRequest().getSide().name())  // "BUY" or "SELL"
-                .price(execution.getExecutedPrice())
-                .quantity(execution.getExecutedQuantity())
-                .build())
-                .collect(Collectors.toList());
+        return filledOrders.stream()
+            .filter(order -> order.getFilledAt() != null) // filledAt이 있는 것만
+            .map(order -> {
+                return ReportTradeCycleResponseDto.TradePoint.builder()
+                    .timestamp(order.getFilledAt().toInstant().toEpochMilli())
+                    .side(order.getSide().name())  
+                    .price(order.getFilledAvgPrice() != null ? order.getFilledAvgPrice() : order.getLimitPrice())
+                    .quantity(order.getFilledQuantity() != null ? order.getFilledQuantity() : order.getQuantity())
+                    .build();
+            })
+            .collect(Collectors.toList());
     }
 }
 

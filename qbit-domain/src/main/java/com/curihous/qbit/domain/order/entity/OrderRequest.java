@@ -2,6 +2,7 @@ package com.curihous.qbit.domain.order.entity;
 
 import com.curihous.qbit.common.entity.BaseTimeEntity;
 import com.curihous.qbit.domain.stock.entity.Stock;
+import com.curihous.qbit.domain.tradecycle.entity.TradeCycle;
 import com.curihous.qbit.domain.user.entity.User;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
@@ -133,6 +134,11 @@ public class OrderRequest extends BaseTimeEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
+    
+    // 해당 주문이 속한 TradeCycle
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "trade_cycle_id")
+    private TradeCycle tradeCycle;
 
     @Builder
     public OrderRequest(String alpacaOrderId, String symbol, BigDecimal quantity, BigDecimal filledQuantity,
@@ -141,7 +147,7 @@ public class OrderRequest extends BaseTimeEntity {
                         OffsetDateTime alpacaCreatedAt, OffsetDateTime submittedAt,
                         OffsetDateTime filledAt, OffsetDateTime canceledAt, OffsetDateTime rejectedAt, OffsetDateTime expiredAt,
                         OffsetDateTime replacedAt, String replacedBy, String replaces,
-                        Stock stock, User user) {
+                        Stock stock, User user, TradeCycle tradeCycle) {
         this.alpacaOrderId = alpacaOrderId;
         this.symbol = symbol;
         this.quantity = quantity;
@@ -165,6 +171,7 @@ public class OrderRequest extends BaseTimeEntity {
         this.replaces = replaces;
         this.stock = stock;
         this.user = user;
+        this.tradeCycle = tradeCycle;
     }
 
     // 주문이 대체되었을 때 호출

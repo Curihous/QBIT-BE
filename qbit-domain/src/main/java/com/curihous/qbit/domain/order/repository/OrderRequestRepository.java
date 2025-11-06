@@ -6,6 +6,8 @@ import com.curihous.qbit.domain.user.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -28,4 +30,14 @@ public interface OrderRequestRepository extends JpaRepository<OrderRequest, Long
     
     // 상태별 주문 조회
     List<OrderRequest> findByStatusIn(List<OrderStatus> statuses);
+    
+    // 특정 TradeCycle에 연결된 체결된 주문 조회 (FILLED, PARTIALLY_FILLED)
+    @Query("SELECT DISTINCT or FROM OrderRequest or " +
+           "WHERE or.tradeCycle.id = :tradeCycleId " +
+           "AND or.status IN :statuses " +
+           "ORDER BY or.filledAt ASC")
+    List<OrderRequest> findByTradeCycleIdAndStatusIn(
+        @Param("tradeCycleId") Long tradeCycleId,
+        @Param("statuses") List<OrderStatus> statuses
+    );
 }
