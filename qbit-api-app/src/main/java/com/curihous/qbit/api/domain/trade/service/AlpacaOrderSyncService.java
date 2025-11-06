@@ -685,8 +685,8 @@ public class AlpacaOrderSyncService {
                         return finalCompletedCycles.stream().noneMatch(cycle -> {
                             LocalDateTime startDate = cycle.getStartDate();
                             LocalDateTime endDate = cycle.getEndDate();
-                            return filledAt.compareTo(startDate) >= 0 
-                                    && filledAt.compareTo(endDate) <= 0;
+                            return !filledAt.isBefore(startDate)
+                                    && !filledAt.isAfter(endDate);
                         });
                     })
                     .collect(Collectors.toList());

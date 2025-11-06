@@ -1,7 +1,7 @@
 package com.curihous.qbit.domain.alpaca.entity;
 
-import com.curihous.qbit.common.entity.BaseTimeEntity;
 import com.curihous.qbit.common.encryption.EncryptedStringConverter;
+import com.curihous.qbit.common.entity.BaseTimeEntity;
 import com.curihous.qbit.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -45,6 +45,7 @@ public class AlpacaOAuthConnection extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "connection_status", nullable = false)
     private AlpacaConnectionStatus alpacaConnectionStatus = AlpacaConnectionStatus.ACTIVE;
+
     @Builder
     public AlpacaOAuthConnection(User user, String alpacaUserId, String accessToken, 
                                 String tokenType, LocalDateTime expiresAt) {

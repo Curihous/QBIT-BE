@@ -32,29 +32,29 @@ public class CreateOrderRequest {
     @Schema(description = "종목 심볼 (예: AAPL, TSLA)", example = "AAPL", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank
     @JsonProperty("symbol")
-    private String symbol;
+    private final String symbol;
 
     @Schema(description = "자산 클래스 (us_equity, crypto)", example = "us_equity")
     @JsonProperty("asset_class")
-    private String assetClass;
+    private final String assetClass;
 
     @Schema(description = "주문 수량 (fractional shares 지원)", example = "10.5", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotNull
     @Positive(message = "주문 수량은 0보다 커야 합니다")
     @JsonProperty("qty")
-    private BigDecimal quantity;
+    private final BigDecimal quantity;
 
     @Schema(description = "주문 방향 (buy: 매수, sell: 매도)", example = "buy", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank
     @Pattern(regexp = "^(buy|sell)$")
     @JsonProperty("side")
-    private String side;
+    private final String side;
 
     @Schema(description = "주문 유형 (market: 시장가, limit: 지정가, stop: 손절, stop_limit: 손절 지정가)", example = "limit", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank
     @Pattern(regexp = "^(market|limit|stop|stop_limit)$")
     @JsonProperty("type")
-    private String type;
+    private final String type;
 
     @Schema(description = "주문 유효기간 (day: 당일, gtc: 체결될 때까지, ioc: 즉시 체결 또는 취소, fok: 전량 체결 또는 취소)", example = "gtc", defaultValue = "day")
     @Pattern(regexp = "^(day|gtc|ioc|fok)$")
@@ -63,11 +63,11 @@ public class CreateOrderRequest {
 
     @Schema(description = "지정가 (limit/stop_limit 주문 시 필수)", example = "175.50")
     @JsonProperty("limit_price")
-    private BigDecimal limitPrice;
+    private final BigDecimal limitPrice;
 
     @Schema(description = "손절가 (stop/stop_limit 주문 시 필수, 트리거 가격)", example = "165.00")
     @JsonProperty("stop_price")
-    private BigDecimal stopPrice;
+    private final BigDecimal stopPrice;
 
     @Schema(description = "클라이언트 주문 ID (멱등성 보장 - 중복 주문 방지. 클라이언트가 생성)", example = "qbit-order-20240115-093000-abc123")
     @JsonProperty("client_order_id")
