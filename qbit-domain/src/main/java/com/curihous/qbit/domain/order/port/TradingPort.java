@@ -145,7 +145,8 @@ public interface TradingPort {
         String accountId,            // Alpaca 계정 ID
         String cryptoStatus,         // 암호화폐 거래 상태
         boolean tradingBlocked,      // 거래 차단 여부
-        boolean accountBlocked       // 계정 차단 여부
+        boolean accountBlocked,      // 계정 차단 여부
+        String multiplier            // 레버리지 배수
     ) {}
 }
 

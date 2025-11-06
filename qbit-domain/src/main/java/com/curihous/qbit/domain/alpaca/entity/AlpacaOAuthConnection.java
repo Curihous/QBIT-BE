@@ -45,7 +45,6 @@ public class AlpacaOAuthConnection extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "connection_status", nullable = false)
     private AlpacaConnectionStatus alpacaConnectionStatus = AlpacaConnectionStatus.ACTIVE;
-
     @Builder
     public AlpacaOAuthConnection(User user, String alpacaUserId, String accessToken, 
                                 String tokenType, LocalDateTime expiresAt) {

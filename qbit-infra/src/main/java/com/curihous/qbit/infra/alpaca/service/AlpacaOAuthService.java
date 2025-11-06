@@ -181,7 +181,8 @@ public class AlpacaOAuthService implements TradingPort {
                     account.id(),                    
                     account.cryptoStatus(),           
                     account.tradingBlocked(),        
-                    account.accountBlocked()         
+                    account.accountBlocked(),
+                    account.multiplier()         
             );
         } catch (Exception e) {
             log.error("Alpaca 계정 정보 조회 실패: {}", e.getMessage(), e);

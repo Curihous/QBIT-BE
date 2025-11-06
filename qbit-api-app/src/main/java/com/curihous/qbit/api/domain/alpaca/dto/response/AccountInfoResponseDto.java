@@ -50,7 +50,10 @@ public record AccountInfoResponseDto(
     String longMarketValue,
     
     @Schema(description = "숏 포지션(매도) 시장 가치", example = "0.00")
-    String shortMarketValue
+    String shortMarketValue,
+    
+    @Schema(description = "레버리지 배수(마진 계정에 따라)", example = "1")
+    String multiplier
 ) {
     public static AccountInfoResponseDto from(TradingPort.AccountInfo account) {
         return new AccountInfoResponseDto(
@@ -67,7 +70,8 @@ public record AccountInfoResponseDto(
             account.equity(),                       
             account.lastEquity(),                   
             account.longMarketValue(),              
-            account.shortMarketValue()              
+            account.shortMarketValue(),
+            account.multiplier()              
         );
     }
 }
