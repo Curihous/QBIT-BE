@@ -26,16 +26,13 @@ public class AiDataService {
     private final BinanceMarketService binanceMarketService;
     
     // AI 서버용 특정 TradeCycle 데이터 조회
-    public ReportTradeCycleResponseDto getTradeCycleForAi(User user, Long tradeCycleId, String interval) {
-        log.info("AI용 단일 TradeCycle 데이터 조회 시작: userId={}, tradeCycleId={}, interval={}", 
-                user.getId(), tradeCycleId, interval);
+    public ReportTradeCycleResponseDto getTradeCycleForAi(Long tradeCycleId, String interval) {
+        log.info("AI용 단일 TradeCycle 데이터 조회 시작: tradeCycleId={}, interval={}", 
+                tradeCycleId, interval);
         
         TradeCycle tradeCycle = tradeCycleService.getTradeCycleById(tradeCycleId);
         
-        // 권한 검증(사용자가 자신의 데이터만 조회할 수 있도록 보호)
-        if (!tradeCycle.getUser().getId().equals(user.getId())) {
-            throw new IllegalArgumentException("접근 권한이 없습니다.");
-        }
+        // TODO: 보안을 위해 IP 화이트리스트 또는 API 키 기반 인증 추가 고려
         
         ReportTradeCycleResponseDto result = convertToAiDto(tradeCycle, interval);
         

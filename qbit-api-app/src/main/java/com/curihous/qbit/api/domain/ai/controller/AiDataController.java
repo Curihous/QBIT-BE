@@ -2,8 +2,6 @@ package com.curihous.qbit.api.domain.ai.controller;
 
 import com.curihous.qbit.api.domain.ai.dto.response.ReportTradeCycleResponseDto;
 import com.curihous.qbit.api.domain.ai.service.AiDataService;
-import com.curihous.qbit.domain.user.entity.User;
-import com.curihous.qbit.infra.security.facade.UserSecurityFacade;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -23,19 +21,17 @@ import org.springframework.web.bind.annotation.RestController;
 public class AiDataController {
     
     private final AiDataService aiDataService;
-    private final UserSecurityFacade userSecurityFacade;
     
     @GetMapping("/{tradeCycleId}")
     @Operation(summary = "AI 서버용 TradeCycle 데이터 조회", 
-               description = "AI 서버가 특정 TradeCycle을 분석하기 위한 모든 데이터를 반환합니다.")
+               description = "AI 서버가 특정 TradeCycle을 분석하기 위한 모든 데이터를 반환합니다. 인증 없이 접근 가능합니다.")
     public ResponseEntity<ReportTradeCycleResponseDto> getTradeCycleForAi(
         @PathVariable Long tradeCycleId,
         @RequestParam(defaultValue = "1h") String interval
     ) {
         log.info("AI용 TradeCycle 데이터 조회 요청: tradeCycleId={}, interval={}", tradeCycleId, interval);
         
-        User user = userSecurityFacade.getCurrentUser();
-        ReportTradeCycleResponseDto response = aiDataService.getTradeCycleForAi(user, tradeCycleId, interval);
+        ReportTradeCycleResponseDto response = aiDataService.getTradeCycleForAi(tradeCycleId, interval);
         
         return ResponseEntity.ok(response);
     }
