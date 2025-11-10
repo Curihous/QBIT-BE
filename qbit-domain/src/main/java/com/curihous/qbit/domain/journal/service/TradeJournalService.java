@@ -60,7 +60,7 @@ public class TradeJournalService {
             return tradeJournalRepository.findByUserAndCreatedAtBetween(user, start, end, pageable);
         }
 
-        return tradeJournalRepository.findByUserAndOrderRequestSideAndCreatedAtBetween(user, side, start, end, pageable);
+        return tradeJournalRepository.findByUserAndOrderRequest_SideAndCreatedAtBetween(user, side, start, end, pageable);
     }
 
     // 매매 일지 조회

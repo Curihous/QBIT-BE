@@ -59,8 +59,7 @@ public class TradeJournalController {
     public ResponseEntity<PaginatedResponseDto<TradeJournalResponseDto>> getTradeJournalsByMonth(
         @RequestParam int year,
         @RequestParam int month,
-        @RequestParam(defaultValue = "true") boolean all,
-        @RequestParam(defaultValue = "ALL") OrderSide side,
+        @RequestParam(required = false) OrderSide side,
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "10") int size
     ) {
@@ -72,7 +71,7 @@ public class TradeJournalController {
             user,
             year,
             month,
-            all ? null : side,
+            side,
             pageable
         );
 

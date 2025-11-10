@@ -32,10 +32,10 @@ public interface OrderRequestRepository extends JpaRepository<OrderRequest, Long
     List<OrderRequest> findByStatusIn(List<OrderStatus> statuses);
     
     // 특정 TradeCycle에 연결된 체결된 주문 조회 (FILLED, PARTIALLY_FILLED)
-    @Query("SELECT DISTINCT or FROM OrderRequest or " +
-           "WHERE or.tradeCycle.id = :tradeCycleId " +
-           "AND or.status IN :statuses " +
-           "ORDER BY or.filledAt ASC")
+    @Query("SELECT DISTINCT req FROM OrderRequest req " +
+           "WHERE req.tradeCycle.id = :tradeCycleId " +
+           "AND req.status IN :statuses " +
+           "ORDER BY req.filledAt ASC")
     List<OrderRequest> findByTradeCycleIdAndStatusIn(
         @Param("tradeCycleId") Long tradeCycleId,
         @Param("statuses") List<OrderStatus> statuses
