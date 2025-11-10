@@ -41,7 +41,7 @@ public class CryptoSymbolConverter {
         
         // 암호화폐만 변환
         if (!"crypto".equalsIgnoreCase(assetClass)) {
-            log.debug("암호화폐가 아님, 변환하지 않음: assetClass={}", assetClass);
+            // log.debug("암호화폐가 아님, 변환하지 않음: assetClass={}", assetClass);
             return null;
         }
         

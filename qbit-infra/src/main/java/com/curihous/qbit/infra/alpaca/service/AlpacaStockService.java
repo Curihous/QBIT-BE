@@ -134,7 +134,7 @@ public class AlpacaStockService {
                 .binanceSymbol(binanceSymbol)
                 .build();
         
-        log.debug("종목 도메인 자동 생성: {} → {}", assetResponse.name(), generatedDomain);
+        // log.debug("종목 도메인 자동 생성: {} → {}", assetResponse.name(), generatedDomain);
         
         return stockRepository.save(stock);
     }
