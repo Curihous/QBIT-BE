@@ -88,7 +88,6 @@ public enum ErrorCode {
     TRADE_CYCLE_ALREADY_EXISTS(409, "이미 존재하는 거래 사이클입니다."),
     ORDER_REQUEST_ALREADY_EXISTS(409, "이미 존재하는 주문 요청입니다."),
     JOURNAL_ALREADY_EXISTS(409, "이미 존재하는 매매 일지입니다."),
-    TRADE_REPORT_ALREADY_EXISTS(409, "이미 존재하는 거래 리포트입니다."),
 
     // 500 Internal Server Error
     // 외부 API 사용 도중 에러

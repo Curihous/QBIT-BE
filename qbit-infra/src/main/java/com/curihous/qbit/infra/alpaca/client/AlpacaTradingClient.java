@@ -8,6 +8,7 @@ import com.curihous.qbit.infra.alpaca.dto.response.AlpacaAccountResponse;
 import com.curihous.qbit.infra.alpaca.dto.response.AlpacaAssetResponse;
 import com.curihous.qbit.infra.alpaca.dto.response.AlpacaOrderResponse;
 import com.curihous.qbit.infra.alpaca.dto.response.AlpacaPositionResponse;
+import com.curihous.qbit.infra.alpaca.dto.response.AlpacaPortfolioHistoryResponse;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
@@ -107,6 +108,15 @@ public interface AlpacaTradingClient extends AlpacaTradingPort {
     AlpacaAssetResponse getAsset(
         @RequestHeader("Authorization") String authorization,
         @PathVariable("symbol") String symbol
+    );
+
+    // ============== Portfolio History API ==============
+
+    @GetMapping("/v2/account/portfolio/history")
+    AlpacaPortfolioHistoryResponse getPortfolioHistory(
+        @RequestHeader("Authorization") String authorization,
+        @RequestParam(value = "period", required = false) String period,
+        @RequestParam(value = "timeframe", required = false) String timeframe
     );
 }
 

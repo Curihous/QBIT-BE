@@ -1,7 +1,9 @@
 package com.curihous.qbit.api.domain.portfolio.controller;
-
+                                                   
+import com.curihous.qbit.api.domain.portfolio.dto.response.PortfolioOverviewResponseDto;
 import com.curihous.qbit.api.domain.portfolio.dto.response.PositionResponseDto;
 import com.curihous.qbit.api.domain.portfolio.dto.response.PositionWithAccountResponseDto;
+import com.curihous.qbit.api.domain.portfolio.service.PortfolioOverviewService;
 import com.curihous.qbit.common.dto.PaginatedResponseDto;
 import com.curihous.qbit.common.util.PagingValidator;
 import com.curihous.qbit.domain.order.port.TradingPort;
@@ -33,6 +35,7 @@ public class PortfolioController {
 
     private final TradingPort tradingPort;
     private final UserSecurityFacade userSecurityFacade;
+    private final PortfolioOverviewService portfolioOverviewService;
 
     @Operation(
         summary = "보유 포지션 조회", 
@@ -67,4 +70,16 @@ public class PortfolioController {
         PositionWithAccountResponseDto response = PositionWithAccountResponseDto.from(result);
         return ResponseEntity.ok(response);
     }
+
+    @Operation(
+        summary = "포트폴리오 오버뷰 조회",
+        description = "자산 그래프를 그리기 위한 포트폴리오 오버뷰를 조회합니다. (90초 동안 캐시)"
+    )
+    @GetMapping("/overview")
+    public ResponseEntity<PortfolioOverviewResponseDto> getPortfolioOverview() {
+        User user = userSecurityFacade.getCurrentUser();
+        PortfolioOverviewResponseDto response = portfolioOverviewService.getOverview(user);
+        return ResponseEntity.ok(response);
+    }
+
 }
