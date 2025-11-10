@@ -11,9 +11,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -129,15 +131,29 @@ public class AiDataService {
         
         return filledOrders.stream()
             .filter(order -> order.getFilledAt() != null) // filledAt이 있는 것만
-            .map(order -> {
-                return ReportTradeCycleResponseDto.TradePoint.builder()
-                    .timestamp(order.getFilledAt().toInstant().toEpochMilli())
-                    .side(order.getSide().name())  
-                    .price(order.getFilledAvgPrice() != null ? order.getFilledAvgPrice() : order.getLimitPrice())
-                    .quantity(order.getFilledQuantity() != null ? order.getFilledQuantity() : order.getQuantity())
-                    .build();
-            })
+            .map(this::toTradePoint)
+            .flatMap(Optional::stream)
             .collect(Collectors.toList());
+    }
+
+    private Optional<ReportTradeCycleResponseDto.TradePoint> toTradePoint(OrderRequest order) {
+        BigDecimal filledPrice = order.getFilledAvgPrice();
+        BigDecimal filledQuantity = order.getFilledQuantity();
+
+        if (filledPrice == null || filledQuantity == null || filledQuantity.compareTo(BigDecimal.ZERO) <= 0) {
+            log.debug("TradePoint 생성을 건너뜀 - 체결 정보 미완: orderId={}, status={}, filledAvgPrice={}, filledQuantity={}",
+                order.getId(), order.getStatus(), filledPrice, filledQuantity);
+            return Optional.empty();
+        }
+
+        return Optional.of(
+            ReportTradeCycleResponseDto.TradePoint.builder()
+                .timestamp(order.getFilledAt().toInstant().toEpochMilli())
+                .side(order.getSide().name())
+                .price(filledPrice)
+                .quantity(filledQuantity)
+                .build()
+        );
     }
 }
 
