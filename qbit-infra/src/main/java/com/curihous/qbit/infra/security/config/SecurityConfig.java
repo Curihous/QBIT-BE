@@ -39,6 +39,7 @@ public class SecurityConfig {
                         .requestMatchers("/", "/css/**", "/images/**", "/js/**", "/favicon.ico", "/h2-console/**").permitAll()
                         .requestMatchers("/auth/**").permitAll() // 카카오 네이티브 로그인 포함
                         .requestMatchers("/actuator/**").permitAll()
+                        .requestMatchers("/error").permitAll()
                         .requestMatchers("/trade-cycles/**").permitAll() // AI 서버용 TradeCycle 조회 (인증 없이 접근 가능)
                         .anyRequest().authenticated()
                 )
