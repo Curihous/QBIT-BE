@@ -98,7 +98,7 @@ public class SwaggerConfig {
                 .pathsToMatch("/trading/**", "/trade-cycles/**")
                 .build();
     }
-    
+
     @Bean
     public GroupedOpenApi portfolioApi() {
         return GroupedOpenApi.builder()
@@ -106,5 +106,14 @@ public class SwaggerConfig {
                 .pathsToMatch("/portfolios/**")
                 .build();
     }
+    
+    @Bean
+    public GroupedOpenApi journalApi() {
+        return GroupedOpenApi.builder()
+                .group("거래 일지")
+                .pathsToMatch("/journals/**")
+                .build();
+    }
+    
     
 }

@@ -3,6 +3,7 @@ package com.curihous.qbit.api.domain.portfolio.controller;
 import com.curihous.qbit.api.domain.portfolio.dto.response.PositionResponseDto;
 import com.curihous.qbit.api.domain.portfolio.dto.response.PositionWithAccountResponseDto;
 import com.curihous.qbit.common.dto.PaginatedResponseDto;
+import com.curihous.qbit.common.util.PagingValidator;
 import com.curihous.qbit.domain.order.port.TradingPort;
 import com.curihous.qbit.domain.user.entity.User;
 import com.curihous.qbit.infra.security.facade.UserSecurityFacade;
@@ -42,6 +43,8 @@ public class PortfolioController {
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "10") int size
     ) {
+        PagingValidator.validate(page, size);
+
         User user = userSecurityFacade.getCurrentUser();
         Pageable pageable = PageRequest.of(page, size);
         Page<TradingPort.PositionInfo> positionsPage = tradingPort.getPositions(user, pageable);
