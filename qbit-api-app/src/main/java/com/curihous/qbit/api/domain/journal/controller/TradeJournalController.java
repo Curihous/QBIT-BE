@@ -63,6 +63,12 @@ public class TradeJournalController {
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "10") int size
     ) {
+        if (month < 1 || month > 12) {
+            throw new QbitException(ErrorCode.INVALID_INPUT_VALUE, "month 파라미터는 1 이상 12 이하이어야 합니다.");
+        }
+        if (year < 1900 || year > 2100) {
+            throw new QbitException(ErrorCode.INVALID_INPUT_VALUE, "year 파라미터는 1900 이상 2100 이하이어야 합니다.");
+        }
         PagingValidator.validate(page, size);
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
