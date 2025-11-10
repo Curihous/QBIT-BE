@@ -14,8 +14,6 @@ import com.curihous.qbit.domain.portfolio.entity.Portfolio;
 import com.curihous.qbit.domain.portfolio.repository.PortfolioRepository;
 import com.curihous.qbit.domain.stock.entity.Stock;
 import com.curihous.qbit.domain.stock.repository.StockRepository;
-import com.curihous.qbit.domain.trade.entity.TradeExecution;
-import com.curihous.qbit.domain.trade.repository.TradeExecutionRepository;
 import com.curihous.qbit.domain.tradecycle.entity.TradeCycle;
 import com.curihous.qbit.domain.tradecycle.repository.TradeCycleRepository;
 import com.curihous.qbit.domain.user.entity.User;
@@ -52,7 +50,6 @@ import java.util.stream.Collectors;
 public class AlpacaOrderSyncService {
 
     private final OrderRequestRepository orderRequestRepository;
-    private final TradeExecutionRepository tradeExecutionRepository;
     private final PortfolioRepository portfolioRepository;
     private final TradeCycleRepository tradeCycleRepository;
     private final UserRepository userRepository;
@@ -252,28 +249,14 @@ public class AlpacaOrderSyncService {
     
     // 완전 체결 이벤트 처리
     private void handleFillEvent(TradeUpdateEvent event) {
-        // 1. 주문 상태 업데이트
         updateOrderStatus(event);
-        
-        // 2. 체결 내역 기록
-        recordTradeExecution(event);
-        
-        // 3. Portfolio 업데이트
         updatePortfolio(event);
-        
-        // 4. TradeCycle 업데이트
         updateTradeCycle(event);
     }
     
     // 부분 체결 이벤트 처리
     private void handlePartialFillEvent(TradeUpdateEvent event) {
-        // 1. 주문 상태 업데이트
-        updateOrderStatus(event);
-        
-        // 2. 부분 체결 내역 기록
-        recordTradeExecution(event);
-        
-        // 3. Portfolio 업데이트 (부분 체결도 즉시 반영)
+        updateOrderStatus(event);   
         updatePortfolio(event);
     }
     
@@ -330,47 +313,6 @@ public class AlpacaOrderSyncService {
             
         } catch (Exception e) {
             log.error("주문 상태 업데이트 실패: alpacaOrderId={}, error={}", 
-                    event.getAlpacaOrderId(), e.getMessage(), e);
-        }
-    }
-    
-    // 체결 내역 기록
-    private void recordTradeExecution(TradeUpdateEvent event) {
-        try {
-            Optional<OrderRequest> orderOpt = orderRequestRepository
-                    .findByAlpacaOrderId(event.getAlpacaOrderId());
-            
-            if (orderOpt.isEmpty()) {
-                log.warn("주문을 찾을 수 없음: alpacaOrderId={}", event.getAlpacaOrderId());
-                return;
-            }
-            
-            OrderRequest order = orderOpt.get();
-            User user = order.getUser();
-            
-            BigDecimal quantity = parseBigDecimal(event.getEventQuantity());
-            BigDecimal price = parseBigDecimal(event.getEventPrice());
-            OffsetDateTime executedAt = parseOffsetDateTime(event.getEventTimestamp());
-            
-            LocalDateTime executedAtLocal = executedAt != null 
-                    ? executedAt.atZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime()
-                    : LocalDateTime.now();
-            
-            TradeExecution execution = new TradeExecution(
-                    quantity,
-                    price,
-                    executedAtLocal,
-                    order,
-                    user
-            );
-            
-            tradeExecutionRepository.save(execution);
-            
-            log.info("체결 내역 기록: orderId={}, qty={}, price={}", 
-                    order.getId(), quantity, price);
-            
-        } catch (Exception e) {
-            log.error("체결 내역 기록 실패: alpacaOrderId={}, error={}", 
                     event.getAlpacaOrderId(), e.getMessage(), e);
         }
     }

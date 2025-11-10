@@ -25,6 +25,7 @@ public enum ErrorCode {
     INVALID_ORDER_TYPE(400, "유효하지 않은 주문 유형입니다."),
     INVALID_ORDER_QUANTITY(400, "유효하지 않은 주문 수량입니다."),
     INVALID_ORDER_PRICE(400, "유효하지 않은 주문 가격입니다."),
+    INVALID_ORDER_STATUS(400, "유효하지 않은 주문 상태입니다."),
     INSUFFICIENT_BALANCE(400, "잔고가 부족합니다."),
     INVALID_TRADE_CYCLE(400, "유효하지 않은 거래 사이클입니다."),
     OPPOSITE_SIDE_ORDER_EXISTS(400, "반대 방향의 주문이 이미 존재하여 주문을 생성할 수 없습니다. 기존 주문을 취소한 후 다시 시도해주세요."),
@@ -62,7 +63,7 @@ public enum ErrorCode {
     // 권한이 없는 요청을 보냄
     UNAUTHORIZED_REQUEST(403, "권한이 없습니다."),
     PORTFOLIO_ACCESS_DENIED(403, "포트폴리오 접근 권한이 없습니다."),
-    TRADE_HISTORY_ACCESS_DENIED(403, "거래 내역 접근 권한이 없습니다."),
+    ORDER_REQUEST_ACCESS_DENIED(403, "주문 내역에 접근 권한이 없습니다."),
 
     // 404 Not Found
     // 각 리소스를 찾지 못함
@@ -87,7 +88,6 @@ public enum ErrorCode {
     TRADE_CYCLE_ALREADY_EXISTS(409, "이미 존재하는 거래 사이클입니다."),
     ORDER_REQUEST_ALREADY_EXISTS(409, "이미 존재하는 주문 요청입니다."),
     JOURNAL_ALREADY_EXISTS(409, "이미 존재하는 매매 일지입니다."),
-    TRADE_REPORT_ALREADY_EXISTS(409, "이미 존재하는 거래 리포트입니다."),
 
     // 500 Internal Server Error
     // 외부 API 사용 도중 에러

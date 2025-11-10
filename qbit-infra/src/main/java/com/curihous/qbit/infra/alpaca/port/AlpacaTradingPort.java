@@ -6,6 +6,7 @@ import com.curihous.qbit.infra.alpaca.dto.response.AlpacaAccountResponse;
 import com.curihous.qbit.infra.alpaca.dto.response.AlpacaAssetResponse;
 import com.curihous.qbit.infra.alpaca.dto.response.AlpacaOrderResponse;
 import com.curihous.qbit.infra.alpaca.dto.response.AlpacaPositionResponse;
+import com.curihous.qbit.infra.alpaca.dto.response.AlpacaPortfolioHistoryResponse;
 
 import java.util.List;
 
@@ -38,4 +39,7 @@ public interface AlpacaTradingPort {
     
     // 특정 종목 포지션 조회
     AlpacaPositionResponse getPosition(String authorization, String symbol);
+
+    // 포트폴리오 히스토리 조회
+    AlpacaPortfolioHistoryResponse getPortfolioHistory(String authorization, String period, String timeframe);
 }
