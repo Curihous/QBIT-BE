@@ -1,7 +1,5 @@
 package com.curihous.qbit.infra.alpaca.dto.response;
 
-package com.curihous.qbit.infra.alpaca.dto.response;
-
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.math.BigDecimal;
