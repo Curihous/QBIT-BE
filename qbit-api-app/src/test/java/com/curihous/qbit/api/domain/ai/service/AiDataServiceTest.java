@@ -7,7 +7,6 @@ import com.curihous.qbit.domain.order.repository.OrderRequestRepository;
 import com.curihous.qbit.domain.tradecycle.entity.TradeCycle;
 import com.curihous.qbit.domain.tradecycle.service.TradeCycleService;
 import com.curihous.qbit.domain.stock.entity.Stock;
-import com.curihous.qbit.infra.binance.service.BinanceMarketService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -17,12 +16,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
-import java.util.Collections;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -35,8 +31,6 @@ class AiDataServiceTest {
     private TradeCycleService tradeCycleService;
     @Mock
     private OrderRequestRepository orderRequestRepository;
-    @Mock
-    private BinanceMarketService binanceMarketService;
 
     @InjectMocks
     private AiDataService aiDataService;
@@ -50,8 +44,6 @@ class AiDataServiceTest {
 
         TradeCycle tradeCycle = mockTradeCycle(tradeCycleId);
         when(tradeCycleService.getTradeCycleById(tradeCycleId)).thenReturn(tradeCycle);
-        when(binanceMarketService.getKlines(any(), any(), any(), any(), anyInt()))
-            .thenReturn(Collections.emptyList());
 
         // 정상적으로 체결 정보가 채워진 주문
         OffsetDateTime completeFilledAt = OffsetDateTime.now();
@@ -92,8 +84,7 @@ class AiDataServiceTest {
     private TradeCycle mockTradeCycle(long id) {
         TradeCycle tradeCycle = mock(TradeCycle.class);
         Stock stock = mock(Stock.class);
-        when(stock.getSymbol()).thenReturn("AAPL");
-        when(stock.getBinanceSymbol()).thenReturn("AAPLUSDT");
+        when(stock.getSymbol()).thenReturn("");
 
         when(tradeCycle.getId()).thenReturn(id);
         when(tradeCycle.getStock()).thenReturn(stock);
