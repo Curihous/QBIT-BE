@@ -42,7 +42,7 @@ public class TradeJournalController {
     private final TradeJournalService tradeJournalService;
     private final UserSecurityFacade userSecurityFacade;
 
-    @Operation(summary = "거래 일지 작성", description = "체결된 주문에 대해 거래 일지를 작성합니다.")
+    @Operation(summary = "거래 일지 작성", description = "요청된 주문에 대한 거래 일지를 작성합니다.")
     @PostMapping("/orders/{orderId}")
     public ResponseEntity<TradeJournalResponseDto> createTradeJournal(
         @PathVariable Long orderId,
