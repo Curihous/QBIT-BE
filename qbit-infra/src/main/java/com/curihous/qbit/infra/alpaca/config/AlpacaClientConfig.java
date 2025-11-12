@@ -6,6 +6,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import feign.codec.Encoder;
+import feign.querymap.BeanQueryMapEncoder;
+import feign.QueryMapEncoder;
 
 @Configuration
 @RequiredArgsConstructor
@@ -26,6 +29,16 @@ public class AlpacaClientConfig {
             // 슬래시 디코딩 비활성화
             requestTemplate.decodeSlash(false);
         };
+    }
+
+    @Bean
+    public Encoder feignEncoder() {
+        return new Encoder.Default();
+    }
+
+    @Bean
+    public QueryMapEncoder queryMapEncoder() {
+        return new BeanQueryMapEncoder();
     }
 }
 
