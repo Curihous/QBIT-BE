@@ -29,7 +29,7 @@ public class Stock extends BaseTimeEntity {
     @Column(name = "exchange")
     private String exchange;
 
-    @Column(name = "class")
+    @Column(name = "asset_class")
     private String assetClass;
 
     @Column(name = "status")

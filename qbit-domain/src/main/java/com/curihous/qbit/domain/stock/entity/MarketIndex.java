@@ -17,6 +17,7 @@ public class MarketIndex {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "market_index_id")
     private Long id;
 
     @Column(name = "symbol", nullable = false, unique = true, length = 10)

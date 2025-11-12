@@ -42,7 +42,7 @@ public class TradeJournalController {
     private final TradeJournalService tradeJournalService;
     private final UserSecurityFacade userSecurityFacade;
 
-    @Operation(summary = "거래 일지 작성", description = "체결된 주문에 대해 거래 일지를 작성합니다.")
+    @Operation(summary = "거래 일지 작성", description = "요청된 주문에 대한 거래 일지를 작성합니다.")
     @PostMapping("/orders/{orderId}")
     public ResponseEntity<TradeJournalResponseDto> createTradeJournal(
         @PathVariable Long orderId,
@@ -85,7 +85,7 @@ public class TradeJournalController {
         return ResponseEntity.ok(PaginatedResponseDto.from(mapped));
     }
 
-    @Operation(summary = "거래 일지 상세 조회", description = "거래 일지 상세 정보를 조회합니다.")
+    @Operation(summary = "거래 일지 상세 조회", description = "하나의 거래 일지 상세 정보를 조회합니다.")
     @GetMapping("/{journalId}")
     public ResponseEntity<TradeJournalResponseDto> getTradeJournal(@PathVariable Long journalId) {
         User user = userSecurityFacade.getCurrentUser();
@@ -93,7 +93,7 @@ public class TradeJournalController {
         return ResponseEntity.ok(TradeJournalResponseDto.from(journal));
     }
 
-    @Operation(summary = "거래 일지 수정", description = "거래 일지 내용을 수정합니다.")
+    @Operation(summary = "거래 일지 수정", description = "거래 일지의 내용, 감정을 수정합니다.")
     @PutMapping("/{journalId}")
     public ResponseEntity<TradeJournalResponseDto> updateTradeJournal(
         @PathVariable Long journalId,

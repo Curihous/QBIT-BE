@@ -30,7 +30,7 @@ public class TradeJournalService {
     // 매매 일지 생성
     @Transactional
     public TradeJournal createTradeJournal(User user, Long orderId, String content, TradeEmotion tradeEmotion) {
-        OrderRequest orderRequest = orderRequestRepository.findByIdAndUser(orderId, user)
+        OrderRequest orderRequest = orderRequestRepository.findById(orderId)
             .orElseThrow(() -> new QbitException(ErrorCode.ORDER_REQUEST_NOT_FOUND,
                 "주문을 찾을 수 없습니다. orderId=" + orderId));
 
