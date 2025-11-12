@@ -32,7 +32,7 @@ public interface AlpacaTradingPort {
     AlpacaAccountResponse getAccount(String authorization);
     
     // 주문 목록 조회
-    List<AlpacaOrderResponse> getOrders(String authorization, Map<String, Object> queryParams);
+    List<AlpacaOrderResponse> getOrders(String authorization, Map<String, String> queryParams);
 
     // 특정 주문 조회
     AlpacaOrderResponse getOrder(String authorization, String orderId);
