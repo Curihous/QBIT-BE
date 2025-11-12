@@ -82,7 +82,10 @@ public class AlpacaOrderRequestService {
         OrderRequest orderRequest = convertToEntity(alpacaResponse, user, stock);
         orderRequestRepository.save(orderRequest);
         
-        // 4. OrderCreatedResult 반환
+        // 4. Alpaca 최신 정보로 주문 동기화(WS도 있지만 안전장치)
+        refreshOrderFromAlpaca(authorization, alpacaResponse.id());
+
+        // 5. OrderCreatedResult 반환
         return convertToCreatedResult(alpacaResponse);
     }
 
@@ -438,5 +441,94 @@ public class AlpacaOrderRequestService {
         }
         
         return request;
+    }
+
+    private void refreshOrderFromAlpaca(String authorization, String alpacaOrderId) {
+        int attempts = 0;
+        long delayMillis = 250;
+        while (attempts < 8) {
+            try {
+                AlpacaOrderResponse fetched = alpacaTradingPort.getOrder(authorization, alpacaOrderId);
+                if (fetched != null) {
+                    orderRequestRepository.findByAlpacaOrderId(alpacaOrderId).ifPresent(order -> {
+                        OrderStatus currentStatus = order.getStatus();
+                        OrderStatus fetchedStatus = convertOrderStatus(fetched.status());
+
+                        if (shouldAdvanceStatus(currentStatus, fetchedStatus)) {
+                            order.updateStatus(fetchedStatus);
+                        }
+
+                        order.updateFilledInfo(
+                                parseBigDecimal(fetched.filledQuantity()),
+                                parseBigDecimal(fetched.filledAvgPrice()),
+                                fetched.filledAt()
+                        );
+
+                        if (fetched.submittedAt() != null) {
+                            order.updateSubmittedAt(fetched.submittedAt());
+                        }
+                        if (fetched.filledAt() != null) {
+                            order.updateFilledAt(fetched.filledAt());
+                        }
+                        if (fetched.canceledAt() != null) {
+                            order.updateCanceledAt(fetched.canceledAt());
+                        }
+                        if (fetched.rejectedAt() != null) {
+                            order.updateRejectedAt(fetched.rejectedAt());
+                        }
+                        if (fetched.expiredAt() != null) {
+                            order.updateExpiredAt(fetched.expiredAt());
+                        }
+
+                        orderRequestRepository.save(order);
+                    });
+                    if ("filled".equalsIgnoreCase(fetched.status())
+                            || "partially_filled".equalsIgnoreCase(fetched.status())) {
+                        return;
+                    }
+                    continue;
+                }
+                return;
+            } catch (FeignException.NotFound e) {
+                log.debug("Alpaca 주문 단건 조회 재시도: orderId={}, attempt={}", alpacaOrderId, attempts + 1);
+            } catch (Exception e) {
+                log.warn("Alpaca 주문 단건 조회 실패: orderId={}, attempt={}, error={}", alpacaOrderId, attempts + 1, e.getMessage());
+            }
+            attempts++;
+            try {
+                Thread.sleep(delayMillis);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+            delayMillis = Math.min(delayMillis * 2, 1500);
+        }
+        log.warn("Alpaca 주문 단건 조회 취소: orderId={}, 최대 시도 횟수 초과", alpacaOrderId);
+    }
+
+    private boolean shouldAdvanceStatus(OrderStatus current, OrderStatus incoming) {
+        if (incoming == null) {
+            return false;
+        }
+        if (current == null) {
+            return true;
+        }
+        if (incoming == current) {
+            return false;
+        }
+        if (isTerminalStatus(current) && !isTerminalStatus(incoming)) {
+            return false;
+        }
+        if (isTerminalStatus(incoming)) {
+            return true;
+        }
+        return incoming.ordinal() >= current.ordinal();
+    }
+
+    private boolean isTerminalStatus(OrderStatus status) {
+        return switch (status) {
+            case FILLED, CANCELED, EXPIRED, REPLACED, REJECTED, DONE_FOR_DAY, CALCULATED -> true;
+            default -> false;
+        };
     }
 }

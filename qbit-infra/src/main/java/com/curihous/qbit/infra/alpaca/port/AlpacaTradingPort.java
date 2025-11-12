@@ -33,6 +33,9 @@ public interface AlpacaTradingPort {
     
     // 주문 목록 조회
     List<AlpacaOrderResponse> getOrders(String authorization, Map<String, Object> queryParams);
+
+    // 특정 주문 조회
+    AlpacaOrderResponse getOrder(String authorization, String orderId);
     
     // 포지션 목록 조회
     List<AlpacaPositionResponse> getPositions(String authorization);

@@ -187,8 +187,9 @@ public class AlpacaOrderSyncService {
                         .minusDays(90)
                         .truncatedTo(ChronoUnit.SECONDS);
 
-                List<AlpacaOrderResponse> recentOrders = fetchOrders(authorization, "all", afterBoundary, null);
-                List<AlpacaOrderResponse> closedOrders = fetchOrders(authorization, "closed", null, null);
+                OffsetDateTime nowUtc = OffsetDateTime.now(ZoneOffset.UTC);
+                List<AlpacaOrderResponse> recentOrders = fetchOrders(authorization, "all", afterBoundary, nowUtc);
+                List<AlpacaOrderResponse> closedOrders = fetchOrders(authorization, "closed", afterBoundary, nowUtc);
 
                 alpacaOrders = Stream.concat(
                                 recentOrders != null ? recentOrders.stream() : Stream.empty(),

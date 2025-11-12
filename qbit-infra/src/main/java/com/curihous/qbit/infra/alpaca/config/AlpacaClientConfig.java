@@ -7,7 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import feign.codec.Encoder;
-import feign.querymap.BeanQueryMapEncoder;
+import feign.querymap.FieldQueryMapEncoder;
 import feign.QueryMapEncoder;
 
 @Configuration
@@ -38,7 +38,19 @@ public class AlpacaClientConfig {
 
     @Bean
     public QueryMapEncoder queryMapEncoder() {
-        return new BeanQueryMapEncoder();
+        FieldQueryMapEncoder delegate = new FieldQueryMapEncoder();
+        return object -> {
+            if (object instanceof java.util.Map<?, ?> map) {
+                java.util.Map<String, Object> result = new java.util.LinkedHashMap<>();
+                map.forEach((key, value) -> {
+                    if (key != null) {
+                        result.put(String.valueOf(key), value);
+                    }
+                });
+                return result;
+            }
+            return delegate.encode(object);
+        };
     }
 }
 

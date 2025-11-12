@@ -9,6 +9,7 @@ import com.curihous.qbit.infra.alpaca.dto.response.AlpacaOrderResponse;
 import com.curihous.qbit.infra.alpaca.dto.response.AlpacaPositionResponse;
 import com.curihous.qbit.infra.alpaca.dto.response.AlpacaPortfolioHistoryResponse;
 import com.curihous.qbit.infra.alpaca.port.AlpacaTradingPort;
+import feign.QueryMap;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
@@ -42,7 +43,7 @@ public interface AlpacaTradingClient extends AlpacaTradingPort {
     @GetMapping("/v2/orders")
     List<AlpacaOrderResponse> getOrders(
         @RequestHeader("Authorization") String authorization,
-        @RequestParam Map<String, Object> queryParams
+        @QueryMap Map<String, Object> queryParams
     );
 
     // 특정 주문 조회
