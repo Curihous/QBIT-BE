@@ -7,8 +7,7 @@ import com.curihous.qbit.infra.alpaca.dto.response.AlpacaAssetResponse;
 import com.curihous.qbit.infra.alpaca.dto.response.AlpacaOrderResponse;
 import com.curihous.qbit.infra.alpaca.dto.response.AlpacaPositionResponse;
 import com.curihous.qbit.infra.alpaca.dto.response.AlpacaPortfolioHistoryResponse;
-import com.curihous.qbit.infra.alpaca.dto.request.AlpacaOrderQueryParams;
-
+import java.util.Map;
 import java.util.List;
 
 // Port-Adapter 패턴(헥사고날 아키텍처)
@@ -33,7 +32,7 @@ public interface AlpacaTradingPort {
     AlpacaAccountResponse getAccount(String authorization);
     
     // 주문 목록 조회
-    List<AlpacaOrderResponse> getOrders(String authorization, AlpacaOrderQueryParams queryParams);
+    List<AlpacaOrderResponse> getOrders(String authorization, Map<String, Object> queryParams);
     
     // 포지션 목록 조회
     List<AlpacaPositionResponse> getPositions(String authorization);

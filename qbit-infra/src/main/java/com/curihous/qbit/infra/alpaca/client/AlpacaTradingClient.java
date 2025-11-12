@@ -1,6 +1,5 @@
 package com.curihous.qbit.infra.alpaca.client;
 
-import com.curihous.qbit.infra.alpaca.port.AlpacaTradingPort;
 import com.curihous.qbit.infra.alpaca.config.AlpacaClientConfig;
 import com.curihous.qbit.infra.alpaca.dto.request.CreateOrderRequest;
 import com.curihous.qbit.infra.alpaca.dto.request.UpdateOrderRequest;
@@ -9,12 +8,12 @@ import com.curihous.qbit.infra.alpaca.dto.response.AlpacaAssetResponse;
 import com.curihous.qbit.infra.alpaca.dto.response.AlpacaOrderResponse;
 import com.curihous.qbit.infra.alpaca.dto.response.AlpacaPositionResponse;
 import com.curihous.qbit.infra.alpaca.dto.response.AlpacaPortfolioHistoryResponse;
-import com.curihous.qbit.infra.alpaca.dto.request.AlpacaOrderQueryParams;
+import com.curihous.qbit.infra.alpaca.port.AlpacaTradingPort;
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.cloud.openfeign.SpringQueryMap;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 // Alpaca Trading API 클라이언트
 @FeignClient(
@@ -43,7 +42,7 @@ public interface AlpacaTradingClient extends AlpacaTradingPort {
     @GetMapping("/v2/orders")
     List<AlpacaOrderResponse> getOrders(
         @RequestHeader("Authorization") String authorization,
-        @SpringQueryMap AlpacaOrderQueryParams queryParams
+        @RequestParam Map<String, Object> queryParams
     );
 
     // 특정 주문 조회

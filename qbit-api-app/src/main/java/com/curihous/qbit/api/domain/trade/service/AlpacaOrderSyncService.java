@@ -19,7 +19,6 @@ import com.curihous.qbit.domain.tradecycle.repository.TradeCycleRepository;
 import com.curihous.qbit.domain.user.entity.User;
 import com.curihous.qbit.domain.user.repository.UserRepository;
 import com.curihous.qbit.infra.alpaca.client.AlpacaTradingClient;
-import com.curihous.qbit.infra.alpaca.dto.request.AlpacaOrderQueryParams;
 import com.curihous.qbit.infra.alpaca.dto.response.AlpacaOrderResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -241,26 +240,26 @@ public class AlpacaOrderSyncService {
     }
     
     private List<AlpacaOrderResponse> fetchOrders(String authorization, String status, OffsetDateTime after, OffsetDateTime until) {
-        AlpacaOrderQueryParams params = new AlpacaOrderQueryParams();
-        params.setStatus(status);
-        params.setLimit(500);
-        params.setDirection("desc");
-        params.setNested(true);
+        Map<String, Object> params = new LinkedHashMap<>();
+        if (status != null) {
+            params.put("status", status);
+        }
+        params.put("limit", 500);
+        params.put("direction", "desc");
+        params.put("nested", true);
         if (after != null) {
-            params.setAfter(after.truncatedTo(ChronoUnit.SECONDS).toString());
+            params.put("after", after.truncatedTo(ChronoUnit.SECONDS).toString());
         }
         if (until != null) {
-            params.setUntil(until.truncatedTo(ChronoUnit.SECONDS).toString());
+            params.put("until", until.truncatedTo(ChronoUnit.SECONDS).toString());
         }
-        log.debug("Alpaca 주문 조회 파라미터: status={}, after={}, until={}, limit={}, direction={}, nested={}",
-                params.getStatus(), params.getAfter(), params.getUntil(), params.getLimit(),
-                params.getDirection(), params.getNested());
+        log.debug("Alpaca 주문 조회 파라미터: {}", params);
         List<AlpacaOrderResponse> response = alpacaTradingClient.getOrders(authorization, params);
         if (response != null) {
             log.debug("Alpaca 주문 응답 요약: status={}, count={}",
-                    params.getStatus(), response.size());
+                    status, response.size());
         } else {
-            log.debug("Alpaca 주문 응답 없음: status={}", params.getStatus());
+            log.debug("Alpaca 주문 응답 없음: status={}", status);
         }
         return response;
     }
