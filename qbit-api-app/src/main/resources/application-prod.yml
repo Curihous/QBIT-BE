@@ -55,6 +55,12 @@ logging:
     org.springframework.web.socket: WARN
     root: WARN
 
+feign:
+  client:
+    config:
+      default:
+        loggerLevel: FULL
+
 # JWT 설정 
 jwt:
   secret:
