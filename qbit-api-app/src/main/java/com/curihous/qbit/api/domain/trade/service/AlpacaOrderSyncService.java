@@ -241,13 +241,13 @@ public class AlpacaOrderSyncService {
     }
     
     private List<AlpacaOrderResponse> fetchOrders(String authorization, String status, OffsetDateTime after, OffsetDateTime until) {
-        Map<String, String> params = new LinkedHashMap<>();
+        Map<String, Object> params = new LinkedHashMap<>();
         if (status != null) {
             params.put("status", status);
         }
-        params.put("limit", "500");
+        params.put("limit", 500);
         params.put("direction", "desc");
-        params.put("nested", "true");
+        params.put("nested", true);
         if (after != null) {
             params.put("after", after.truncatedTo(ChronoUnit.SECONDS).toString());
         }

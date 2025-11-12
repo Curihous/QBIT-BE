@@ -1,10 +1,6 @@
 spring:
   profiles:
     active: ${SPRING_PROFILES_ACTIVE}
-  cloud:
-    openfeign:
-      querymap:
-        enabled: true
 
 info:
   app:
