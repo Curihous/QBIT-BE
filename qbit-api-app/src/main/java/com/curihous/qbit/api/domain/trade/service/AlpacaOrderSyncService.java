@@ -45,6 +45,7 @@ import java.util.LinkedHashMap;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Stream;
+import java.util.ArrayList;
 
 /**
  * Alpaca 주문 동기화 서비스
@@ -428,19 +429,21 @@ public class AlpacaOrderSyncService {
             BigDecimal filledAvgPrice = parseBigDecimal(event.getFilledAvgPrice());
             OffsetDateTime filledAt = parseOffsetDateTime(event.getFilledAt());
             
+            Optional<OrderRequest> orderOpt = orderRequestRepository
+                    .findByAlpacaOrderId(event.getAlpacaOrderId());
+
+            if (orderOpt.isEmpty()) {
+                log.warn("OrderRequest를 찾을 수 없어 TradeCycle 업데이트 건너뜀: alpacaOrderId={}",
+                        event.getAlpacaOrderId());
+                return;
+            }
+
+            OrderRequest order = orderOpt.get();
+
             if ("buy".equalsIgnoreCase(event.getSide())) {
-                handleBuyTradeCycle(user, stock, filledQty, filledAvgPrice, filledAt);
+                handleBuyTradeCycle(user, stock, filledQty, filledAvgPrice, filledAt, order);
             } else if ("sell".equalsIgnoreCase(event.getSide())) {
-                Optional<OrderRequest> orderOpt = orderRequestRepository
-                        .findByAlpacaOrderId(event.getAlpacaOrderId());
-                
-                if (orderOpt.isPresent()) {
-                    OrderRequest order = orderOpt.get();
-                    handleSellTradeCycle(user, stock, filledQty, filledAvgPrice, filledAt, order);
-                } else {
-                    log.warn("OrderRequest를 찾을 수 없어 TradeCycle 업데이트 건너뜀: alpacaOrderId={}", 
-                            event.getAlpacaOrderId());
-                }
+                handleSellTradeCycle(user, stock, filledQty, filledAvgPrice, filledAt, order);
             }
             
         } catch (Exception e) {
@@ -510,7 +513,8 @@ public class AlpacaOrderSyncService {
     }
     
     private void handleBuyTradeCycle(User user, Stock stock, BigDecimal qty, 
-                                     BigDecimal avgPrice, OffsetDateTime filledAt) {
+                                     BigDecimal avgPrice, OffsetDateTime filledAt,
+                                     OrderRequest order) {
         Optional<TradeCycle> activeCycleOpt = tradeCycleRepository
                 .findByUserAndStockAndEndDateIsNull(user, stock);
         
@@ -534,12 +538,14 @@ public class AlpacaOrderSyncService {
             tradeCycleRepository.save(newCycle);
             log.info("TradeCycle 신규 생성: userId={}, symbol={}, startDate={}", 
                     user.getId(), stock.getSymbol(), filledAtLocal);
+            linkOrderToTradeCycle(order, newCycle);
         } else {
             TradeCycle cycle = activeCycleOpt.get();
             cycle.updateOnAdditionalBuy(qty, avgPrice);
             tradeCycleRepository.save(cycle);
             log.info("TradeCycle 업데이트 (추가 매수): userId={}, symbol={}, cycleId={}", 
                     user.getId(), stock.getSymbol(), cycle.getId());
+            linkOrderToTradeCycle(order, cycle);
         }
     }
     
@@ -583,6 +589,7 @@ public class AlpacaOrderSyncService {
             
             cycle.close(filledAtLocal, qty, avgPrice);
             tradeCycleRepository.save(cycle);
+            linkOrderToTradeCycle(order, cycle);
             
             log.info("TradeCycle 종료 (전량 매도): userId={}, symbol={}, cycleId={}, profitLossRate={}%, alpacaOrderId={}", 
                     user.getId(), stock.getSymbol(), cycle.getId(), cycle.getProfitLossRate(),
@@ -590,8 +597,21 @@ public class AlpacaOrderSyncService {
         } else {
             cycle.updateOnPartialSell(qty, avgPrice);
             tradeCycleRepository.save(cycle);
+            linkOrderToTradeCycle(order, cycle);
             log.info("TradeCycle 업데이트 (부분 매도): userId={}, symbol={}, cycleId={}, alpacaOrderId={}", 
                     user.getId(), stock.getSymbol(), cycle.getId(), order.getAlpacaOrderId());
+        }
+    }
+
+    private void linkOrderToTradeCycle(OrderRequest order, TradeCycle tradeCycle) {
+        if (order == null || tradeCycle == null) {
+            return;
+        }
+        if (!Objects.equals(order.getTradeCycle(), tradeCycle)) {
+            order.assignTradeCycle(tradeCycle);
+            orderRequestRepository.save(order);
+            log.debug("OrderRequest-TradeCycle 연결: orderId={}, alpacaOrderId={}, tradeCycleId={}",
+                    order.getId(), order.getAlpacaOrderId(), tradeCycle.getId());
         }
     }
     
@@ -766,6 +786,8 @@ public class AlpacaOrderSyncService {
         BigDecimal currentInvestment = BigDecimal.ZERO;
         BigDecimal highestInvestment = BigDecimal.ZERO;
         
+        List<OrderRequest> participatingOrders = new ArrayList<>();
+
         for (int i = 0; i < orders.size(); i++) {
             OrderRequest order = orders.get(i);
             
@@ -808,6 +830,7 @@ public class AlpacaOrderSyncService {
                 
                 totalBoughtQuantity = totalBoughtQuantity.add(qty);
                 totalInvestmentAmount = totalInvestmentAmount.add(buyAmount);
+                participatingOrders.add(order);
                 
                 currentInvestment = currentQuantity.multiply(currentAverageBuyPrice);
                 if (currentInvestment.compareTo(highestInvestment) > 0) {
@@ -831,6 +854,7 @@ public class AlpacaOrderSyncService {
                 
                 totalSoldQuantity = totalSoldQuantity.add(qty);
                 totalSoldAmount = totalSoldAmount.add(qty.multiply(price));
+                participatingOrders.add(order);
                 
                 if (currentQuantity.compareTo(BigDecimal.ZERO) > 0) {
                     currentInvestment = currentQuantity.multiply(currentAverageBuyPrice);
@@ -913,6 +937,7 @@ public class AlpacaOrderSyncService {
         }
         
         tradeCycleRepository.save(tradeCycle);
+        participatingOrders.forEach(order -> linkOrderToTradeCycle(order, tradeCycle));
         return Optional.of(tradeCycle);
     }
     

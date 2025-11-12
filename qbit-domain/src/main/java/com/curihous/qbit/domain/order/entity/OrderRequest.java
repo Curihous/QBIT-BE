@@ -174,6 +174,11 @@ public class OrderRequest extends BaseTimeEntity {
         this.tradeCycle = tradeCycle;
     }
 
+    // TradeCycle 생성 시 FK 할당
+    public void assignTradeCycle(TradeCycle tradeCycle) {
+        this.tradeCycle = tradeCycle;
+    }
+
     // 주문이 대체되었을 때 호출
     public void markAsReplaced(String replacedBy, OffsetDateTime replacedAt) {
         this.replacedBy = replacedBy;
