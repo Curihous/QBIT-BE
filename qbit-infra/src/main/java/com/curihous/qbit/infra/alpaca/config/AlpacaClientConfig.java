@@ -38,7 +38,19 @@ public class AlpacaClientConfig {
 
     @Bean
     public QueryMapEncoder queryMapEncoder() {
-        return new FieldQueryMapEncoder();
+        FieldQueryMapEncoder delegate = new FieldQueryMapEncoder();
+        return object -> {
+            if (object instanceof java.util.Map<?, ?> map) {
+                java.util.Map<String, Object> result = new java.util.LinkedHashMap<>();
+                map.forEach((key, value) -> {
+                    if (key != null) {
+                        result.put(String.valueOf(key), value != null ? value.toString() : null);
+                    }
+                });
+                return result;
+            }
+            return delegate.encode(object);
+        };
     }
 
     @Bean
