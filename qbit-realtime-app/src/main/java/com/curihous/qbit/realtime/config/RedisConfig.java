@@ -1,7 +1,9 @@
 package com.curihous.qbit.realtime.config;
 
+import com.curihous.qbit.infra.redis.config.RedisSerializerConfig;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
@@ -14,6 +16,7 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
  * qbit-infra의 RedisConfig와 동일한 직렬화 방식 사용
  */
 @Configuration
+@Import(RedisSerializerConfig.class)
 public class RedisConfig {
 
     @Bean
