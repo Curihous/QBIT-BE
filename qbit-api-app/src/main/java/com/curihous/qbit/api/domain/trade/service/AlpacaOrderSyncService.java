@@ -254,9 +254,17 @@ public class AlpacaOrderSyncService {
         }
 
         AlpacaOrderQueryParams params = builder.build();
-        log.debug("Alpaca 주문 조회 파라미터: status={}, after={}, until={}, limit={}",
-                params.getStatus(), params.getAfter(), params.getUntil(), params.getLimit());
-        return alpacaTradingClient.getOrders(authorization, params);
+        log.debug("Alpaca 주문 조회 파라미터: status={}, after={}, until={}, limit={}, direction={}, nested={}",
+                params.getStatus(), params.getAfter(), params.getUntil(), params.getLimit(),
+                params.getDirection(), params.getNested());
+        List<AlpacaOrderResponse> response = alpacaTradingClient.getOrders(authorization, params);
+        if (response != null) {
+            log.debug("Alpaca 주문 응답 요약: status={}, count={}",
+                    params.getStatus(), response.size());
+        } else {
+            log.debug("Alpaca 주문 응답 없음: status={}", params.getStatus());
+        }
+        return response;
     }
 
 
