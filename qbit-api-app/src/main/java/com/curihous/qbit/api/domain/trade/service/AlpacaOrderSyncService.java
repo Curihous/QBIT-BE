@@ -241,20 +241,17 @@ public class AlpacaOrderSyncService {
     }
     
     private List<AlpacaOrderResponse> fetchOrders(String authorization, String status, OffsetDateTime after, OffsetDateTime until) {
-        AlpacaOrderQueryParams.AlpacaOrderQueryParamsBuilder builder = AlpacaOrderQueryParams.builder()
-                .status(status)
-                .limit(500)
-                .direction("desc")
-                .nested(true);
-
+        AlpacaOrderQueryParams params = new AlpacaOrderQueryParams();
+        params.setStatus(status);
+        params.setLimit(500);
+        params.setDirection("desc");
+        params.setNested(true);
         if (after != null) {
-            builder.after(after.truncatedTo(ChronoUnit.SECONDS).toString());
+            params.setAfter(after.truncatedTo(ChronoUnit.SECONDS).toString());
         }
         if (until != null) {
-            builder.until(until.truncatedTo(ChronoUnit.SECONDS).toString());
+            params.setUntil(until.truncatedTo(ChronoUnit.SECONDS).toString());
         }
-
-        AlpacaOrderQueryParams params = builder.build();
         log.debug("Alpaca 주문 조회 파라미터: status={}, after={}, until={}, limit={}, direction={}, nested={}",
                 params.getStatus(), params.getAfter(), params.getUntil(), params.getLimit(),
                 params.getDirection(), params.getNested());

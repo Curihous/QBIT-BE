@@ -1,15 +1,17 @@
 package com.curihous.qbit.infra.alpaca.dto.request;
 
-import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Getter
-@Builder(toBuilder = true)
+@Setter
+@NoArgsConstructor
 public class AlpacaOrderQueryParams {
-    private final String status;
-    private final Integer limit;
-    private final String direction;
-    private final Boolean nested;
-    private final String after;
-    private final String until;
+    private String status;
+    private Integer limit;
+    private String direction;
+    private Boolean nested;
+    private String after;
+    private String until;
 }

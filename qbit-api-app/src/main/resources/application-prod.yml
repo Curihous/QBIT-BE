@@ -40,6 +40,11 @@ spring:
     redis:
       time-to-live: 60000  # 기본 TTL: 1분 (개별 캐시 TTL은 CacheConfig에서 설정)
 
+  cloud:
+    openfeign:
+      querymap:
+        enabled: true
+
 # WebSocket
 # TODO: 프로덕션에서 명시적 도메인 설정
 websocket:
