@@ -9,6 +9,9 @@ import org.springframework.context.annotation.Configuration;
 import feign.codec.Encoder;
 import feign.querymap.FieldQueryMapEncoder;
 import feign.QueryMapEncoder;
+import org.springframework.beans.factory.ObjectFactory;
+import org.springframework.boot.autoconfigure.http.HttpMessageConverters;
+import org.springframework.cloud.openfeign.support.SpringEncoder;
 
 @Configuration
 @RequiredArgsConstructor
@@ -31,10 +34,7 @@ public class AlpacaClientConfig {
         };
     }
 
-    @Bean
-    public Encoder feignEncoder() {
-        return new Encoder.Default();
-    }
+    private final ObjectFactory<HttpMessageConverters> messageConverters;
 
     @Bean
     public QueryMapEncoder queryMapEncoder() {
@@ -51,6 +51,11 @@ public class AlpacaClientConfig {
             }
             return delegate.encode(object);
         };
+    }
+
+    @Bean
+    public Encoder feignEncoder() {
+        return new SpringEncoder(messageConverters);
     }
 }
 

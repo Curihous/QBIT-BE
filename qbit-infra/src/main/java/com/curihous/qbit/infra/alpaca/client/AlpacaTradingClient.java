@@ -43,7 +43,7 @@ public interface AlpacaTradingClient extends AlpacaTradingPort {
     @GetMapping("/v2/orders")
     List<AlpacaOrderResponse> getOrders(
         @RequestHeader("Authorization") String authorization,
-        @QueryMap Map<String, Object> queryParams
+        @QueryMap(encoded = true) Map<String, Object> queryParams
     );
 
     // 특정 주문 조회
