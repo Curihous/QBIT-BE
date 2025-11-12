@@ -19,6 +19,7 @@ import com.curihous.qbit.domain.tradecycle.repository.TradeCycleRepository;
 import com.curihous.qbit.domain.user.entity.User;
 import com.curihous.qbit.domain.user.repository.UserRepository;
 import com.curihous.qbit.infra.alpaca.client.AlpacaTradingClient;
+import com.curihous.qbit.infra.alpaca.dto.request.AlpacaOrderQueryParams;
 import com.curihous.qbit.infra.alpaca.dto.response.AlpacaOrderResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -176,7 +177,13 @@ public class AlpacaOrderSyncService {
             
             List<AlpacaOrderResponse> alpacaOrders;
             try {
-                alpacaOrders = alpacaTradingClient.getOrders(authorization, "all", 500, "desc", true);
+                AlpacaOrderQueryParams queryParams = AlpacaOrderQueryParams.builder()
+                        .status("all")
+                        .limit(500)
+                        .direction("desc")
+                        .nested(true)
+                        .build();
+                alpacaOrders = alpacaTradingClient.getOrders(authorization, queryParams);
                 log.info("Alpaca에서 주문 조회 완료: userId={}, 주문 수={}", user.getId(), alpacaOrders != null ? alpacaOrders.size() : 0);
                 
                 if (alpacaOrders == null) {

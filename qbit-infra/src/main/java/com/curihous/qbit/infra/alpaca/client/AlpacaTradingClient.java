@@ -9,7 +9,9 @@ import com.curihous.qbit.infra.alpaca.dto.response.AlpacaAssetResponse;
 import com.curihous.qbit.infra.alpaca.dto.response.AlpacaOrderResponse;
 import com.curihous.qbit.infra.alpaca.dto.response.AlpacaPositionResponse;
 import com.curihous.qbit.infra.alpaca.dto.response.AlpacaPortfolioHistoryResponse;
+import com.curihous.qbit.infra.alpaca.dto.request.AlpacaOrderQueryParams;
 import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.cloud.openfeign.SpringQueryMap;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -45,10 +47,7 @@ public interface AlpacaTradingClient extends AlpacaTradingPort {
     @GetMapping("/v2/orders")
     List<AlpacaOrderResponse> getOrders(
         @RequestHeader("Authorization") String authorization,
-        @RequestParam(value = "status", required = false) String status,
-        @RequestParam(value = "limit", required = false) Integer limit,
-        @RequestParam(value = "direction", required = false) String direction,
-        @RequestParam(value = "nested", required = false) Boolean nested
+        @SpringQueryMap AlpacaOrderQueryParams queryParams
     );
 
     // 특정 주문 조회
