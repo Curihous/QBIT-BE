@@ -179,30 +179,16 @@ public class AlpacaOrderSyncService {
             
             // Alpaca에서 최신 주문 목록 가져오기
             String authorization = "Bearer " + connection.getAccessToken();
-            log.info("Alpaca 주문 조회 시작: userId={}, status=all, limit=500", user.getId());
+            log.info("Alpaca 주문 조회 시작: userId={}, statuses=[all, closed], limit=500", user.getId());
             
             List<AlpacaOrderResponse> alpacaOrders;
             try {
-                String after = OffsetDateTime.now(ZoneOffset.UTC)
+                OffsetDateTime afterBoundary = OffsetDateTime.now(ZoneOffset.UTC)
                         .minusDays(90)
-                        .truncatedTo(ChronoUnit.SECONDS)
-                        .toString();
+                        .truncatedTo(ChronoUnit.SECONDS);
 
-                AlpacaOrderQueryParams baseParams = AlpacaOrderQueryParams.builder()
-                        .limit(500)
-                        .direction("desc")
-                        .nested(true)
-                        .after(after)
-                        .build();
-
-                List<AlpacaOrderResponse> recentOrders = alpacaTradingClient.getOrders(
-                        authorization,
-                        baseParams.toBuilder().status("all").build()
-                );
-                List<AlpacaOrderResponse> closedOrders = alpacaTradingClient.getOrders(
-                        authorization,
-                        baseParams.toBuilder().status("closed").build()
-                );
+                List<AlpacaOrderResponse> recentOrders = fetchOrders(authorization, "all", afterBoundary, null);
+                List<AlpacaOrderResponse> closedOrders = fetchOrders(authorization, "closed", afterBoundary, null);
 
                 alpacaOrders = Stream.concat(
                                 recentOrders != null ? recentOrders.stream() : Stream.empty(),
@@ -253,6 +239,26 @@ public class AlpacaOrderSyncService {
         }
     }
     
+    private List<AlpacaOrderResponse> fetchOrders(String authorization, String status, OffsetDateTime after, OffsetDateTime until) {
+        AlpacaOrderQueryParams.AlpacaOrderQueryParamsBuilder builder = AlpacaOrderQueryParams.builder()
+                .status(status)
+                .limit(500)
+                .direction("desc")
+                .nested(true);
+
+        if (after != null) {
+            builder.after(after.truncatedTo(ChronoUnit.SECONDS).toString());
+        }
+        if (until != null) {
+            builder.until(until.truncatedTo(ChronoUnit.SECONDS).toString());
+        }
+
+        AlpacaOrderQueryParams params = builder.build();
+        log.debug("Alpaca 주문 조회 파라미터: status={}, after={}, until={}, limit={}",
+                params.getStatus(), params.getAfter(), params.getUntil(), params.getLimit());
+        return alpacaTradingClient.getOrders(authorization, params);
+    }
+
 
     // ============== Trade Update 이벤트 처리 ==============
 
