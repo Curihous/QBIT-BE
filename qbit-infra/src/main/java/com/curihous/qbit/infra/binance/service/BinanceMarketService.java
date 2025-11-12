@@ -22,11 +22,11 @@ public class BinanceMarketService {
     // 사용 API: GET /api/v3/ticker/24hr
     @Cacheable(value = "binance-ticker")
     public BinanceTickerResponse get24hrTicker(String symbol) {
-        log.debug("Binance 24시간 통계 조회 시작: symbol={}", symbol);
+        log.trace("Binance 24시간 통계 조회 시작: symbol={}", symbol);
         
         try {
             BinanceTickerResponse response = binanceClient.get24hrTicker(symbol);
-            log.debug("Binance 24시간 통계 조회 성공: symbol={}", symbol);
+            log.trace("Binance 24시간 통계 조회 성공: symbol={}", symbol);
             return response;
         } catch (Exception e) {
             log.error("Binance 24시간 통계 조회 실패: symbol={}, error={}", symbol, e.getMessage());
@@ -38,7 +38,7 @@ public class BinanceMarketService {
     // 사용 API: GET /api/v3/klines
     @Cacheable(value = "binance-kline")
     public List<List<String>> getKlines(String symbol, String interval, Long startTime, Long endTime, Integer limit) {
-        log.debug("Binance Kline 조회 시작: symbol={}, interval={}, startTime={}, endTime={}, limit={}", 
+        log.trace("Binance Kline 조회 시작: symbol={}, interval={}, startTime={}, endTime={}, limit={}", 
                 symbol, interval, startTime, endTime, limit);
         
         try {
@@ -49,10 +49,10 @@ public class BinanceMarketService {
             if (endTime != null) params.put("endTime", String.valueOf(endTime));
             if (limit != null) params.put("limit", String.valueOf(limit));
 
-            log.debug("Binance Kline API 호출 파라미터: {}", params);
+            log.trace("Binance Kline API 호출 파라미터: {}", params);
             
             List<List<String>> response = binanceClient.getKlinesDynamic(params);
-            log.debug("Binance Kline 조회 성공: symbol={}, interval={}, count={}", 
+            log.trace("Binance Kline 조회 성공: symbol={}, interval={}, count={}", 
                     symbol, interval, response.size());
             return response;
         } catch (Exception e) {
