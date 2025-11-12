@@ -30,10 +30,6 @@ public interface AlpacaTradingClient extends AlpacaTradingPort {
     @GetMapping("/v2/account")
     AlpacaAccountResponse getAccount(@RequestHeader("Authorization") String authorization);
 
-    // 주문 목록 조회
-    @GetMapping("/v2/orders")
-    List<AlpacaOrderResponse> getOrders(@RequestHeader("Authorization") String authorization);
-
     // ============== Orders API ==============
 
     // 주문 생성

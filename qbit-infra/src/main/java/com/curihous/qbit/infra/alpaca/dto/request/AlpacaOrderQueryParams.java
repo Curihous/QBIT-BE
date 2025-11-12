@@ -4,12 +4,12 @@ import lombok.Builder;
 import lombok.Getter;
 
 @Getter
-@Builder
+@Builder(toBuilder = true)
 public class AlpacaOrderQueryParams {
     private final String status;
     private final Integer limit;
     private final String direction;
     private final Boolean nested;
+    private final String after;
+    private final String until;
 }
-
-

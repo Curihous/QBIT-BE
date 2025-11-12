@@ -35,10 +35,16 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.LinkedHashMap;
+import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Stream;
 
 /**
  * Alpaca 주문 동기화 서비스
@@ -177,13 +183,41 @@ public class AlpacaOrderSyncService {
             
             List<AlpacaOrderResponse> alpacaOrders;
             try {
-                AlpacaOrderQueryParams queryParams = AlpacaOrderQueryParams.builder()
-                        .status("all")
+                String after = OffsetDateTime.now(ZoneOffset.UTC)
+                        .minusDays(90)
+                        .truncatedTo(ChronoUnit.SECONDS)
+                        .toString();
+
+                AlpacaOrderQueryParams baseParams = AlpacaOrderQueryParams.builder()
                         .limit(500)
                         .direction("desc")
                         .nested(true)
+                        .after(after)
                         .build();
-                alpacaOrders = alpacaTradingClient.getOrders(authorization, queryParams);
+
+                List<AlpacaOrderResponse> recentOrders = alpacaTradingClient.getOrders(
+                        authorization,
+                        baseParams.toBuilder().status("all").build()
+                );
+                List<AlpacaOrderResponse> closedOrders = alpacaTradingClient.getOrders(
+                        authorization,
+                        baseParams.toBuilder().status("closed").build()
+                );
+
+                alpacaOrders = Stream.concat(
+                                recentOrders != null ? recentOrders.stream() : Stream.empty(),
+                                closedOrders != null ? closedOrders.stream() : Stream.empty()
+                        )
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toMap(
+                                AlpacaOrderResponse::id,
+                                Function.identity(),
+                                (existing, replacement) -> existing,
+                                LinkedHashMap::new
+                        ))
+                        .values()
+                        .stream()
+                        .toList();
                 log.info("Alpaca에서 주문 조회 완료: userId={}, 주문 수={}", user.getId(), alpacaOrders != null ? alpacaOrders.size() : 0);
                 
                 if (alpacaOrders == null) {
