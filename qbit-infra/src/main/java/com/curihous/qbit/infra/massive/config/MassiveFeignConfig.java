@@ -42,16 +42,11 @@ public class MassiveFeignConfig {
                 Object feignTarget = requestTemplate.feignTarget();
                 if (feignTarget != null) {
                     String targetName = feignTarget.toString();
-                    log.debug("Massive RequestInterceptor: method={}, url={}, feignTarget={}, queries={}", 
-                            requestTemplate.method(), requestTemplate.url(), targetName, requestTemplate.queries());
                     if (targetName.contains("massive-api")) {
                         requestTemplate.query("apikey", apiKey);
-                        log.debug("Massive API Key 추가됨: 최종 queries={}", requestTemplate.queries());
                     }
                 }
             } catch (Exception e) {
-                // FeignTarget 정보를 가져올 수 없으면 apikey 추가하지 않음
-                log.debug("Massive RequestInterceptor: feignTarget 아님 - {}", e.getMessage());
             }
         };
     }
