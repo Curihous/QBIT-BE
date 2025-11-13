@@ -35,17 +35,14 @@ public class MassiveFeignConfig {
     @Bean("massiveRequestInterceptor")
     public RequestInterceptor requestInterceptor() {
         return requestTemplate -> {
-            // massive-api 클라이언트에만 apikey 추가
-            try {
-                Object feignTarget = requestTemplate.feignTarget();
-                if (feignTarget != null) {
-                    String targetName = feignTarget.toString();
-                    if (targetName.contains("massive-api")) {
-                        requestTemplate.query("apikey", apiKey);
-                    }
+            // massive-api 클라이언트에만 apikey 추가 (URL 기반 체크)
+            String url = requestTemplate.url();
+            if (url != null && url.contains("api.massive.com")) {
+                if (apiKey != null && !apiKey.isEmpty()) {
+                    requestTemplate.query("apikey", apiKey);
+                } else {
+                    throw new IllegalStateException("Massive API Key가 설정되지 않았습니다.");
                 }
-            } catch (Exception e) {
-                // FeignTarget 정보를 가져올 수 없으면 apikey 추가하지 않음
             }
         };
     }
