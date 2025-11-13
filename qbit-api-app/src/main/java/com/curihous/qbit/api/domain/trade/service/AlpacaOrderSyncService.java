@@ -19,6 +19,7 @@ import com.curihous.qbit.domain.tradecycle.repository.TradeCycleRepository;
 import com.curihous.qbit.domain.user.entity.User;
 import com.curihous.qbit.domain.user.repository.UserRepository;
 import com.curihous.qbit.infra.alpaca.client.AlpacaTradingClient;
+import com.curihous.qbit.infra.alpaca.dto.request.AlpacaOrderQueryParams;
 import com.curihous.qbit.infra.alpaca.dto.response.AlpacaOrderResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -241,19 +242,22 @@ public class AlpacaOrderSyncService {
     }
     
     private List<AlpacaOrderResponse> fetchOrders(String authorization, String status, OffsetDateTime after, OffsetDateTime until) {
-        Map<String, Object> params = new LinkedHashMap<>();
-        if (status != null) {
-            params.put("status", status);
+        AlpacaOrderQueryParams.AlpacaOrderQueryParamsBuilder paramsBuilder = AlpacaOrderQueryParams.builder()
+                .limit(500)
+                .direction("desc")
+                .nested(true);
+        
+        if (status != null && !status.isBlank()) {
+            paramsBuilder.status(status);
         }
-        params.put("limit", 500);
-        params.put("direction", "desc");
-        params.put("nested", "true"); 
         if (after != null) {
-            params.put("after", after.truncatedTo(ChronoUnit.SECONDS).toString());
+            paramsBuilder.after(after.truncatedTo(ChronoUnit.SECONDS).toString());
         }
         if (until != null) {
-            params.put("until", until.truncatedTo(ChronoUnit.SECONDS).toString());
+            paramsBuilder.until(until.truncatedTo(ChronoUnit.SECONDS).toString());
         }
+        
+        AlpacaOrderQueryParams params = paramsBuilder.build();
         log.debug("Alpaca 주문 조회 파라미터: {}", params);
         List<AlpacaOrderResponse> response = alpacaTradingClient.getOrders(authorization, params);
         if (response != null) {

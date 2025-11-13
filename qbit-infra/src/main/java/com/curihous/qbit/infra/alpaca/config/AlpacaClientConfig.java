@@ -34,6 +34,7 @@ public class AlpacaClientConfig {
             // 슬래시 디코딩 비활성화
             requestTemplate.decodeSlash(false);
             
+            // TODO: 제거해도 될듯
             try {
                 Object feignTarget = requestTemplate.feignTarget();
                 if (feignTarget != null) {
