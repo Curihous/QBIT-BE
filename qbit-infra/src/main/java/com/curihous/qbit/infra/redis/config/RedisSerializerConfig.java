@@ -24,6 +24,10 @@ public class RedisSerializerConfig {
                 .build();
 
         objectMapper.configure(DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE, false);
+        objectMapper.activateDefaultTyping(
+                objectMapper.getPolymorphicTypeValidator(),
+                ObjectMapper.DefaultTyping.NON_FINAL
+        );
 
         return new GenericJackson2JsonRedisSerializer(objectMapper);
     }
