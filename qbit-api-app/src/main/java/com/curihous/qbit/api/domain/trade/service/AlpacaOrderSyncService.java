@@ -247,7 +247,7 @@ public class AlpacaOrderSyncService {
         }
         params.put("limit", 500);
         params.put("direction", "desc");
-        params.put("nested", true);
+        params.put("nested", "true"); 
         if (after != null) {
             params.put("after", after.truncatedTo(ChronoUnit.SECONDS).toString());
         }

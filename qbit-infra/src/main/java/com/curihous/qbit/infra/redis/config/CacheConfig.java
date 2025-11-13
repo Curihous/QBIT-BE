@@ -1,5 +1,6 @@
 package com.curihous.qbit.infra.redis.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
@@ -27,12 +28,20 @@ import java.time.Duration;
 @EnableCaching
 public class CacheConfig {
 
+    @Value("${CACHE_NS:}")
+    private String cacheNamespace;
+
     @Bean
     public CacheManager cacheManager(
             RedisConnectionFactory connectionFactory,
             GenericJackson2JsonRedisSerializer genericJackson2JsonRedisSerializer
     ) {
+        String keyPrefix = cacheNamespace != null && !cacheNamespace.isEmpty() 
+                ? cacheNamespace + "::" 
+                : "";
+        
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
+                .prefixCacheNameWith(keyPrefix)
                 .serializeKeysWith(
                         RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer())
                 )
