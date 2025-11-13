@@ -22,7 +22,7 @@ public class AlpacaClientConfig {
 
     @Bean("alpacaFeignLoggerLevel")
     public Logger.Level feignLoggerLevel() {
-        return Logger.Level.FULL;
+        return Logger.Level.BASIC;
     }
 
     @Bean("alpacaRequestInterceptor")
