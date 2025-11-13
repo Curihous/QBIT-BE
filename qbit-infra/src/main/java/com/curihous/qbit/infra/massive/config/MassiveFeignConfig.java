@@ -4,12 +4,14 @@ import feign.Logger;
 import feign.Request;
 import feign.RequestInterceptor;
 import feign.codec.ErrorDecoder;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @Configuration
 public class MassiveFeignConfig {
 
@@ -35,14 +37,21 @@ public class MassiveFeignConfig {
     @Bean("massiveRequestInterceptor")
     public RequestInterceptor requestInterceptor() {
         return requestTemplate -> {
-            // massive-api 클라이언트에만 apikey 추가 (URL 기반 체크)
-            String url = requestTemplate.url();
-            if (url != null && url.contains("api.massive.com")) {
-                if (apiKey != null && !apiKey.isEmpty()) {
-                    requestTemplate.query("apikey", apiKey);
-                } else {
-                    throw new IllegalStateException("Massive API Key가 설정되지 않았습니다.");
+            // massive-api 클라이언트에만 apikey 추가
+            try {
+                Object feignTarget = requestTemplate.feignTarget();
+                if (feignTarget != null) {
+                    String targetName = feignTarget.toString();
+                    log.debug("Massive RequestInterceptor: method={}, url={}, feignTarget={}, queries={}", 
+                            requestTemplate.method(), requestTemplate.url(), targetName, requestTemplate.queries());
+                    if (targetName.contains("massive-api")) {
+                        requestTemplate.query("apikey", apiKey);
+                        log.debug("Massive API Key 추가됨: 최종 queries={}", requestTemplate.queries());
+                    }
                 }
+            } catch (Exception e) {
+                // FeignTarget 정보를 가져올 수 없으면 apikey 추가하지 않음
+                log.debug("Massive RequestInterceptor: feignTarget 아님 - {}", e.getMessage());
             }
         };
     }
