@@ -26,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -108,10 +109,9 @@ class AiDataServiceTest {
     private TradeCycle mockTradeCycle(long id, LocalDateTime start, LocalDateTime end) {
         TradeCycle tradeCycle = mock(TradeCycle.class);
         Stock stock = mock(Stock.class);
-        when(stock.getSymbol()).thenReturn("");
 
-        when(tradeCycle.getId()).thenReturn(id);
-        when(tradeCycle.getStock()).thenReturn(stock);
+        lenient().when(tradeCycle.getId()).thenReturn(id);
+        lenient().when(tradeCycle.getStock()).thenReturn(stock);
         when(tradeCycle.getStartDate()).thenReturn(start);
         when(tradeCycle.getEndDate()).thenReturn(end);
         return tradeCycle;
