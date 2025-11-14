@@ -1,12 +1,16 @@
 package com.curihous.qbit.api.domain.ai.service;
 
 import com.curihous.qbit.api.domain.ai.dto.response.ReportTradeCycleResponseDto;
+import com.curihous.qbit.common.exception.ErrorCode;
+import com.curihous.qbit.common.exception.QbitException;
 import com.curihous.qbit.domain.order.entity.OrderRequest;
 import com.curihous.qbit.domain.order.entity.OrderSide;
 import com.curihous.qbit.domain.order.repository.OrderRequestRepository;
+import com.curihous.qbit.domain.stock.entity.Stock;
 import com.curihous.qbit.domain.tradecycle.entity.TradeCycle;
 import com.curihous.qbit.domain.tradecycle.service.TradeCycleService;
-import com.curihous.qbit.domain.stock.entity.Stock;
+import com.curihous.qbit.infra.binance.service.BinanceMarketService;
+import com.curihous.qbit.infra.massive.service.MassiveMarketService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -19,6 +23,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -31,6 +36,10 @@ class AiDataServiceTest {
     private TradeCycleService tradeCycleService;
     @Mock
     private OrderRequestRepository orderRequestRepository;
+    @Mock
+    private BinanceMarketService binanceMarketService;
+    @Mock
+    private MassiveMarketService massiveMarketService;
 
     @InjectMocks
     private AiDataService aiDataService;
@@ -66,7 +75,7 @@ class AiDataServiceTest {
             .thenReturn(List.of(completeOrder, incompleteOrder));
 
         // when
-        ReportTradeCycleResponseDto result = aiDataService.getTradeCycleForAi(tradeCycleId, "1H");
+        ReportTradeCycleResponseDto result = aiDataService.getTradeCycleForAi(tradeCycleId);
 
         // then
         List<ReportTradeCycleResponseDto.TradePoint> tradePoints = result.getTradePoints();
@@ -81,15 +90,30 @@ class AiDataServiceTest {
         );
     }
 
+    @Test
+    void getTradeCycleForAi_throwsWhenEndDateMissing() {
+        long tradeCycleId = 2L;
+        TradeCycle incomplete = mockTradeCycle(tradeCycleId, LocalDateTime.of(2025, 1, 1, 0, 0), null);
+        when(tradeCycleService.getTradeCycleById(tradeCycleId)).thenReturn(incomplete);
+
+        assertThatThrownBy(() -> aiDataService.getTradeCycleForAi(tradeCycleId))
+            .isInstanceOf(QbitException.class)
+            .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_TRADE_CYCLE);
+    }
+
     private TradeCycle mockTradeCycle(long id) {
+        return mockTradeCycle(id, LocalDateTime.of(2025, 1, 1, 0, 0), LocalDateTime.of(2025, 1, 2, 0, 0));
+    }
+
+    private TradeCycle mockTradeCycle(long id, LocalDateTime start, LocalDateTime end) {
         TradeCycle tradeCycle = mock(TradeCycle.class);
         Stock stock = mock(Stock.class);
         when(stock.getSymbol()).thenReturn("");
 
         when(tradeCycle.getId()).thenReturn(id);
         when(tradeCycle.getStock()).thenReturn(stock);
-        when(tradeCycle.getStartDate()).thenReturn(LocalDateTime.of(2025, 1, 1, 0, 0));
-        when(tradeCycle.getEndDate()).thenReturn(LocalDateTime.of(2025, 1, 2, 0, 0));
+        when(tradeCycle.getStartDate()).thenReturn(start);
+        when(tradeCycle.getEndDate()).thenReturn(end);
         return tradeCycle;
     }
 
