@@ -1,6 +1,8 @@
 package com.curihous.qbit.api.domain.ai.service;
 
 import com.curihous.qbit.api.domain.ai.dto.response.ReportTradeCycleResponseDto;
+import com.curihous.qbit.common.exception.ErrorCode;
+import com.curihous.qbit.common.exception.QbitException;
 import com.curihous.qbit.api.domain.stock.dto.response.CandleResponseDto;
 import com.curihous.qbit.domain.order.entity.OrderRequest;
 import com.curihous.qbit.domain.order.entity.OrderStatus;
@@ -15,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -34,18 +37,12 @@ public class AiDataService {
     private final MassiveMarketService massiveMarketService;
     
     // AI 서버용 특정 TradeCycle 데이터 조회
-    public ReportTradeCycleResponseDto getTradeCycleForAi(Long tradeCycleId, String interval) {
-        log.info("AI용 단일 TradeCycle 데이터 조회 시작: tradeCycleId={}, interval={}",
-                tradeCycleId, interval);
-        
+    public ReportTradeCycleResponseDto getTradeCycleForAi(Long tradeCycleId) {
         TradeCycle tradeCycle = tradeCycleService.getTradeCycleById(tradeCycleId);
-        
+        ensureTradeCycleHasPeriod(tradeCycle);
+        String interval = determineInterval(tradeCycle);
         // TODO: 보안을 위해 IP 화이트리스트 또는 API 키 기반 인증 추가 고려
-        
         ReportTradeCycleResponseDto result = convertToAiDto(tradeCycle, interval);
-        
-        log.info("AI용 단일 TradeCycle 데이터 조회 완료: tradeCycleId={}", tradeCycleId);
-        
         return result;
     }
     
@@ -69,6 +66,46 @@ public class AiDataService {
             .chartData(chartData)
             .tradePoints(tradePoints)
             .build();
+    }
+
+    // ========== 헬퍼 메서드 ==========
+
+    private void ensureTradeCycleHasPeriod(TradeCycle tradeCycle) {
+        if (tradeCycle.getStartDate() == null || tradeCycle.getEndDate() == null) {
+            throw new QbitException(
+                ErrorCode.INVALID_TRADE_CYCLE,
+                "TradeCycle 기간 정보가 없어 데이터를 조회할 수 없습니다."
+            );
+        }
+    }
+
+    private String determineInterval(TradeCycle tradeCycle) {
+        LocalDateTime start = tradeCycle.getStartDate();
+        LocalDateTime end = tradeCycle.getEndDate();
+        long durationMinutes = Math.max(Duration.between(start, end).abs().toMinutes(), 1);
+
+        if (durationMinutes <= 6 * 60) { // 6시간 이하
+            return "5m";
+        }
+        if (durationMinutes <= 24 * 60) { // 1일 이하
+            return "15m";
+        }
+        if (durationMinutes <= 3 * 24 * 60) { // 3일 이하
+            return "30m";
+        }
+        if (durationMinutes <= 7 * 24 * 60) { // 1주 이하
+            return "1h";
+        }
+        if (durationMinutes <= 30 * 24 * 60) { // 1달 이하
+            return "4h";
+        }
+        if (durationMinutes <= 90 * 24 * 60) { // 3달 이하
+            return "12h";
+        }
+        if (durationMinutes <= 180 * 24 * 60) { // 6달 이하
+            return "1d";
+        }
+        return "1w";
     }
 
     private List<ReportTradeCycleResponseDto.CandleData> fetchChartData(TradeCycle tradeCycle, String interval) {

@@ -10,7 +10,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;    
 import org.springframework.web.bind.annotation.RestController;
 
 @Slf4j
@@ -26,13 +25,10 @@ public class AiDataController {
     @Operation(summary = "AI 서버용 TradeCycle 데이터 조회", 
                description = "AI 서버가 특정 TradeCycle을 분석하기 위한 모든 데이터를 반환합니다. 인증 없이 접근 가능합니다.")
     public ResponseEntity<ReportTradeCycleResponseDto> getTradeCycleForAi(
-        @PathVariable Long tradeCycleId,
-        @RequestParam(defaultValue = "1h") String interval
+        @PathVariable Long tradeCycleId
     ) {
-        log.info("AI용 TradeCycle 데이터 조회 요청: tradeCycleId={}, interval={}", tradeCycleId, interval);
-        
-        ReportTradeCycleResponseDto response = aiDataService.getTradeCycleForAi(tradeCycleId, interval);
-        
+        log.info("AI용 TradeCycle 데이터 조회 요청: tradeCycleId={}", tradeCycleId);   
+        ReportTradeCycleResponseDto response = aiDataService.getTradeCycleForAi(tradeCycleId);     
         return ResponseEntity.ok(response);
     }
 }
