@@ -30,6 +30,9 @@ public class TradeCycle {
     @Column(name = "profit_loss_rate", nullable = false)
     private BigDecimal profitLossRate;
 
+    @Column(name = "profit_loss_amount", precision = 19, scale = 6)
+    private BigDecimal profitLossAmount;
+
     @Column(name = "total_investment_amount", nullable = false, precision = 19, scale = 6)
     private BigDecimal totalInvestmentAmount;
 
@@ -154,6 +157,16 @@ public class TradeCycle {
             this.profitLossRate = finalSellAvgPrice.subtract(this.averageBuyPrice)
                     .divide(this.averageBuyPrice, 8, java.math.RoundingMode.HALF_UP)
                     .multiply(new BigDecimal("100")); // 백분율
+        }
+        
+        // 손익 금액 계산
+        calculateProfitLossAmount();
+    }
+    
+    // 손익 금액 계산 (총 매도 금액 - 총 매수 금액)
+    public void calculateProfitLossAmount() {
+        if (this.totalSoldAmount != null && this.totalBoughtAmount != null) {
+            this.profitLossAmount = this.totalSoldAmount.subtract(this.totalBoughtAmount);
         }
     }
 }

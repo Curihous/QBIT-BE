@@ -5,6 +5,7 @@ import com.curihous.qbit.api.domain.trade.dto.request.UpdateOrderRequestDto;
 import com.curihous.qbit.api.domain.trade.dto.response.OrderCreatedResponseDto;
 import com.curihous.qbit.api.domain.trade.dto.response.OrderDetailResponseDto;
 import com.curihous.qbit.api.domain.trade.dto.response.OrderUpdateResponseDto;
+import com.curihous.qbit.api.domain.trade.dto.response.TradeCycleResponseDto;
 import com.curihous.qbit.common.dto.PaginatedResponseDto;
 import com.curihous.qbit.common.exception.ErrorCode;
 import com.curihous.qbit.common.exception.QbitException;
@@ -12,6 +13,8 @@ import com.curihous.qbit.common.util.CryptoSymbolConverter;
 import com.curihous.qbit.domain.order.entity.OrderRequest;
 import com.curihous.qbit.domain.order.port.TradingPort;
 import com.curihous.qbit.domain.stock.entity.Stock;
+import com.curihous.qbit.domain.tradecycle.entity.TradeCycle;
+import com.curihous.qbit.domain.tradecycle.service.TradeCycleService;
 import com.curihous.qbit.domain.user.entity.User;
 import com.curihous.qbit.infra.alpaca.service.AlpacaStockService;
 import com.curihous.qbit.api.domain.trade.service.AlpacaOrderSyncService;
@@ -45,6 +48,7 @@ public class TradingController {
     private final AlpacaStockService alpacaStockService;
     private final UserSecurityFacade userSecurityFacade;
     private final AlpacaOrderSyncService alpacaOrderSyncService;
+    private final TradeCycleService tradeCycleService;
     
     @Value("${stock.sync.us-equity}")
     private boolean allowUsEquity;
@@ -159,6 +163,25 @@ public class TradingController {
         User user = userSecurityFacade.getCurrentUser();
         tradingPort.cancelOrder(user, orderId);
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(
+        summary = "사용자의 종료된 TradeCycle 목록 조회",
+        description = "사용자의 종료된 거래 사이클 목록을 조회합니다. (endDate가 없는, 진행 중인 사이클은 제외)"
+    )
+    @GetMapping("/trade-cycles")
+    public ResponseEntity<PaginatedResponseDto<TradeCycleResponseDto>> getTradeCycles(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        PagingValidator.validate(page, size);
+        
+        User user = userSecurityFacade.getCurrentUser();
+        Pageable pageable = PageRequest.of(page, size);
+        Page<TradeCycle> tradeCyclesPage = tradeCycleService.getCompletedTradeCycles(user, pageable);
+        Page<TradeCycleResponseDto> responsePage = tradeCyclesPage.map(TradeCycleResponseDto::from);
+        PaginatedResponseDto<TradeCycleResponseDto> response = PaginatedResponseDto.from(responsePage);
+        return ResponseEntity.ok(response);
     }
 
     // tradeCycle 임시 메서드

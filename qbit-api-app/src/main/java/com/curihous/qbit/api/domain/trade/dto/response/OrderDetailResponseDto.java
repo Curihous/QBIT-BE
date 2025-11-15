@@ -22,6 +22,9 @@ public record OrderDetailResponseDto(
     @Schema(description = "종목 코드", example = "TSLA")
     String symbol,
 
+    @Schema(description = "종목 로고 이미지 URL", example = "https://logo.clearbit.com/tesla.com")
+    String logoUrl,
+
     @Schema(description = "주문 방향 (buy/sell)", example = "buy")
     String side,
 
@@ -76,6 +79,7 @@ public record OrderDetailResponseDto(
                 orderRequest.getId(),
                 orderRequest.getAlpacaOrderId(),
                 orderRequest.getSymbol(),
+                orderRequest.getStock() != null ? orderRequest.getStock().getLogoUrl() : null,
                 orderRequest.getSide().name().toLowerCase(),
                 orderRequest.getQuantity().toString(),
                 orderRequest.getFilledQuantity() != null ? orderRequest.getFilledQuantity().toString() : "0",
