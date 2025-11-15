@@ -115,16 +115,38 @@ public class AiDataService {
             return Collections.emptyList();
         }
 
+        LocalDateTime startDate = tradeCycle.getStartDate();
+        LocalDateTime endDate = tradeCycle.getEndDate();
+        // 과거 캔들 데이터를 제공해야 매수 시점에 지표 계산이 가능하므로
+        LocalDateTime extendedStartDate = calculateExtendedStartDate(startDate, interval); 
+
         String assetClass = stock.getAssetClass();
         if ("crypto".equalsIgnoreCase(assetClass)) {
-            return fetchCryptoCandles(stock.getBinanceSymbol(), interval, tradeCycle.getStartDate(), tradeCycle.getEndDate());
+            return fetchCryptoCandles(stock.getBinanceSymbol(), interval, extendedStartDate, endDate);
         }
         if ("us_equity".equalsIgnoreCase(assetClass)) {
-            return fetchUsEquityCandles(stock.getSymbol(), interval, tradeCycle.getStartDate(), tradeCycle.getEndDate());
+            return fetchUsEquityCandles(stock.getSymbol(), interval, extendedStartDate, endDate);
         }
 
         log.debug("지원하지 않는 자산 클래스이므로 차트 데이터를 제공하지 않습니다. assetClass={}, symbol={}", assetClass, stock.getSymbol());
         return Collections.emptyList();
+    }
+    
+    // 충분한 캔들 데이터 제공을 위해 과거 기간 계산(300개 기준)
+    private LocalDateTime calculateExtendedStartDate(LocalDateTime startDate, String interval) {
+        Duration historyDuration = switch (interval) {
+            case "5m" -> Duration.ofHours(26); // 300개 * 5분 = 25시간, 안전하게 26시간
+            case "15m" -> Duration.ofDays(4); // 300개 * 15분 = 75시간, 안전하게 4일
+            case "30m" -> Duration.ofDays(7); // 300개 * 30분 = 150시간, 안전하게 7일
+            case "1h" -> Duration.ofDays(13); // 300개 * 1시간 = 12.5일, 안전하게 13일
+            case "4h" -> Duration.ofDays(50); // 300개 * 4시간 = 50일
+            case "12h" -> Duration.ofDays(150); // 300개 * 12시간 = 150일
+            case "1d" -> Duration.ofDays(300); // 300개 * 1일 = 300일
+            case "1w" -> Duration.ofDays(2100); // 300개 * 1주 = 약 2100일
+            default -> Duration.ofDays(13); // 기본값
+        };
+        
+        return startDate.minus(historyDuration);
     }
 
     private List<ReportTradeCycleResponseDto.CandleData> fetchCryptoCandles(
@@ -151,7 +173,7 @@ public class AiDataService {
                 interval,
                 startTime,
                 endTime,
-                500
+                1000 // 최대 1000개 캔들 데이터 제한
             );
 
             CandleResponseDto candleResponse = CandleResponseDto.fromBinance(binanceSymbol, interval, klines);
