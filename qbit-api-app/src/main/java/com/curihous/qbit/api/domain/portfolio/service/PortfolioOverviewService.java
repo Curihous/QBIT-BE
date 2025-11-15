@@ -37,10 +37,10 @@ public class PortfolioOverviewService {
     
     // period별 기본 timeframe 매핑
     private static final Map<String, String> PERIOD_TO_TIMEFRAME = Map.of(
-        "1D", "30Min",  
-        "1W", "1Hour",  
-        "1M", "1Day",   
-        "1A", "1Day"   
+        "1D", "15Min",  
+        "1W", "1H",  
+        "1M", "1D",   
+        "1A", "1D"   
     );
 
     private final TradingPort tradingPort;
