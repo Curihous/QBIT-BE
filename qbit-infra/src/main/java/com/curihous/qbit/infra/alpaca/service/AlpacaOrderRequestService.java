@@ -94,6 +94,12 @@ public class AlpacaOrderRequestService {
     public Page<OrderRequest> getMyOrders(User user, Pageable pageable) {
         return orderRequestRepository.findByUser(user, pageable);
     }
+    
+    // 특정 종목의 주문 목록 조회
+    @Transactional(readOnly = true)
+    public Page<OrderRequest> getMyOrdersBySymbol(User user, String symbol, Pageable pageable) {
+        return orderRequestRepository.findByUserAndSymbol(user, symbol, pageable);
+    }
 
     // 주문 상세 조회
     @Transactional(readOnly = true)

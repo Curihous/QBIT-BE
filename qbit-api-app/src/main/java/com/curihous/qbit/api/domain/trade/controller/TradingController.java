@@ -115,17 +115,26 @@ public class TradingController {
         return ResponseEntity.ok(OrderUpdateResponseDto.from(result));
     }
 
-    @Operation(summary = "내 주문 목록 조회", description = "사용자의 모든 주문 내역을 조회합니다. (페이징 지원)")
+    @Operation(summary = "내 주문 목록 조회", description = "사용자의 주문 내역을 조회합니다. symbol 파라미터로 특정 종목 필터링 가능합니다. (페이징 지원)")
     @GetMapping("/orders")
     public ResponseEntity<PaginatedResponseDto<OrderDetailResponseDto>> getMyOrders(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "10") int size,
+            @io.swagger.v3.oas.annotations.Parameter(description = "종목 심볼 (선택적, 특정 종목 필터링용)", example = "AAPL")
+            @RequestParam(value = "symbol", required = false) String symbol
     ) {
         PagingValidator.validate(page, size);
 
         User user = userSecurityFacade.getCurrentUser();
         Pageable pageable = PageRequest.of(page, size);
-        Page<OrderRequest> ordersPage = tradingPort.getMyOrders(user, pageable);
+        Page<OrderRequest> ordersPage;
+        
+        if (symbol != null && !symbol.isBlank()) {
+            ordersPage = tradingPort.getMyOrdersBySymbol(user, symbol.trim(), pageable);
+        } else {
+            ordersPage = tradingPort.getMyOrders(user, pageable);
+        }
+        
         Page<OrderDetailResponseDto> responsePage = ordersPage.map(OrderDetailResponseDto::from);
         PaginatedResponseDto<OrderDetailResponseDto> response = PaginatedResponseDto.from(responsePage);
         return ResponseEntity.ok(response);

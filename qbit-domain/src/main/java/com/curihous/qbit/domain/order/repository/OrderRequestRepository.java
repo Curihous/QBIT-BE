@@ -19,6 +19,9 @@ public interface OrderRequestRepository extends JpaRepository<OrderRequest, Long
     // 사용자의 주문 목록 조회 (페이징, 최신순)
     Page<OrderRequest> findByUser(User user, Pageable pageable);
     
+    // 사용자의 특정 종목 주문 목록 조회 (페이징, 최신순)
+    Page<OrderRequest> findByUserAndSymbol(User user, String symbol, Pageable pageable);
+    
     // 사용자의 특정 주문 조회
     Optional<OrderRequest> findByIdAndUser(Long id, User user);
     

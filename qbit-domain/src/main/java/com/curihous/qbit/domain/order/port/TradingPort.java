@@ -22,6 +22,9 @@ public interface TradingPort {
     // 내 주문 목록 조회 
     Page<OrderRequest> getMyOrders(User user, Pageable pageable);
     
+    // 특정 종목의 주문 목록 조회
+    Page<OrderRequest> getMyOrdersBySymbol(User user, String symbol, Pageable pageable);
+    
     // 특정 주문 조회
     OrderRequest getOrder(User user, Long orderId);
     
