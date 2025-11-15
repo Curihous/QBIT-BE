@@ -19,6 +19,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Map;
+import java.util.Set;
 
 // JPA 영속성 컨텍스트를 건드리지 않고, Alpaca API와 Redis 캐시, TradingPort만 호출하는 조정 용도라 여기에 위치시킴
 @Slf4j
@@ -28,27 +30,41 @@ public class PortfolioOverviewService {
 
     private static final String CACHE_KEY_PREFIX = "portfolio:overview:"; // Redis 캐시 키 접두사.  portfolio:overview:123 이런 형태로 사용자별 캐시를 구분
     private static final Duration CACHE_TTL = Duration.ofSeconds(90); // Redis 캐시 만료 시간
-    private static final String DEFAULT_PERIOD = "1M"; // Alpaca API 기본 기간
-    private static final String DEFAULT_TIMEFRAME = "1D"; // Alpaca API 기본 타임프레임
+    private static final String DEFAULT_PERIOD = "1M"; // 기본값세팅
+    
+    // Alpaca API에서 허용하는 period 값들: 1일, 1주, 1개월, 1년
+    private static final Set<String> VALID_PERIODS = Set.of("1D", "1W", "1M", "1A");
+    
+    // period별 기본 timeframe 매핑
+    private static final Map<String, String> PERIOD_TO_TIMEFRAME = Map.of(
+        "1D", "30Min",  
+        "1W", "1Hour",  
+        "1M", "1Day",   
+        "1A", "1Day"   
+    );
 
     private final TradingPort tradingPort;
     private final AlpacaOAuthConnectionService alpacaOAuthConnectionService;
     private final AlpacaTradingPort alpacaTradingPort;
     private final RedisTemplate<String, Object> redisTemplate;
 
-    public PortfolioOverviewResponseDto getOverview(User user) {
-        String cacheKey = cacheKey(user.getId());
+    public PortfolioOverviewResponseDto getOverview(User user, String period) {
+        // 파라미터 검증 및 기본값 설정
+        String validatedPeriod = validateAndGetPeriod(period);
+        String timeframe = PERIOD_TO_TIMEFRAME.get(validatedPeriod);
+        
+        String cacheKey = cacheKey(user.getId(), validatedPeriod, timeframe);
         Object cached = redisTemplate.opsForValue().get(cacheKey);
         if (cached instanceof PortfolioOverviewResponseDto dto) {
             return dto;
         }
 
-        PortfolioOverviewResponseDto overview = fetchOverview(user);
+        PortfolioOverviewResponseDto overview = fetchOverview(user, validatedPeriod, timeframe);
         redisTemplate.opsForValue().set(cacheKey, overview, CACHE_TTL);
         return overview;
     }
 
-    private PortfolioOverviewResponseDto fetchOverview(User user) {
+    private PortfolioOverviewResponseDto fetchOverview(User user, String period, String timeframe) {
         try {
             AlpacaOAuthConnection connection = alpacaOAuthConnectionService.getValidConnection(user.getId());
             String authorization = "Bearer " + connection.getAccessToken();
@@ -56,8 +72,8 @@ public class PortfolioOverviewService {
             TradingPort.AccountInfo accountInfo = tradingPort.getAccountInfo(user);
             AlpacaPortfolioHistoryResponse historyResponse = alpacaTradingPort.getPortfolioHistory(
                 authorization,
-                DEFAULT_PERIOD,
-                DEFAULT_TIMEFRAME
+                period,
+                timeframe
             );
 
             Instant utcNow = Instant.now();
@@ -73,8 +89,22 @@ public class PortfolioOverviewService {
         }
     }
 
-    private String cacheKey(Long userId) {
-        return CACHE_KEY_PREFIX + userId;
+    private String validateAndGetPeriod(String period) {
+        if (period == null || period.isBlank()) {
+            return DEFAULT_PERIOD;
+        }
+        String trimmed = period.trim();
+        if (!VALID_PERIODS.contains(trimmed)) {
+            throw new QbitException(
+                ErrorCode.INVALID_INPUT_VALUE,
+                String.format("유효하지 않은 period 값입니다.", VALID_PERIODS)
+            );
+        }
+        return trimmed;
+    }
+
+    private String cacheKey(Long userId, String period, String timeframe) {
+        return CACHE_KEY_PREFIX + userId + ":" + period + ":" + timeframe;
     }
 }
 
