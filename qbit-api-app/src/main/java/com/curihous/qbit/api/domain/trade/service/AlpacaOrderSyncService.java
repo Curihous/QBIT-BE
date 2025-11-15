@@ -24,6 +24,8 @@ import com.curihous.qbit.infra.alpaca.dto.response.AlpacaOrderResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -688,7 +690,8 @@ public class AlpacaOrderSyncService {
             });
             
             // 사용자의 모든 완료된 TradeCycle 조회 (기간 필터링용)
-            List<TradeCycle> completedCycles = tradeCycleRepository.findByUserAndEndDateIsNotNull(user);
+            Page<TradeCycle> completedCyclesPage = tradeCycleRepository.findByUserAndEndDateIsNotNullOrderByEndDateDesc(user, Pageable.unpaged());
+            List<TradeCycle> completedCycles = completedCyclesPage.getContent();
             
             // TradeCycle의 startDate ~ endDate 범위에 있는 주문은 제외
             final List<TradeCycle> finalCompletedCycles = completedCycles;
@@ -936,6 +939,9 @@ public class AlpacaOrderSyncService {
                 tradeCycle.updateOnPartialSell(qty, price);
             }
         }
+        
+        // 손익 금액 계산 (이미 종료된 사이클이므로)
+        tradeCycle.calculateProfitLossAmount();
         
         tradeCycleRepository.save(tradeCycle);
         participatingOrders.forEach(order -> linkOrderToTradeCycle(order, tradeCycle));
