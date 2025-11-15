@@ -97,7 +97,7 @@ public class PortfolioOverviewService {
         if (!VALID_PERIODS.contains(trimmed)) {
             throw new QbitException(
                 ErrorCode.INVALID_INPUT_VALUE,
-                String.format("유효하지 않은 period 값입니다.", VALID_PERIODS)
+                String.format("유효하지 않은 period 값입니다. 허용되는 값: %s", VALID_PERIODS)
             );
         }
         return trimmed;
