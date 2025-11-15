@@ -25,7 +25,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import com.curihous.qbit.domain.order.entity.OrderSide;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -89,16 +89,37 @@ public class AlpacaOrderRequestService {
         return convertToCreatedResult(alpacaResponse);
     }
 
-    // 내 주문 목록 조회 
+    // 내 주문 목록 조회
     @Transactional(readOnly = true)
-    public Page<OrderRequest> getMyOrders(User user, Pageable pageable) {
-        return orderRequestRepository.findByUser(user, pageable);
-    }
-    
-    // 특정 종목의 주문 목록 조회
-    @Transactional(readOnly = true)
-    public Page<OrderRequest> getMyOrdersBySymbol(User user, String symbol, Pageable pageable) {
-        return orderRequestRepository.findByUserAndSymbol(user, symbol, pageable);
+    public Page<OrderRequest> getMyOrders(User user, String symbol, String side, Pageable pageable) {
+        // side를 enum으로 변환
+        OrderSide orderSide = null;
+        if (side != null && !side.isBlank()) {
+            try {
+                orderSide = OrderSide.valueOf(side.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new QbitException(
+                    ErrorCode.INVALID_INPUT_VALUE, 
+                    "잘못된 side 값입니다. BUY 또는 SELL만 가능합니다."
+                );
+            }
+        }
+        
+        // symbol 처리
+        String trimmedSymbol = (symbol != null && !symbol.isBlank()) ? symbol.trim() : null;
+        boolean hasSymbol = trimmedSymbol != null;
+        boolean hasSide = orderSide != null;
+        
+        // symbol과 side 조합에 따라 적절한 메서드 호출
+        if (hasSymbol && hasSide) {
+            return orderRequestRepository.findByUserAndSymbolAndSide(user, trimmedSymbol, orderSide, pageable);
+        } else if (hasSymbol) {
+            return orderRequestRepository.findByUserAndSymbol(user, trimmedSymbol, pageable);
+        } else if (hasSide) {
+            return orderRequestRepository.findByUserAndSide(user, orderSide, pageable);
+        } else {
+            return orderRequestRepository.findByUser(user, pageable);
+        }
     }
 
     // 주문 상세 조회

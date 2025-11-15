@@ -22,6 +22,12 @@ public interface OrderRequestRepository extends JpaRepository<OrderRequest, Long
     // 사용자의 특정 종목 주문 목록 조회 (페이징, 최신순)
     Page<OrderRequest> findByUserAndSymbol(User user, String symbol, Pageable pageable);
     
+    // 사용자의 side별 주문 목록 조회 (페이징, 최신순)
+    Page<OrderRequest> findByUserAndSide(User user, com.curihous.qbit.domain.order.entity.OrderSide side, Pageable pageable);
+    
+    // 사용자의 특정 종목 및 side별 주문 목록 조회 (페이징, 최신순)
+    Page<OrderRequest> findByUserAndSymbolAndSide(User user, String symbol, com.curihous.qbit.domain.order.entity.OrderSide side, Pageable pageable);
+    
     // 사용자의 특정 주문 조회
     Optional<OrderRequest> findByIdAndUser(Long id, User user);
     
@@ -30,9 +36,6 @@ public interface OrderRequestRepository extends JpaRepository<OrderRequest, Long
     
     // 사용자의 Alpaca 주문 ID로 조회
     Optional<OrderRequest> findByAlpacaOrderIdAndUser(String alpacaOrderId, User user);
-    
-    // 상태별 주문 조회
-    List<OrderRequest> findByStatusIn(List<OrderStatus> statuses);
     
     // 특정 TradeCycle에 연결된 체결된 주문 조회 (FILLED, PARTIALLY_FILLED)
     @Query("SELECT DISTINCT req FROM OrderRequest req " +

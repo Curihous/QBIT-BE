@@ -5,8 +5,6 @@ import com.curihous.qbit.domain.user.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-import java.util.List;
-
 /**
  * 주식 거래(주문) 처리를 위한 Port 인터페이스
  * (Hexagonal Architecture - Port)
@@ -19,11 +17,8 @@ public interface TradingPort {
     // 주문 수정
     OrderUpdateResult updateOrder(User user, Long orderId, UpdateOrderCommand request);
     
-    // 내 주문 목록 조회 
-    Page<OrderRequest> getMyOrders(User user, Pageable pageable);
-    
-    // 특정 종목의 주문 목록 조회
-    Page<OrderRequest> getMyOrdersBySymbol(User user, String symbol, Pageable pageable);
+    // 내 주문 목록 조회 (symbol, side 필터링 지원)
+    Page<OrderRequest> getMyOrders(User user, String symbol, String side, Pageable pageable);
     
     // 특정 주문 조회
     OrderRequest getOrder(User user, Long orderId);

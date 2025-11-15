@@ -196,13 +196,8 @@ public class AlpacaOAuthService implements TradingPort {
     }
 
     @Override
-    public Page<OrderRequest> getMyOrders(User user, Pageable pageable) {
-        return alpacaOrderRequestService.getMyOrders(user, pageable);
-    }
-    
-    @Override
-    public Page<OrderRequest> getMyOrdersBySymbol(User user, String symbol, Pageable pageable) {
-        return alpacaOrderRequestService.getMyOrdersBySymbol(user, symbol, pageable);
+    public Page<OrderRequest> getMyOrders(User user, String symbol, String side, Pageable pageable) {
+        return alpacaOrderRequestService.getMyOrders(user, symbol, side, pageable);
     }
 
     @Override
