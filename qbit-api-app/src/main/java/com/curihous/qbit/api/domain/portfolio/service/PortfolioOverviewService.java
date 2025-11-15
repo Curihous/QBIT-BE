@@ -12,24 +12,20 @@ import com.curihous.qbit.infra.alpaca.dto.response.AlpacaPortfolioHistoryRespons
 import com.curihous.qbit.infra.alpaca.port.AlpacaTradingPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Map;
 import java.util.Set;
 
-// JPA 영속성 컨텍스트를 건드리지 않고, Alpaca API와 Redis 캐시, TradingPort만 호출하는 조정 용도라 여기에 위치시킴
+// JPA 영속성 컨텍스트를 건드리지 않고, Alpaca API와 TradingPort만 호출하는 조정 용도라 여기에 위치시킴
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class PortfolioOverviewService {
 
-    private static final String CACHE_KEY_PREFIX = "portfolio:overview:"; // Redis 캐시 키 접두사.  portfolio:overview:123 이런 형태로 사용자별 캐시를 구분
-    private static final Duration CACHE_TTL = Duration.ofSeconds(90); // Redis 캐시 만료 시간
     private static final String DEFAULT_PERIOD = "1M"; // 기본값세팅
     
     // Alpaca API에서 허용하는 period 값들: 1일, 1주, 1개월, 1년
@@ -46,22 +42,13 @@ public class PortfolioOverviewService {
     private final TradingPort tradingPort;
     private final AlpacaOAuthConnectionService alpacaOAuthConnectionService;
     private final AlpacaTradingPort alpacaTradingPort;
-    private final RedisTemplate<String, Object> redisTemplate;
 
     public PortfolioOverviewResponseDto getOverview(User user, String period) {
         // 파라미터 검증 및 기본값 설정
         String validatedPeriod = validateAndGetPeriod(period);
         String timeframe = PERIOD_TO_TIMEFRAME.get(validatedPeriod);
         
-        String cacheKey = cacheKey(user.getId(), validatedPeriod, timeframe);
-        Object cached = redisTemplate.opsForValue().get(cacheKey);
-        if (cached instanceof PortfolioOverviewResponseDto dto) {
-            return dto;
-        }
-
-        PortfolioOverviewResponseDto overview = fetchOverview(user, validatedPeriod, timeframe);
-        redisTemplate.opsForValue().set(cacheKey, overview, CACHE_TTL);
-        return overview;
+        return fetchOverview(user, validatedPeriod, timeframe);
     }
 
     private PortfolioOverviewResponseDto fetchOverview(User user, String period, String timeframe) {
@@ -101,10 +88,6 @@ public class PortfolioOverviewService {
             );
         }
         return trimmed;
-    }
-
-    private String cacheKey(Long userId, String period, String timeframe) {
-        return CACHE_KEY_PREFIX + userId + ":" + period + ":" + timeframe;
     }
 }
 

@@ -73,7 +73,7 @@ public class PortfolioController {
 
     @Operation(
         summary = "포트폴리오 오버뷰 조회",
-        description = "자산 그래프를 그리기 위한 포트폴리오 오버뷰를 조회합니다. (90초 동안 캐시)\n\n" +
+        description = "자산 그래프를 그리기 위한 포트폴리오 오버뷰를 조회합니다.\n\n" +
             "period별 자동 timeframe 맵핑:\n" +
             "- 1D (1일): 15Min 간격\n" +
             "- 1W (1주): 1H 간격\n" +
