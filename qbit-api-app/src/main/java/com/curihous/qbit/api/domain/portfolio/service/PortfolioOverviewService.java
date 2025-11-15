@@ -48,6 +48,9 @@ public class PortfolioOverviewService {
         String validatedPeriod = validateAndGetPeriod(period);
         String timeframe = PERIOD_TO_TIMEFRAME.get(validatedPeriod);
         
+        log.debug("포트폴리오 오버뷰 조회 요청: userId={}, period={}, timeframe={}", 
+            user.getId(), validatedPeriod, timeframe);
+        
         return fetchOverview(user, validatedPeriod, timeframe);
     }
 
@@ -67,7 +70,7 @@ public class PortfolioOverviewService {
             long kstMillis = TimeZoneConverter.utcToKst(utcNow.toEpochMilli());
             LocalDateTime fetchedAtKst = LocalDateTime.ofInstant(Instant.ofEpochMilli(kstMillis), ZoneId.of("Asia/Seoul"));
 
-            return PortfolioOverviewResponseDto.from(accountInfo, historyResponse, fetchedAtKst);
+            return PortfolioOverviewResponseDto.from(accountInfo, historyResponse, timeframe, fetchedAtKst);
         } catch (QbitException e) {
             throw e;
         } catch (Exception e) {

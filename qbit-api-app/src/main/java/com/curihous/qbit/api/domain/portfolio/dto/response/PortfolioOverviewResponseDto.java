@@ -31,6 +31,7 @@ public record PortfolioOverviewResponseDto(
     public static PortfolioOverviewResponseDto from(
         TradingPort.AccountInfo accountInfo,
         AlpacaPortfolioHistoryResponse historyResponse,
+        String timeframe,
         LocalDateTime fetchedAt
     ) {
         Summary summary = Summary.from(accountInfo);
@@ -40,7 +41,7 @@ public record PortfolioOverviewResponseDto(
             summary,
             historyPoints,
             historyResponse != null ? historyResponse.baseValue() : null,
-            historyResponse != null ? historyResponse.timeframe() : null,
+            timeframe,
             fetchedAt
         );
     }
