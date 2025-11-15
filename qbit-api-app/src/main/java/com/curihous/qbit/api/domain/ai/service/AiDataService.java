@@ -59,6 +59,7 @@ public class AiDataService {
             .symbol(symbol)
             .startDate(tradeCycle.getStartDate())
             .endDate(tradeCycle.getEndDate())
+            .interval(interval)
             .profitLossRate(tradeCycle.getProfitLossRate())
             .averageBuyPrice(tradeCycle.getAverageBuyPrice())
             .averageSellPrice(tradeCycle.getAverageSellPrice())

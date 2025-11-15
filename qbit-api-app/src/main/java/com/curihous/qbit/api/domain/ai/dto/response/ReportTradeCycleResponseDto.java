@@ -19,6 +19,7 @@ public class ReportTradeCycleResponseDto {
     private String symbol;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
+    private String interval;
     private BigDecimal profitLossRate;
     private BigDecimal averageBuyPrice;
     private BigDecimal averageSellPrice;
