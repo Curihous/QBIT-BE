@@ -472,8 +472,10 @@ public class AlpacaOrderRequestService {
 
     private void refreshOrderFromAlpaca(String authorization, String alpacaOrderId) {
         int attempts = 0;
-        long delayMillis = 250;
-        while (attempts < 8) {
+        long delayMillis = 250L; 
+        final int maxAttempts = 5; // AlpacaTradingClient#getOrder 429 (주문 단건 조회 재시도 로직 한도 초과) 방지
+
+        while (attempts < maxAttempts) {
             try {
                 AlpacaOrderResponse fetched = alpacaTradingPort.getOrder(authorization, alpacaOrderId);
                 if (fetched != null) {
@@ -518,6 +520,10 @@ public class AlpacaOrderRequestService {
                 return;
             } catch (FeignException.NotFound e) {
                 log.debug("Alpaca 주문 단건 조회 재시도: orderId={}, attempt={}", alpacaOrderId, attempts + 1);
+            } catch (FeignException.TooManyRequests e) {
+                log.warn("Alpaca 주문 단건 조회 레이트 리밋 초과: orderId={}, attempt={}, error={}",
+                        alpacaOrderId, attempts + 1, e.getMessage());
+                return;
             } catch (Exception e) {
                 log.warn("Alpaca 주문 단건 조회 실패: orderId={}, attempt={}, error={}", alpacaOrderId, attempts + 1, e.getMessage());
             }
@@ -528,9 +534,10 @@ public class AlpacaOrderRequestService {
                 Thread.currentThread().interrupt();
                 return;
             }
-            delayMillis = Math.min(delayMillis * 2, 1500);
+            // 지수 백오프 (최대 2초까지)
+            delayMillis = Math.min(delayMillis * 2, 2000L);
         }
-        log.warn("Alpaca 주문 단건 조회 취소: orderId={}, 최대 시도 횟수 초과", alpacaOrderId);
+        log.warn("Alpaca 주문 단건 조회 취소: orderId={}, 최대 시도 횟수({}) 초과", alpacaOrderId, maxAttempts);
     }
 
     private boolean shouldAdvanceStatus(OrderStatus current, OrderStatus incoming) {

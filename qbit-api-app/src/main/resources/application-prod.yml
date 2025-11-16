@@ -50,12 +50,10 @@ websocket:
 logging:
   level:
     com.curihous.qbit: DEBUG
-    # 디버깅
-    com.curihous.qbit.infra.alpaca.client.AlpacaTradingClient: TRACE
-    org.springframework.cloud.openfeign: DEBUG
-    feign.Logger: TRACE
-    okhttp3: TRACE
-    #
+    com.curihous.qbit.infra.alpaca.client.AlpacaTradingClient: INFO
+    org.springframework.cloud.openfeign: INFO
+    feign.Logger: INFO
+    okhttp3: INFO
     org.springframework.web: WARN
     org.springframework.data.redis: WARN
     org.springframework.web.socket: WARN

@@ -9,5 +9,5 @@ spring:
 info:
   app:
     name: QBIT-API
-    version: 6.0.3 # TODO: develop->deploy PR 시 수정
+    version: 6.0.4 # TODO: develop->deploy PR 시 수정
     description: QBIT 백엔드 API

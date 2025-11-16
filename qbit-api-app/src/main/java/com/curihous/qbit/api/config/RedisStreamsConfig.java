@@ -78,29 +78,53 @@ public class RedisStreamsConfig {
                         }
                         
                         // value가 String인 경우 역직렬화, TradeUpdateEvent인 경우 그대로 사용
-                        TradeUpdateEvent event;
-                        if (valueObj instanceof TradeUpdateEvent) {
-                            event = (TradeUpdateEvent) valueObj;
-                        } else if (valueObj instanceof String) {
-                            // JSON 문자열을 역직렬화
-                            event = objectMapper.readValue((String) valueObj, TradeUpdateEvent.class);
-                        } else {
-                            log.warn("Trade Update 메시지의 value가 알 수 없는 타입입니다: messageId={}, type={}", 
-                                    message.getId(), valueObj.getClass().getName());
+                        if (valueObj instanceof TradeUpdateEvent event) {
+                            log.info("Trade Update 이벤트 수신: userId={}, event={}, symbol={}, orderId={}",
+                                    event.getUserId(), event.getEvent(), event.getSymbol(), event.getAlpacaOrderId());
+                            tradeUpdateConsumer.onMessage(event);
                             ackMessage(message.getId());
+                            log.debug("Trade Update 메시지 처리 완료 및 Ack: messageId={}", message.getId());
                             return;
                         }
-                        
-                        log.info("Trade Update 이벤트 수신: userId={}, event={}, symbol={}, orderId={}", 
-                                event.getUserId(), event.getEvent(), event.getSymbol(), event.getAlpacaOrderId());
-                        
-                        // 이벤트 처리
-                        tradeUpdateConsumer.onMessage(event);
-                        
-                        // 메시지 정상 처리 후 Ack
+
+                        if (valueObj instanceof String jsonRaw) {
+                            String json = jsonRaw.trim();
+
+                            // 배열(JSON Array) 형태로 들어오는 경우: 여러 이벤트를 순차 처리
+                            if (json.startsWith("[")) {
+                                TradeUpdateEvent[] events = objectMapper.readValue(json, TradeUpdateEvent[].class);
+                                if (events == null || events.length == 0) {
+                                    log.warn("Trade Update 배열 메시지가 비어 있습니다: messageId={}", message.getId());
+                                    ackMessage(message.getId());
+                                    return;
+                                }
+
+                                for (TradeUpdateEvent e : events) {
+                                    if (e == null) continue;
+                                    log.info("Trade Update 이벤트 수신(배열): userId={}, event={}, symbol={}, orderId={}",
+                                            e.getUserId(), e.getEvent(), e.getSymbol(), e.getAlpacaOrderId());
+                                    tradeUpdateConsumer.onMessage(e);
+                                }
+
+                                ackMessage(message.getId());
+                                log.debug("Trade Update 배열 메시지 처리 완료 및 Ack: messageId={}", message.getId());
+                                return;
+                            }
+
+                            // 단일 객체 JSON
+                            TradeUpdateEvent event = objectMapper.readValue(json, TradeUpdateEvent.class);
+                            log.info("Trade Update 이벤트 수신: userId={}, event={}, symbol={}, orderId={}",
+                                    event.getUserId(), event.getEvent(), event.getSymbol(), event.getAlpacaOrderId());
+                            tradeUpdateConsumer.onMessage(event);
+                            ackMessage(message.getId());
+                            log.debug("Trade Update 메시지 처리 완료 및 Ack: messageId={}", message.getId());
+                            return;
+                        }
+
+                        log.warn("Trade Update 메시지의 value가 알 수 없는 타입입니다: messageId={}, type={}",
+                                message.getId(), valueObj.getClass().getName());
                         ackMessage(message.getId());
-                        
-                        log.debug("Trade Update 메시지 처리 완료 및 Ack: messageId={}", message.getId());
+                        return;
                         
                     } catch (Exception e) {
                         log.error("Trade Update 이벤트 처리 실패: messageId={}, error={}", 
