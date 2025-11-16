@@ -19,7 +19,8 @@ import org.springframework.scheduling.annotation.EnableAsync;
         "com.curihous.qbit.infra.alpaca.client",
         "com.curihous.qbit.infra.yahoo.client",
         "com.curihous.qbit.infra.binance.client",
-        "com.curihous.qbit.infra.massive.client"
+        "com.curihous.qbit.infra.massive.client",
+        "com.curihous.qbit.infra.fmp.client"
 })
 public class QbitApiApplication {
 
