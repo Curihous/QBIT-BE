@@ -135,7 +135,7 @@ public class StockController {
 
     @Operation(
         summary = "상승률순 종목 랭킹 조회 (20개)",
-        description = "당일 상승률 상위 종목을 조회합니다. (Alpaca movers API)"
+        description = "당일 상승률 상위 S&P500 종목을 조회합니다. (Massive Snapshot 데이터 기반, 30분 캐시)"
     )
     @GetMapping("/ranking/moving")
     public ResponseEntity<List<StockRankingResponseDto>> getTopGainers() {
@@ -145,7 +145,7 @@ public class StockController {
 
     @Operation(
         summary = "거래량순 종목 랭킹 조회 (20개)",
-        description = "거래량 급증 상위 종목을 조회합니다. (최근 1일 거래량 vs 과거 평균 거래량 비율을 계산)"
+        description = "거래량 급증 상위 S&P500 종목을 조회합니다. (최근 일별 거래량 vs 과거 평균 거래량 비율, Massive Aggregates 기반, 30분 캐시)"
     )
     @GetMapping("/ranking/volume")
     public ResponseEntity<List<StockRankingResponseDto>> getTopVolumeSpikes() {
@@ -155,7 +155,7 @@ public class StockController {
 
     @Operation(
         summary = "등락폭순 종목 랭킹 조회 (20개)",
-        description = "변동성이 큰 상위 종목을 조회합니다. (최근 30일간 수익률의 표준편차를 계산)"
+        description = "변동성이 큰 상위 S&P500 종목을 조회합니다. (최근 일간 수익률의 표준편차, Massive Aggregates 기반, 30분 캐시)"
     )
     @GetMapping("/ranking/volatility")
     public ResponseEntity<List<StockRankingResponseDto>> getTopVolatility() {
