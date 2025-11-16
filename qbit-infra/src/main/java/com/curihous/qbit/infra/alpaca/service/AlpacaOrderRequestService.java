@@ -55,9 +55,16 @@ public class AlpacaOrderRequestService {
 
         // 1. Alpaca 주문 생성
         AlpacaOrderResponse alpacaResponse;
+        long start = System.currentTimeMillis();
         try {
             alpacaResponse = alpacaTradingPort.createOrder(authorization, request);
+            long elapsed = System.currentTimeMillis() - start;
+            log.info("Alpaca createOrder 응답 시간: userId={}, symbol={}, elapsedMs={}",
+                    user.getId(), command.symbol(), elapsed);
         } catch (FeignException.Forbidden e) {
+            long elapsed = System.currentTimeMillis() - start;
+            log.warn("Alpaca createOrder 403(Forbidden): userId={}, symbol={}, elapsedMs={}, error={}",
+                    user.getId(), command.symbol(), elapsed, e.contentUTF8());
             // 403 Forbidden 에러 처리 
             String errorMessage = e.contentUTF8();
             if (errorMessage != null && (
@@ -71,7 +78,9 @@ public class AlpacaOrderRequestService {
             log.error("Alpaca 주문 생성 실패 (403 Forbidden): {}", errorMessage);
             throw new QbitException(ErrorCode.EXTERNAL_API_ERROR, "주문 생성에 실패했습니다: " + errorMessage);
         } catch (Exception e) {
-            log.error("Alpaca 주문 생성 실패: {}", e.getMessage(), e);
+            long elapsed = System.currentTimeMillis() - start;
+            log.error("Alpaca createOrder 실패: userId={}, symbol={}, elapsedMs={}, error={}",
+                    user.getId(), command.symbol(), elapsed, e.getMessage(), e);
             throw new QbitException(ErrorCode.EXTERNAL_API_ERROR, "주문 생성에 실패했습니다: " + e.getMessage());
         }
 
@@ -475,9 +484,14 @@ public class AlpacaOrderRequestService {
         long delayMillis = 250L; 
         final int maxAttempts = 5; // AlpacaTradingClient#getOrder 429 (주문 단건 조회 재시도 로직 한도 초과) 방지
 
+        long totalStart = System.currentTimeMillis();
         while (attempts < maxAttempts) {
+            long attemptStart = System.currentTimeMillis();
             try {
                 AlpacaOrderResponse fetched = alpacaTradingPort.getOrder(authorization, alpacaOrderId);
+                long attemptElapsed = System.currentTimeMillis() - attemptStart;
+                log.debug("Alpaca getOrder 시도: alpacaOrderId={}, attempt={}, elapsedMs={}",
+                        alpacaOrderId, attempts + 1, attemptElapsed);
                 if (fetched != null) {
                     orderRequestRepository.findByAlpacaOrderId(alpacaOrderId).ifPresent(order -> {
                         OrderStatus currentStatus = order.getStatus();
@@ -519,13 +533,18 @@ public class AlpacaOrderRequestService {
                 }
                 return;
             } catch (FeignException.NotFound e) {
-                log.debug("Alpaca 주문 단건 조회 재시도: orderId={}, attempt={}", alpacaOrderId, attempts + 1);
+                long attemptElapsed = System.currentTimeMillis() - attemptStart;
+                log.debug("Alpaca 주문 단건 조회 NotFound: orderId={}, attempt={}, elapsedMs={}",
+                        alpacaOrderId, attempts + 1, attemptElapsed);
             } catch (FeignException.TooManyRequests e) {
-                log.warn("Alpaca 주문 단건 조회 레이트 리밋 초과: orderId={}, attempt={}, error={}",
-                        alpacaOrderId, attempts + 1, e.getMessage());
+                long attemptElapsed = System.currentTimeMillis() - attemptStart;
+                log.warn("Alpaca 주문 단건 조회 레이트 리밋 초과: orderId={}, attempt={}, elapsedMs={}, error={}",
+                        alpacaOrderId, attempts + 1, attemptElapsed, e.getMessage());
                 return;
             } catch (Exception e) {
-                log.warn("Alpaca 주문 단건 조회 실패: orderId={}, attempt={}, error={}", alpacaOrderId, attempts + 1, e.getMessage());
+                long attemptElapsed = System.currentTimeMillis() - attemptStart;
+                log.warn("Alpaca 주문 단건 조회 실패: orderId={}, attempt={}, elapsedMs={}, error={}",
+                        alpacaOrderId, attempts + 1, attemptElapsed, e.getMessage());
             }
             attempts++;
             try {
@@ -537,7 +556,9 @@ public class AlpacaOrderRequestService {
             // 지수 백오프 (최대 2초까지)
             delayMillis = Math.min(delayMillis * 2, 2000L);
         }
-        log.warn("Alpaca 주문 단건 조회 취소: orderId={}, 최대 시도 횟수({}) 초과", alpacaOrderId, maxAttempts);
+        long totalElapsed = System.currentTimeMillis() - totalStart;
+        log.warn("Alpaca 주문 단건 조회 취소: orderId={}, 최대 시도 횟수({}) 초과, totalElapsedMs={}",
+                alpacaOrderId, maxAttempts, totalElapsed);
     }
 
     private boolean shouldAdvanceStatus(OrderStatus current, OrderStatus incoming) {

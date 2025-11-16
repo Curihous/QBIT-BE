@@ -30,7 +30,7 @@ public class AlpacaOrderTransactionalService {
 
     @Transactional
     public void syncSingleOrderFromAlpaca(User user, AlpacaOrderResponse alpacaOrder) {
-        log.info("syncSingleOrderFromAlpaca 시작: userId={}, alpacaOrderId={}", user.getId(), alpacaOrder.id());
+        log.trace("syncSingleOrderFromAlpaca 시작: userId={}, alpacaOrderId={}", user.getId(), alpacaOrder.id());
         
         // 기존 주문이 있는지 확인
         Optional<OrderRequest> existingOrderOpt = orderRequestRepository
@@ -48,12 +48,12 @@ public class AlpacaOrderTransactionalService {
             }
             
             updateExistingOrderFromAlpaca(existingOrder, alpacaOrder);
-            log.info("기존 주문 업데이트: orderId={}, alpacaOrderId={}, status={}", 
+            log.trace("기존 주문 업데이트: orderId={}, alpacaOrderId={}, status={}", 
                     existingOrder.getId(), alpacaOrder.id(), alpacaOrder.status());
         } else {
             // 새 주문 생성
             createNewOrderFromAlpaca(user, alpacaOrder);
-            log.info("새 주문 생성: alpacaOrderId={}, symbol={}, status={}", 
+            log.trace("새 주문 생성: alpacaOrderId={}, symbol={}, status={}", 
                     alpacaOrder.id(), alpacaOrder.symbol(), alpacaOrder.status());
         }
     }
@@ -94,11 +94,11 @@ public class AlpacaOrderTransactionalService {
 
     // Alpaca 데이터로 새 주문 생성
     private void createNewOrderFromAlpaca(User user, AlpacaOrderResponse alpacaOrder) {
-        log.info("createNewOrderFromAlpaca 시작: userId={}, alpacaOrderId={}", user.getId(), alpacaOrder.id());
+        log.trace("createNewOrderFromAlpaca 시작: userId={}, alpacaOrderId={}", user.getId(), alpacaOrder.id());
         
         // 주식 정보 조회 또는 생성
         Stock stock = getOrCreateStock(alpacaOrder.symbol());
-        log.info("주식 정보 조회/생성 완료: stockId={}, symbol={}", stock.getId(), stock.getSymbol());
+        log.trace("주식 정보 조회/생성 완료: stockId={}, symbol={}", stock.getId(), stock.getSymbol());
         
         OrderRequest newOrder = OrderRequest.builder()
                 .user(user)
@@ -124,12 +124,12 @@ public class AlpacaOrderTransactionalService {
             newOrder.updateFilledInfo(filledQty, filledAvgPrice, alpacaOrder.filledAt());
         }
         
-        log.info("DB 저장 전: alpacaOrderId={}, symbol={}, status={}, quantity={}", 
+        log.trace("DB 저장 전: alpacaOrderId={}, symbol={}, status={}, quantity={}", 
                 alpacaOrder.id(), alpacaOrder.symbol(), alpacaOrder.status(), alpacaOrder.quantity());
         
         try {
             OrderRequest savedOrder = orderRequestRepository.save(newOrder);
-            log.info("DB 저장 완료: orderId={}, alpacaOrderId={}", 
+            log.trace("DB 저장 완료: orderId={}, alpacaOrderId={}", 
                     savedOrder.getId(), savedOrder.getAlpacaOrderId());
         } catch (Exception e) {
             log.error("DB 저장 실패: alpacaOrderId={}, error={}", 
