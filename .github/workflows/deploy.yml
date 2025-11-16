@@ -147,7 +147,7 @@ jobs:
             -e STOCK_SYNC_US_EQUITY="${{ secrets.STOCK_SYNC_US_EQUITY }}" \
             -e STOCK_SYNC_CRYPTO="${{ secrets.STOCK_SYNC_CRYPTO }}" \
             -e MASSIVE_API_KEY="${{ secrets.MASSIVE_API_KEY }}" \
-            -e FMP_API_KEY="${{ secrets.FMP_API_KEY }}" \
+            -e SP500_JSON_URL="${{ secrets.SP500_JSON_URL }}" \
             -e INFO_APP_VERSION="${{ github.sha }}" \
             ${{ secrets.DOCKER_REPO }}:${{ github.sha }}
 

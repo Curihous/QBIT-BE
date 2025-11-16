@@ -73,8 +73,8 @@ stock:
 massive:
   api-key: ${MASSIVE_API_KEY}
 
-financialmodelingprep:
-  api-key: ${FMP_API_KEY}
+sp500:
+  json-url: ${SP500_JSON_URL}
 
 logging:
   level:
