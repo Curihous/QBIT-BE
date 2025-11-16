@@ -4,11 +4,9 @@ import com.curihous.qbit.api.domain.stock.dto.response.StockRankingResponseDto;
 import com.curihous.qbit.domain.stock.entity.Stock;
 import com.curihous.qbit.domain.stock.repository.StockRepository;
 import com.curihous.qbit.domain.user.entity.User;
-import com.curihous.qbit.infra.alpaca.client.AlpacaDataClient;
-import com.curihous.qbit.infra.alpaca.dto.response.AlpacaBarsResponse;
-import com.curihous.qbit.infra.alpaca.dto.response.AlpacaMoversResponse;
-import com.curihous.qbit.domain.alpaca.service.AlpacaOAuthConnectionService;
-import com.curihous.qbit.domain.alpaca.entity.AlpacaOAuthConnection;
+import com.curihous.qbit.infra.massive.dto.response.MassiveAggregateResponse;
+import com.curihous.qbit.infra.massive.dto.response.MassiveSnapshotResponse;
+import com.curihous.qbit.infra.massive.service.MassiveMarketService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -16,11 +14,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
+
+// JPA 영속성 컨텍스트를 건드리지 않고, Massive API만 호출하는 조정 용도라 여기에 위치시킴
 
 @Slf4j
 @Service
@@ -28,8 +29,7 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class StockRankingService {
 
-    private final AlpacaDataClient alpacaDataClient;
-    private final AlpacaOAuthConnectionService alpacaOAuthConnectionService;
+    private final MassiveMarketService massiveMarketService;
     private final StockRepository stockRepository;
     
     private static final int MAX_PARALLEL_REQUESTS = 10;
@@ -38,24 +38,30 @@ public class StockRankingService {
     // 상승률순 상위 종목 조회
     public List<StockRankingResponseDto> getTopGainers(User user, int limit) {
         try {
-            String authorization = getAuthorization(user);
-            AlpacaMoversResponse moversResponse = alpacaDataClient.getMovers(authorization);
-            
-            if (moversResponse == null || moversResponse.getGainers() == null) {
-                log.warn("Alpaca movers API 응답이 비어있습니다.");
-                return Collections.emptyList();
-            }
-            
-            // change_percent 기준 내림차순 정렬 후 상위 limit개 선택
-            List<AlpacaMoversResponse.MoverItem> topGainers = moversResponse.getGainers().stream()
-                    .sorted((a, b) -> Double.compare(
-                            b.getChangePercent() != null ? b.getChangePercent() : 0.0,
-                            a.getChangePercent() != null ? a.getChangePercent() : 0.0
-                    ))
+            List<Stock> candidateStocks = getCandidateStocks();
+
+            List<CompletableFuture<Optional<StockRankingResponseDto>>> futures = candidateStocks.stream()
+                    .map(stock -> CompletableFuture.supplyAsync(() -> {
+                        try {
+                            return calculateChangePercentWithMassive(stock);
+                        } catch (Exception e) {
+                            log.debug("상승률 계산 실패: symbol={}, error={}", stock.getSymbol(), e.getMessage());
+                            return Optional.<StockRankingResponseDto>empty();
+                        }
+                    }, executorService))
+                    .collect(Collectors.toList());
+
+            return futures.stream()
+                    .map(CompletableFuture::join)
+                    .filter(Optional::isPresent)
+                    .map(Optional::get)
+                    .sorted((a, b) -> {
+                        BigDecimal ca = a.changePercent() != null ? a.changePercent() : BigDecimal.ZERO;
+                        BigDecimal cb = b.changePercent() != null ? b.changePercent() : BigDecimal.ZERO;
+                        return cb.compareTo(ca);
+                    })
                     .limit(limit)
                     .collect(Collectors.toList());
-            
-            return convertMoversToDto(topGainers);
         } catch (Exception e) {
             log.error("상승률순 랭킹 조회 실패", e);
             return Collections.emptyList();
@@ -65,16 +71,13 @@ public class StockRankingService {
     // 거래량순 상위 종목 조회
     public List<StockRankingResponseDto> getTopVolumeSpikes(User user, int limit) {
         try {
-            // S&P500 종목 리스트 가져오기
             List<Stock> candidateStocks = getCandidateStocks();
-            
-            String authorization = getAuthorization(user);
-            
+
             // 병렬로 각 종목의 거래량 급증 비율 계산
             List<CompletableFuture<Optional<VolumeSpikeResult>>> futures = candidateStocks.stream()
                     .map(stock -> CompletableFuture.supplyAsync(() -> {
                         try {
-                            return calculateVolumeSpike(authorization, stock);
+                            return calculateVolumeSpikeWithMassive(stock);
                         } catch (Exception e) {
                             log.debug("거래량 급증 계산 실패: symbol={}, error={}", stock.getSymbol(), e.getMessage());
                             return Optional.<VolumeSpikeResult>empty();
@@ -101,16 +104,13 @@ public class StockRankingService {
     // 등락폭순 상위 종목 조회
     public List<StockRankingResponseDto> getTopVolatility(User user, int limit) {
         try {
-            // S&P500 종목 리스트 가져오기
             List<Stock> candidateStocks = getCandidateStocks();
-            
-            String authorization = getAuthorization(user);
-            
+
             // 병렬로 각 종목의 변동성 계산
             List<CompletableFuture<Optional<VolatilityResult>>> futures = candidateStocks.stream()
                     .map(stock -> CompletableFuture.supplyAsync(() -> {
                         try {
-                            return calculateVolatility(authorization, stock);
+                            return calculateVolatilityWithMassive(stock);
                         } catch (Exception e) {
                             log.debug("변동성 계산 실패: symbol={}, error={}", stock.getSymbol(), e.getMessage());
                             return Optional.<VolatilityResult>empty();
@@ -136,81 +136,89 @@ public class StockRankingService {
 
     // ============== 헬퍼 메서드 ==============
 
-    private String getAuthorization(User user) {
-        // 시스템 계정 사용 (userId=1L)
-        AlpacaOAuthConnection connection = alpacaOAuthConnectionService.getValidConnection(1L);
-        return "Bearer " + connection.getAccessToken();
-    }
-
     private List<Stock> getCandidateStocks() {
         // S&P500 플래그가 설정된 미국 주식만 랭킹 유니버스로 사용
         return stockRepository.findBySp500TrueAndAssetClassIgnoreCase("us_equity");
     }
 
-    private List<StockRankingResponseDto> convertMoversToDto(List<AlpacaMoversResponse.MoverItem> movers) {
-        return movers.stream()
-                .map(mover -> {
-                    Stock stock = stockRepository.findBySymbol(mover.getSymbol()).orElse(null);
-                    return StockRankingResponseDto.builder()
-                            .symbol(mover.getSymbol())
-                            .stockName(stock != null ? stock.getStockName() : mover.getSymbol())
-                            .currentPrice(mover.getPrice() != null ? BigDecimal.valueOf(mover.getPrice()) : null)
-                            .changePercent(mover.getChangePercent() != null ? BigDecimal.valueOf(mover.getChangePercent()) : null)
-                            .build();
-                })
-                .collect(Collectors.toList());
-    }
-
-    private Optional<VolumeSpikeResult> calculateVolumeSpike(String authorization, Stock stock) {
+    // Massive Snapshot 기반 상승률 계산
+    private Optional<StockRankingResponseDto> calculateChangePercentWithMassive(Stock stock) {
         try {
-            // 최근 10일간 bars 조회
-            AlpacaBarsResponse barsResponse = alpacaDataClient.getBars(
-                    authorization,
-                    stock.getSymbol(),
-                    "1Day",
-                    null,
-                    null,
-                    10
-            );
-            
-            if (barsResponse == null || barsResponse.getBars() == null || barsResponse.getBars().size() < 5) {
+            MassiveSnapshotResponse snapshot = massiveMarketService.getSnapshot(stock.getSymbol());
+            if (snapshot == null || snapshot.getTicker() == null ||
+                    snapshot.getTicker().getDay() == null || snapshot.getTicker().getPrevDay() == null) {
                 return Optional.empty();
             }
-            
-            List<AlpacaBarsResponse.Bar> bars = barsResponse.getBars();
-            
-            // 최신 거래량
-            Long currentVolume = bars.get(bars.size() - 1).getVolume();
+
+            MassiveSnapshotResponse.DayData day = snapshot.getTicker().getDay();
+            MassiveSnapshotResponse.PrevDayData prev = snapshot.getTicker().getPrevDay();
+            if (day.getClose() == null || prev.getClose() == null || prev.getClose() == 0.0) {
+                return Optional.empty();
+            }
+
+            BigDecimal currentPrice = BigDecimal.valueOf(day.getClose());
+            BigDecimal prevClose = BigDecimal.valueOf(prev.getClose());
+            BigDecimal changePercent = currentPrice.subtract(prevClose)
+                    .divide(prevClose, 6, RoundingMode.HALF_UP)
+                    .multiply(BigDecimal.valueOf(100));
+
+            StockRankingResponseDto dto = StockRankingResponseDto.builder()
+                    .symbol(stock.getSymbol())
+                    .stockName(stock.getStockName())
+                    .currentPrice(currentPrice)
+                    .changePercent(changePercent.setScale(4, RoundingMode.HALF_UP))
+                    .build();
+
+            return Optional.of(dto);
+        } catch (Exception e) {
+            log.debug("상승률 계산 중 오류: symbol={}, error={}", stock.getSymbol(), e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    // Massive Aggregates 기반 거래량 급증
+    private Optional<VolumeSpikeResult> calculateVolumeSpikeWithMassive(Stock stock) {
+        try {
+            LocalDate to = LocalDate.now();
+            LocalDate from = to.minusDays(30);
+            MassiveAggregateResponse aggs = massiveMarketService.getAggregates(
+                    stock.getSymbol(), 1, "day", from, to, true);
+
+            if (aggs == null || aggs.getResults() == null || aggs.getResults().size() < 5) {
+                return Optional.empty();
+            }
+
+            List<MassiveAggregateResponse.AggregateResult> bars = aggs.getResults();
+
+            MassiveAggregateResponse.AggregateResult latestBar = bars.get(bars.size() - 1);
+            Long currentVolume = latestBar.getVolume();
             if (currentVolume == null || currentVolume == 0) {
                 return Optional.empty();
             }
-            
-            // 과거 평균 거래량 (최신 제외)
+
             double avgVolume = bars.subList(0, bars.size() - 1).stream()
                     .mapToLong(bar -> bar.getVolume() != null ? bar.getVolume() : 0L)
                     .average()
                     .orElse(0.0);
-            
+
             if (avgVolume == 0) {
                 return Optional.empty();
             }
-            
-            // 거래량 급증 비율
+
             BigDecimal spikeRatio = BigDecimal.valueOf(currentVolume)
                     .divide(BigDecimal.valueOf(avgVolume), 4, RoundingMode.HALF_UP);
-            
+
             // 최신 가격 정보
-            AlpacaBarsResponse.Bar latestBar = bars.get(bars.size() - 1);
-            BigDecimal currentPrice = latestBar.getClose() != null 
-                    ? BigDecimal.valueOf(latestBar.getClose()) 
+            BigDecimal currentPrice = latestBar.getClosePrice() != null
+                    ? BigDecimal.valueOf(latestBar.getClosePrice())
                     : BigDecimal.ZERO;
 
             // 최근 2개 종가로 등락률 계산 (없으면 0)
             BigDecimal changePercent = BigDecimal.ZERO;
             if (bars.size() >= 2) {
-                AlpacaBarsResponse.Bar prevBar = bars.get(bars.size() - 2);
-                Double prevClose = prevBar.getClose();
-                Double lastClose = latestBar.getClose();
+                MassiveAggregateResponse.AggregateResult prevBar = bars.get(bars.size() - 2);
+                Double prevClose = prevBar.getClosePrice();
+                Double lastClose = latestBar.getClosePrice();
                 if (prevClose != null && prevClose != 0.0 && lastClose != null) {
                     BigDecimal last = BigDecimal.valueOf(lastClose);
                     BigDecimal prev = BigDecimal.valueOf(prevClose);
@@ -230,35 +238,30 @@ public class StockRankingService {
 
             return Optional.of(new VolumeSpikeResult(dto, spikeRatio));
         } catch (Exception e) {
-            log.debug("거래량 급증 계산 중 오류: symbol={}, error={}", stock.getSymbol(), e.getMessage());
+            log.debug("거래량 급증 계산 중 오류(Massive): symbol={}, error={}", stock.getSymbol(), e.getMessage());
             return Optional.empty();
         }
     }
 
-    private Optional<VolatilityResult> calculateVolatility(String authorization, Stock stock) {
+    // Massive Aggregates 기반 변동성
+    private Optional<VolatilityResult> calculateVolatilityWithMassive(Stock stock) {
         try {
-            // 최근 30일간 bars 조회
-            AlpacaBarsResponse barsResponse = alpacaDataClient.getBars(
-                    authorization,
-                    stock.getSymbol(),
-                    "1Day",
-                    null,
-                    null,
-                    30
-            );
-            
-            if (barsResponse == null || barsResponse.getBars() == null || barsResponse.getBars().size() < 10) {
+            LocalDate to = LocalDate.now();
+            LocalDate from = to.minusDays(60);
+            MassiveAggregateResponse aggs = massiveMarketService.getAggregates(
+                    stock.getSymbol(), 1, "day", from, to, true);
+
+            if (aggs == null || aggs.getResults() == null || aggs.getResults().size() < 10) {
                 return Optional.empty();
             }
-            
-            List<AlpacaBarsResponse.Bar> bars = barsResponse.getBars();
-            
-            // 종가 리스트
+
+            List<MassiveAggregateResponse.AggregateResult> bars = aggs.getResults();
+
             List<Double> closes = bars.stream()
-                    .map(AlpacaBarsResponse.Bar::getClose)
+                    .map(MassiveAggregateResponse.AggregateResult::getClosePrice)
                     .filter(Objects::nonNull)
                     .collect(Collectors.toList());
-            
+
             if (closes.size() < 10) {
                 return Optional.empty();
             }
@@ -285,11 +288,9 @@ public class StockRankingService {
                     .orElse(0.0);
             double stdDev = Math.sqrt(variance);
             
-            // 최신 가격 정보
-            AlpacaBarsResponse.Bar latestBar = bars.get(bars.size() - 1);
-            BigDecimal currentPrice = latestBar.getClose() != null 
-                    ? BigDecimal.valueOf(latestBar.getClose()) 
-                    : BigDecimal.ZERO;
+            // 최신 가격 정보 (마지막 종가 사용)
+            Double lastClosePrice = closes.get(closes.size() - 1);
+            BigDecimal currentPrice = BigDecimal.valueOf(lastClosePrice);
 
             // 최근 2개 종가로 등락률 계산 (없으면 0)
             BigDecimal changePercent = BigDecimal.ZERO;

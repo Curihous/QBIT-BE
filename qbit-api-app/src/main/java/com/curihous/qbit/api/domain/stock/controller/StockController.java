@@ -3,7 +3,7 @@ package com.curihous.qbit.api.domain.stock.controller;
 import com.curihous.qbit.api.domain.stock.dto.response.StockDetailResponseDto;
 import com.curihous.qbit.api.domain.stock.dto.response.StockRankingResponseDto;
 import com.curihous.qbit.api.domain.stock.dto.response.StockSearchResponseDto;
-import com.curihous.qbit.api.domain.stock.service.StockRankingService;
+import com.curihous.qbit.api.domain.stock.service.StockRankingCacheService;
 import com.curihous.qbit.common.exception.ErrorCode;
 import com.curihous.qbit.common.exception.QbitException;
 import com.curihous.qbit.domain.stock.entity.Stock;
@@ -32,7 +32,7 @@ public class StockController {
 
     private final StockService stockService;
     private final AlpacaStockService alpacaStockService;
-    private final StockRankingService stockRankingService;
+    private final StockRankingCacheService stockRankingCacheService;
     private final UserSecurityFacade userSecurityFacade;
     
     @Value("${stock.sync.us-equity}")
@@ -139,9 +139,8 @@ public class StockController {
     )
     @GetMapping("/ranking/moving")
     public ResponseEntity<List<StockRankingResponseDto>> getTopGainers() {
-        User user = userSecurityFacade.getCurrentUser();
-        List<StockRankingResponseDto> rankings = stockRankingService.getTopGainers(user, 20);
-        return ResponseEntity.ok(rankings);
+        List<StockRankingResponseDto> rankings = stockRankingCacheService.getCachedGainers();
+        return ResponseEntity.ok(rankings != null ? rankings : List.of());
     }
 
     @Operation(
@@ -150,9 +149,8 @@ public class StockController {
     )
     @GetMapping("/ranking/volume")
     public ResponseEntity<List<StockRankingResponseDto>> getTopVolumeSpikes() {
-        User user = userSecurityFacade.getCurrentUser();
-        List<StockRankingResponseDto> rankings = stockRankingService.getTopVolumeSpikes(user, 20);
-        return ResponseEntity.ok(rankings);
+        List<StockRankingResponseDto> rankings = stockRankingCacheService.getCachedVolumeSpikes();
+        return ResponseEntity.ok(rankings != null ? rankings : List.of());
     }
 
     @Operation(
@@ -161,9 +159,8 @@ public class StockController {
     )
     @GetMapping("/ranking/volatility")
     public ResponseEntity<List<StockRankingResponseDto>> getTopVolatility() {
-        User user = userSecurityFacade.getCurrentUser();
-        List<StockRankingResponseDto> rankings = stockRankingService.getTopVolatility(user, 20);
-        return ResponseEntity.ok(rankings);
+        List<StockRankingResponseDto> rankings = stockRankingCacheService.getCachedVolatility();
+        return ResponseEntity.ok(rankings != null ? rankings : List.of());
     }
     
     // 자산 클래스 허용 여부 체크 헬퍼 메서드
