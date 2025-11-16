@@ -486,12 +486,13 @@ public class AlpacaOrderRequestService {
 
         long totalStart = System.currentTimeMillis();
         while (attempts < maxAttempts) {
+            attempts++; // 현재 시도 번호
             long attemptStart = System.currentTimeMillis();
             try {
                 AlpacaOrderResponse fetched = alpacaTradingPort.getOrder(authorization, alpacaOrderId);
                 long attemptElapsed = System.currentTimeMillis() - attemptStart;
                 log.debug("Alpaca getOrder 시도: alpacaOrderId={}, attempt={}, elapsedMs={}",
-                        alpacaOrderId, attempts + 1, attemptElapsed);
+                        alpacaOrderId, attempts, attemptElapsed);
                 if (fetched != null) {
                     orderRequestRepository.findByAlpacaOrderId(alpacaOrderId).ifPresent(order -> {
                         OrderStatus currentStatus = order.getStatus();
@@ -535,18 +536,17 @@ public class AlpacaOrderRequestService {
             } catch (FeignException.NotFound e) {
                 long attemptElapsed = System.currentTimeMillis() - attemptStart;
                 log.debug("Alpaca 주문 단건 조회 NotFound: orderId={}, attempt={}, elapsedMs={}",
-                        alpacaOrderId, attempts + 1, attemptElapsed);
+                        alpacaOrderId, attempts, attemptElapsed);
             } catch (FeignException.TooManyRequests e) {
                 long attemptElapsed = System.currentTimeMillis() - attemptStart;
                 log.warn("Alpaca 주문 단건 조회 레이트 리밋 초과: orderId={}, attempt={}, elapsedMs={}, error={}",
-                        alpacaOrderId, attempts + 1, attemptElapsed, e.getMessage());
+                        alpacaOrderId, attempts, attemptElapsed, e.getMessage());
                 return;
             } catch (Exception e) {
                 long attemptElapsed = System.currentTimeMillis() - attemptStart;
                 log.warn("Alpaca 주문 단건 조회 실패: orderId={}, attempt={}, elapsedMs={}, error={}",
-                        alpacaOrderId, attempts + 1, attemptElapsed, e.getMessage());
+                        alpacaOrderId, attempts, attemptElapsed, e.getMessage());
             }
-            attempts++;
             try {
                 Thread.sleep(delayMillis);
             } catch (InterruptedException ie) {
