@@ -203,13 +203,29 @@ public class StockRankingService {
             AlpacaBarsResponse.Bar latestBar = bars.get(bars.size() - 1);
             BigDecimal currentPrice = latestBar.getClose() != null 
                     ? BigDecimal.valueOf(latestBar.getClose()) 
-                    : null;
-            
+                    : BigDecimal.ZERO;
+
+            // 최근 2개 종가로 등락률 계산 (없으면 0)
+            BigDecimal changePercent = BigDecimal.ZERO;
+            if (bars.size() >= 2) {
+                AlpacaBarsResponse.Bar prevBar = bars.get(bars.size() - 2);
+                Double prevClose = prevBar.getClose();
+                Double lastClose = latestBar.getClose();
+                if (prevClose != null && prevClose != 0.0 && lastClose != null) {
+                    BigDecimal last = BigDecimal.valueOf(lastClose);
+                    BigDecimal prev = BigDecimal.valueOf(prevClose);
+                    changePercent = last.subtract(prev)
+                            .divide(prev, 6, RoundingMode.HALF_UP)
+                            .multiply(BigDecimal.valueOf(100))
+                            .setScale(4, RoundingMode.HALF_UP);
+                }
+            }
+
             StockRankingResponseDto dto = StockRankingResponseDto.builder()
                     .symbol(stock.getSymbol())
                     .stockName(stock.getStockName())
                     .currentPrice(currentPrice)
-                    .changePercent(null)
+                    .changePercent(changePercent)
                     .build();
 
             return Optional.of(new VolumeSpikeResult(dto, spikeRatio));
@@ -273,13 +289,28 @@ public class StockRankingService {
             AlpacaBarsResponse.Bar latestBar = bars.get(bars.size() - 1);
             BigDecimal currentPrice = latestBar.getClose() != null 
                     ? BigDecimal.valueOf(latestBar.getClose()) 
-                    : null;
-            
+                    : BigDecimal.ZERO;
+
+            // 최근 2개 종가로 등락률 계산 (없으면 0)
+            BigDecimal changePercent = BigDecimal.ZERO;
+            if (closes.size() >= 2) {
+                double prevClose = closes.get(closes.size() - 2);
+                double lastClose = closes.get(closes.size() - 1);
+                if (prevClose != 0.0) {
+                    BigDecimal last = BigDecimal.valueOf(lastClose);
+                    BigDecimal prev = BigDecimal.valueOf(prevClose);
+                    changePercent = last.subtract(prev)
+                            .divide(prev, 6, RoundingMode.HALF_UP)
+                            .multiply(BigDecimal.valueOf(100))
+                            .setScale(4, RoundingMode.HALF_UP);
+                }
+            }
+
             StockRankingResponseDto dto = StockRankingResponseDto.builder()
                     .symbol(stock.getSymbol())
                     .stockName(stock.getStockName())
                     .currentPrice(currentPrice)
-                    .changePercent(null)
+                    .changePercent(changePercent)
                     .build();
 
             return Optional.of(new VolatilityResult(dto, BigDecimal.valueOf(stdDev).setScale(6, RoundingMode.HALF_UP)));
