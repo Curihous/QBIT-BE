@@ -90,7 +90,14 @@ public class FmpSp500SyncService {
             return new HashSet<>();
         }
 
-        List<FmpSp500ConstituentResponse> constituents = fmpClient.getSp500Constituents(apiKey);
+        List<FmpSp500ConstituentResponse> constituents;
+        try {
+            constituents = fmpClient.getSp500Constituents(apiKey);
+        } catch (Exception e) {
+            log.warn("FMP S&P500 구성 종목 조회 실패: {}", e.getMessage(), e);
+            return new HashSet<>();
+        }
+
         if (constituents == null || constituents.isEmpty()) {
             log.warn("FMP S&P500 구성 종목 응답이 비어 있습니다.");
             return new HashSet<>();
