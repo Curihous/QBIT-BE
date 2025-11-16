@@ -10,6 +10,7 @@ import com.curihous.qbit.domain.alpaca.service.AlpacaOAuthConnectionService;
 import com.curihous.qbit.domain.stock.entity.Stock;
 import com.curihous.qbit.domain.stock.repository.StockRepository;
 import com.curihous.qbit.domain.user.entity.User;
+import com.curihous.qbit.infra.fmp.service.FmpSp500SyncService;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +31,7 @@ public class AlpacaStockService {
     private final StockRepository stockRepository;
     private final AlpacaTradingPort alpacaTradingPort;
     private final AlpacaOAuthConnectionService alpacaOAuthConnectionService;
+    private final FmpSp500SyncService fmpSp500SyncService;
 
     @Value("${stock.sync.on:false}")
     private boolean syncOnStartup;  // 환경변수로 강제 동기화 제어
@@ -119,6 +121,9 @@ public class AlpacaStockService {
                     assetResponse.symbol(), assetResponse.assetClass(), binanceSymbol);
         }
         
+        // FMP 기반 S&P500 편입 여부 조회 
+        boolean isSp500 = fmpSp500SyncService.isSp500Symbol(assetResponse.symbol());
+
         Stock stock = Stock.builder()
                 .symbol(assetResponse.symbol())
                 .stockName(assetResponse.name())
@@ -132,6 +137,7 @@ public class AlpacaStockService {
                 .priceIncrement(assetResponse.priceIncrement())
                 .companyDomain(generatedDomain)
                 .binanceSymbol(binanceSymbol)
+                .sp500(isSp500)
                 .build();
         
         log.debug("종목 도메인 자동 생성: {} → {}", assetResponse.name(), generatedDomain);

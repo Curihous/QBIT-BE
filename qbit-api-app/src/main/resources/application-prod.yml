@@ -103,6 +103,9 @@ stock:
 massive:
   api-key: ${MASSIVE_API_KEY}
 
+financialmodelingprep:
+  api-key: ${FMP_API_KEY}
+
 management:
   endpoints:
     web:

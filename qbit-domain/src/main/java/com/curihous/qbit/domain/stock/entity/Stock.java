@@ -58,12 +58,16 @@ public class Stock extends BaseTimeEntity {
     @Column(name = "binance_symbol")
     private String binanceSymbol;
 
+    // === S&P500 구성 종목 여부(랭킹 유니버스 관리용) ===
+    @Column(name = "sp500")
+    private Boolean sp500;
+
     // AlpacaAssetResponse로부터 Stock 생성
     @Builder
     public Stock(String symbol, String stockName, String exchange, String assetClass, String status,
                  Boolean tradable, Boolean fractionable,
                  String minOrderSize, String minTradeIncrement, String priceIncrement, String companyDomain,
-                 String binanceSymbol) {
+                 String binanceSymbol, Boolean sp500) {
         this.symbol = symbol;
         this.stockName = stockName;
         this.exchange = exchange;
@@ -76,6 +80,7 @@ public class Stock extends BaseTimeEntity {
         this.priceIncrement = priceIncrement;
         this.companyDomain = companyDomain;
         this.binanceSymbol = binanceSymbol;
+        this.sp500 = sp500;
     }
 
     // 종목 정보 업데이트 (배치 작업용)
@@ -101,6 +106,11 @@ public class Stock extends BaseTimeEntity {
     // Binance 심볼 설정 (차트 데이터용)
     public void setBinanceSymbol(String binanceSymbol) {
         this.binanceSymbol = binanceSymbol;
+    }
+
+    // S&P500 편입 여부 플래그 설정 (랭킹 유니버스 관리용)
+    public void setSp500(Boolean sp500) {
+        this.sp500 = sp500;
     }
 
     // Clearbit 로고 URL 반환

@@ -1,7 +1,9 @@
 package com.curihous.qbit.api.domain.stock.controller;
 
 import com.curihous.qbit.api.domain.stock.dto.response.StockDetailResponseDto;
+import com.curihous.qbit.api.domain.stock.dto.response.StockRankingResponseDto;
 import com.curihous.qbit.api.domain.stock.dto.response.StockSearchResponseDto;
+import com.curihous.qbit.api.domain.stock.service.StockRankingService;
 import com.curihous.qbit.common.exception.ErrorCode;
 import com.curihous.qbit.common.exception.QbitException;
 import com.curihous.qbit.domain.stock.entity.Stock;
@@ -30,6 +32,7 @@ public class StockController {
 
     private final StockService stockService;
     private final AlpacaStockService alpacaStockService;
+    private final StockRankingService stockRankingService;
     private final UserSecurityFacade userSecurityFacade;
     
     @Value("${stock.sync.us-equity}")
@@ -128,6 +131,39 @@ public class StockController {
         }
         
         return ResponseEntity.ok(StockDetailResponseDto.fromEntity(stock));
+    }
+
+    @Operation(
+        summary = "상승률순 종목 랭킹 조회 (20개)",
+        description = "당일 상승률 상위 종목을 조회합니다. (Alpaca movers API)"
+    )
+    @GetMapping("/ranking/moving")
+    public ResponseEntity<List<StockRankingResponseDto>> getTopGainers() {
+        User user = userSecurityFacade.getCurrentUser();
+        List<StockRankingResponseDto> rankings = stockRankingService.getTopGainers(user, 20);
+        return ResponseEntity.ok(rankings);
+    }
+
+    @Operation(
+        summary = "거래량순 종목 랭킹 조회 (20개)",
+        description = "거래량 급증 상위 종목을 조회합니다. (최근 1일 거래량 vs 과거 평균 거래량 비율을 계산)"
+    )
+    @GetMapping("/ranking/volume")
+    public ResponseEntity<List<StockRankingResponseDto>> getTopVolumeSpikes() {
+        User user = userSecurityFacade.getCurrentUser();
+        List<StockRankingResponseDto> rankings = stockRankingService.getTopVolumeSpikes(user, 20);
+        return ResponseEntity.ok(rankings);
+    }
+
+    @Operation(
+        summary = "등락폭순 종목 랭킹 조회 (20개)",
+        description = "변동성이 큰 상위 종목을 조회합니다. (최근 30일간 수익률의 표준편차를 계산)"
+    )
+    @GetMapping("/ranking/volatility")
+    public ResponseEntity<List<StockRankingResponseDto>> getTopVolatility() {
+        User user = userSecurityFacade.getCurrentUser();
+        List<StockRankingResponseDto> rankings = stockRankingService.getTopVolatility(user, 20);
+        return ResponseEntity.ok(rankings);
     }
     
     // 자산 클래스 허용 여부 체크 헬퍼 메서드
