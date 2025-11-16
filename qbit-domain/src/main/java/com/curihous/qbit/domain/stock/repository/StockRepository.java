@@ -12,6 +12,8 @@ import java.util.Set;
 public interface StockRepository extends JpaRepository<Stock, Long> {
     Optional<Stock> findBySymbol(String symbol);
     List<Stock> findBySymbolIn(Set<String> symbols);
+    // S&P500 구성 종목 조회 (assetClass 대소문자 무시)
+    List<Stock> findBySp500TrueAndAssetClassIgnoreCase(String assetClass);
     
     // symbol 또는 name으로 검색, 대소문자 무시
     @Query("SELECT s FROM Stock s WHERE " +

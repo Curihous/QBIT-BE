@@ -8,7 +8,7 @@ on:
 env:
   DOCKER_IMAGE: ${{ secrets.DOCKER_REPO }}
   DOCKER_TAG: ${{ github.sha }}
-  CACHE_NAMESPACE: prod-v6  # TODO: 캐시 불호환 변경 시 수정
+  CACHE_NAMESPACE: prod-v6.0.0  # TODO: 캐시 불호환 변경 시 수정
 
 jobs:
   build-and-deploy:
@@ -143,12 +143,13 @@ jobs:
             -e ALPACA_OAUTH_CLIENT_ID="${{ secrets.ALPACA_OAUTH_CLIENT_ID }}" \
             -e ALPACA_OAUTH_CLIENT_SECRET="${{ secrets.ALPACA_OAUTH_CLIENT_SECRET }}" \
             -e OAUTH_STATE_SECRET="${{ secrets.OAUTH_STATE_SECRET }}" \
-          -e STOCK_SYNC_ON="${{ secrets.STOCK_SYNC_ON }}" \
-          -e STOCK_SYNC_US_EQUITY="${{ secrets.STOCK_SYNC_US_EQUITY }}" \
-          -e STOCK_SYNC_CRYPTO="${{ secrets.STOCK_SYNC_CRYPTO }}" \
-          -e MASSIVE_API_KEY="${{ secrets.MASSIVE_API_KEY }}" \
-          -e INFO_APP_VERSION="${{ github.sha }}" \
-          ${{ secrets.DOCKER_REPO }}:${{ github.sha }}
+            -e STOCK_SYNC_ON="${{ secrets.STOCK_SYNC_ON }}" \
+            -e STOCK_SYNC_US_EQUITY="${{ secrets.STOCK_SYNC_US_EQUITY }}" \
+            -e STOCK_SYNC_CRYPTO="${{ secrets.STOCK_SYNC_CRYPTO }}" \
+            -e MASSIVE_API_KEY="${{ secrets.MASSIVE_API_KEY }}" \
+            -e FMP_API_KEY="${{ secrets.FMP_API_KEY }}" \
+            -e INFO_APP_VERSION="${{ github.sha }}" \
+            ${{ secrets.DOCKER_REPO }}:${{ github.sha }}
 
           # 4) 사용하지 않는 이미지 정리
           docker image prune -f
