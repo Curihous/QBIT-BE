@@ -51,6 +51,7 @@ logging:
   level:
     com.curihous.qbit: DEBUG
     com.curihous.qbit.infra.alpaca.client.AlpacaTradingClient: INFO
+    com.curihous.qbit.infra.massive.client.MassiveClient: INFO
     org.springframework.cloud.openfeign: INFO
     feign.Logger: INFO
     okhttp3: INFO
