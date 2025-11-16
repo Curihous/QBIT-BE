@@ -34,6 +34,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Map;
 import java.util.UUID;
 
@@ -65,6 +69,8 @@ public class TradingController {
         // 자산 클래스 허용 여부 체크
         Stock stock = alpacaStockService.getOrFetchStock(user, request.symbol());
         validateAssetClassAllowed(stock);
+        // 미국 주식 정규장 거래 시간 검증 (서머타임 반영)
+        validateUsMarketHoursIfNecessary(stock);
         
         // Binance 심볼 자동 변환 (DB에 없는 경우만)
         if (stock.getBinanceSymbol() == null || stock.getBinanceSymbol().isBlank()) {
@@ -214,6 +220,38 @@ public class TradingController {
         if (!"us_equity".equalsIgnoreCase(assetClass) && !"crypto".equalsIgnoreCase(assetClass)) {
             log.warn("지원하지 않는 자산 클래스 거래 시도: symbol={}, assetClass={}", stock.getSymbol(), assetClass);
             throw new QbitException(ErrorCode.ASSET_CLASS_NOT_SUPPORTED);
+        }
+    }
+
+    // 미국 주식 정규장 거래 시간 검증
+    private void validateUsMarketHoursIfNecessary(Stock stock) {
+        if (!"us_equity".equalsIgnoreCase(stock.getAssetClass())) {
+            return;
+        }
+
+        ZonedDateTime nowNy = ZonedDateTime.now(ZoneId.of("America/New_York"));
+        DayOfWeek dayOfWeek = nowNy.getDayOfWeek();
+
+        // 주말에는 주문 불가
+        if (dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY) {
+            log.warn("미국 장 휴장 시간(주말) 주문 시도: symbol={}, nowNy={}", stock.getSymbol(), nowNy);
+            throw new QbitException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "지금은 미국 장 휴장 시간(주말)이므로 주문을 접수할 수 없습니다."
+            );
+        }
+
+        LocalTime nowTime = nowNy.toLocalTime();
+        LocalTime marketOpen = LocalTime.of(9, 30);
+        LocalTime marketClose = LocalTime.of(16, 0);
+
+        // 정규장 09:30 <= now < 16:00 만 허용 (프리/애프터마켓은 지원하지 않음)
+        if (nowTime.isBefore(marketOpen) || !nowTime.isBefore(marketClose)) {
+            log.warn("미국 정규장 외 주문 시도: symbol={}, nowNy={}", stock.getSymbol(), nowNy);
+            throw new QbitException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "지금은 미국 정규장(미 동부시간 기준 09:30~16:00)이 아니므로 주문을 접수할 수 없습니다."
+            );
         }
     }
     

@@ -92,23 +92,40 @@ public class RedisStreamsConfig {
 
                             // 배열(JSON Array) 형태로 들어오는 경우: 여러 이벤트를 순차 처리
                             if (json.startsWith("[")) {
-                                TradeUpdateEvent[] events = objectMapper.readValue(json, TradeUpdateEvent[].class);
-                                if (events == null || events.length == 0) {
-                                    log.warn("Trade Update 배열 메시지가 비어 있습니다: messageId={}", message.getId());
+                                try {
+                                    var root = objectMapper.readTree(json);
+                                    if (!root.isArray() || !root.elements().hasNext()) {
+                                        log.warn("Trade Update 배열 메시지가 비어 있거나 배열 형식이 아닙니다: messageId={}", message.getId());
+                                        ackMessage(message.getId());
+                                        return;
+                                    }
+
+                                    root.forEach(node -> {
+                                        try {
+                                            if (!node.isObject()) {
+                                                log.warn("Trade Update 배열 원소가 객체가 아닙니다. 무시합니다: nodeType={}", node.getNodeType());
+                                                return;
+                                            }
+                                            TradeUpdateEvent e = objectMapper.treeToValue(node, TradeUpdateEvent.class);
+                                            if (e == null) {
+                                                return;
+                                            }
+                                            log.info("Trade Update 이벤트 수신(배열): userId={}, event={}, symbol={}, orderId={}",
+                                                    e.getUserId(), e.getEvent(), e.getSymbol(), e.getAlpacaOrderId());
+                                            tradeUpdateConsumer.onMessage(e);
+                                        } catch (Exception ex) {
+                                            log.warn("Trade Update 배열 원소 역직렬화 실패: error={}", ex.getMessage());
+                                        }
+                                    });
+
+                                    ackMessage(message.getId());
+                                    log.debug("Trade Update 배열 메시지 처리 완료 및 Ack: messageId={}", message.getId());
+                                    return;
+                                } catch (Exception ex) {
+                                    log.warn("Trade Update 배열 메시지 파싱 실패: messageId={}, error={}", message.getId(), ex.getMessage());
                                     ackMessage(message.getId());
                                     return;
                                 }
-
-                                for (TradeUpdateEvent e : events) {
-                                    if (e == null) continue;
-                                    log.info("Trade Update 이벤트 수신(배열): userId={}, event={}, symbol={}, orderId={}",
-                                            e.getUserId(), e.getEvent(), e.getSymbol(), e.getAlpacaOrderId());
-                                    tradeUpdateConsumer.onMessage(e);
-                                }
-
-                                ackMessage(message.getId());
-                                log.debug("Trade Update 배열 메시지 처리 완료 및 Ack: messageId={}", message.getId());
-                                return;
                             }
 
                             // 단일 객체 JSON
