@@ -17,8 +17,8 @@ public interface TradingPort {
     // 주문 수정
     OrderUpdateResult updateOrder(User user, Long orderId, UpdateOrderCommand request);
     
-    // 내 주문 목록 조회 (symbol, side 필터링 지원)
-    Page<OrderRequest> getMyOrders(User user, String symbol, String side, Pageable pageable);
+    // 내 주문 목록 조회 (symbol, side, hasJournal 필터링 지원)
+    Page<OrderRequest> getMyOrders(User user, String symbol, String side, Boolean hasJournal, Pageable pageable);
     
     // 특정 주문 조회
     OrderRequest getOrder(User user, Long orderId);

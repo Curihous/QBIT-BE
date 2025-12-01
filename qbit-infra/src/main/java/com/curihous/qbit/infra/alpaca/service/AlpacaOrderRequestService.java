@@ -100,7 +100,7 @@ public class AlpacaOrderRequestService {
 
     // 내 주문 목록 조회
     @Transactional(readOnly = true)
-    public Page<OrderRequest> getMyOrders(User user, String symbol, String side, Pageable pageable) {
+    public Page<OrderRequest> getMyOrders(User user, String symbol, String side, Boolean hasJournal, Pageable pageable) {
         // side를 enum으로 변환
         OrderSide orderSide = null;
         if (side != null && !side.isBlank()) {
@@ -117,14 +117,29 @@ public class AlpacaOrderRequestService {
         // symbol 처리
         String trimmedSymbol = (symbol != null && !symbol.isBlank()) ? symbol.trim() : null;
         boolean hasSymbol = trimmedSymbol != null;
-        boolean hasSide = orderSide != null;
+        boolean filterNoJournal = Boolean.TRUE.equals(hasJournal);
         
-        // symbol과 side 조합에 따라 적절한 메서드 호출
-        if (hasSymbol && hasSide) {
+        // hasJournal이 true인 경우
+        if (filterNoJournal) {
+            // side가 없을 때는 BUY와 SELL 둘 다 포함
+            List<OrderSide> sides = orderSide != null 
+                ? List.of(orderSide) 
+                : List.of(OrderSide.BUY, OrderSide.SELL);
+            
+            // symbol만 있을 때는 기존 메서드 사용 (hasJournal 필터링 안 함)
+            if (hasSymbol) {
+                return orderRequestRepository.findByUserAndSymbol(user, trimmedSymbol, pageable);
+            } else {
+                return orderRequestRepository.findByUserAndSideInAndNoJournal(user, sides, pageable);
+            }
+        }
+        
+
+        if (hasSymbol && orderSide != null) {
             return orderRequestRepository.findByUserAndSymbolAndSide(user, trimmedSymbol, orderSide, pageable);
         } else if (hasSymbol) {
             return orderRequestRepository.findByUserAndSymbol(user, trimmedSymbol, pageable);
-        } else if (hasSide) {
+        } else if (orderSide != null) {
             return orderRequestRepository.findByUserAndSide(user, orderSide, pageable);
         } else {
             return orderRequestRepository.findByUser(user, pageable);

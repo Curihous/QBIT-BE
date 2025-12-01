@@ -1,6 +1,7 @@
 package com.curihous.qbit.domain.order.repository;
 
 import com.curihous.qbit.domain.order.entity.OrderRequest;
+import com.curihous.qbit.domain.order.entity.OrderSide;
 import com.curihous.qbit.domain.order.entity.OrderStatus;
 import com.curihous.qbit.domain.user.entity.User;
 import org.springframework.data.domain.Page;
@@ -23,10 +24,10 @@ public interface OrderRequestRepository extends JpaRepository<OrderRequest, Long
     Page<OrderRequest> findByUserAndSymbol(User user, String symbol, Pageable pageable);
     
     // 사용자의 side별 주문 목록 조회 (페이징, 최신순)
-    Page<OrderRequest> findByUserAndSide(User user, com.curihous.qbit.domain.order.entity.OrderSide side, Pageable pageable);
+    Page<OrderRequest> findByUserAndSide(User user, OrderSide side, Pageable pageable);
     
     // 사용자의 특정 종목 및 side별 주문 목록 조회 (페이징, 최신순)
-    Page<OrderRequest> findByUserAndSymbolAndSide(User user, String symbol, com.curihous.qbit.domain.order.entity.OrderSide side, Pageable pageable);
+    Page<OrderRequest> findByUserAndSymbolAndSide(User user, String symbol, OrderSide side, Pageable pageable);
     
     // 사용자의 특정 주문 조회
     Optional<OrderRequest> findByIdAndUser(Long id, User user);
@@ -46,4 +47,11 @@ public interface OrderRequestRepository extends JpaRepository<OrderRequest, Long
         @Param("tradeCycleId") Long tradeCycleId,
         @Param("statuses") List<OrderStatus> statuses
     );
+    
+    // 사용자의 side별 주문 목록 조회 (거래 일지가 없는 주문만, 페이징)
+    @Query("SELECT req FROM OrderRequest req " +
+           "LEFT JOIN TradeJournal tj ON tj.orderRequest.id = req.id " +
+           "WHERE req.user = :user AND req.side IN :sides AND tj.id IS NULL " +
+           "ORDER BY req.alpacaCreatedAt DESC")
+    Page<OrderRequest> findByUserAndSideInAndNoJournal(User user, @Param("sides") List<OrderSide> sides, Pageable pageable);
 }

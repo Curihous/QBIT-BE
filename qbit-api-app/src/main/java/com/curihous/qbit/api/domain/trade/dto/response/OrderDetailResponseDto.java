@@ -71,10 +71,13 @@ public record OrderDetailResponseDto(
     String replacedBy,
 
     @Schema(description = "이 주문이 대체한 이전 주문의 Alpaca ID (수정 주문인 경우)", example = "904837e3-3b76-47ec-b432-046db621571b")
-    String replaces
+    String replaces,
+    
+    @Schema(description = "거래 일지 기록 여부", example = "true")
+    boolean hasJournal
 ) {
     
-    public static OrderDetailResponseDto from(OrderRequest orderRequest) {
+    public static OrderDetailResponseDto from(OrderRequest orderRequest, boolean hasJournal) {
         return new OrderDetailResponseDto(
                 orderRequest.getId(),
                 orderRequest.getAlpacaOrderId(),
@@ -95,7 +98,8 @@ public record OrderDetailResponseDto(
                 orderRequest.getCanceledAt(),
                 orderRequest.getReplacedAt(),
                 orderRequest.getReplacedBy(),
-                orderRequest.getReplaces()
+                orderRequest.getReplaces(),
+                hasJournal
         );
     }
 }

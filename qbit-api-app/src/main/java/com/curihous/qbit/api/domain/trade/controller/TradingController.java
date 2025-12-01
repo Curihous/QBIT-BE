@@ -10,6 +10,7 @@ import com.curihous.qbit.common.dto.PaginatedResponseDto;
 import com.curihous.qbit.common.exception.ErrorCode;
 import com.curihous.qbit.common.exception.QbitException;
 import com.curihous.qbit.common.util.CryptoSymbolConverter;
+import com.curihous.qbit.domain.journal.repository.TradeJournalRepository;
 import com.curihous.qbit.domain.order.entity.OrderRequest;
 import com.curihous.qbit.domain.order.port.TradingPort;
 import com.curihous.qbit.domain.stock.entity.Stock;
@@ -53,6 +54,7 @@ public class TradingController {
     private final UserSecurityFacade userSecurityFacade;
     private final AlpacaOrderSyncService alpacaOrderSyncService;
     private final TradeCycleService tradeCycleService;
+    private final TradeJournalRepository tradeJournalRepository;
     
     @Value("${stock.sync.us-equity}")
     private boolean allowUsEquity;
@@ -125,21 +127,25 @@ public class TradingController {
         return ResponseEntity.ok(OrderUpdateResponseDto.from(result));
     }
 
-    @Operation(summary = "내 주문 목록 조회", description = "사용자의 주문 내역을 조회합니다. symbol, side 파라미터로 필터링 가능합니다.")
+    @Operation(summary = "내 주문 목록 조회", description = "사용자의 주문 내역을 조회합니다. symbol, side, hasJournal 파라미터로 필터링 가능합니다.")
     @GetMapping("/orders")
     public ResponseEntity<PaginatedResponseDto<OrderDetailResponseDto>> getMyOrders(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(value = "symbol", required = false) String symbol,
-            @RequestParam(value = "side", required = false) String side
+            @RequestParam(value = "side", required = false) String side,
+            @RequestParam(value = "hasJournal", required = false) Boolean hasJournal
     ) {
         PagingValidator.validate(page, size);
 
         User user = userSecurityFacade.getCurrentUser();
         Pageable pageable = PageRequest.of(page, size);
         
-        Page<OrderRequest> ordersPage = tradingPort.getMyOrders(user, symbol, side, pageable);
-        Page<OrderDetailResponseDto> responsePage = ordersPage.map(OrderDetailResponseDto::from);
+        Page<OrderRequest> ordersPage = tradingPort.getMyOrders(user, symbol, side, hasJournal, pageable);
+        Page<OrderDetailResponseDto> responsePage = ordersPage.map(order -> {
+            boolean journalExists = tradeJournalRepository.findByUserAndOrderRequest(user, order).isPresent();
+            return OrderDetailResponseDto.from(order, journalExists);
+        });
         PaginatedResponseDto<OrderDetailResponseDto> response = PaginatedResponseDto.from(responsePage);
         return ResponseEntity.ok(response);
     }
@@ -151,7 +157,8 @@ public class TradingController {
     ) {
         User user = userSecurityFacade.getCurrentUser();
         OrderRequest order = tradingPort.getOrder(user, orderId);
-        return ResponseEntity.ok(OrderDetailResponseDto.from(order));
+        boolean hasJournal = tradeJournalRepository.findByUserAndOrderRequest(user, order).isPresent();
+        return ResponseEntity.ok(OrderDetailResponseDto.from(order, hasJournal));
     }
 
     @Operation(
