@@ -21,6 +21,7 @@ import com.curihous.qbit.infra.alpaca.service.AlpacaStockService;
 import com.curihous.qbit.api.domain.trade.service.AlpacaOrderSyncService;
 import com.curihous.qbit.infra.security.facade.UserSecurityFacade;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -127,21 +128,23 @@ public class TradingController {
         return ResponseEntity.ok(OrderUpdateResponseDto.from(result));
     }
 
-    @Operation(summary = "내 주문 목록 조회", description = "사용자의 주문 내역을 조회합니다. symbol, side, hasJournal 파라미터로 필터링 가능합니다.")
+    @Operation(summary = "내 주문 목록 조회", description = "사용자의 주문 내역을 조회합니다. symbol, side, hasJournal, asset 파라미터로 필터링 가능합니다.")
     @GetMapping("/orders")
     public ResponseEntity<PaginatedResponseDto<OrderDetailResponseDto>> getMyOrders(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(value = "symbol", required = false) String symbol,
             @RequestParam(value = "side", required = false) String side,
-            @RequestParam(value = "hasJournal", required = false) Boolean hasJournal
+            @RequestParam(value = "hasJournal", required = false) Boolean hasJournal,
+            @Parameter(description = "자산 클래스 필터 (us_equity: 미국 주식, crypto: 암호화폐)", example = "us_equity")
+            @RequestParam(value = "asset", required = false) String asset
     ) {
         PagingValidator.validate(page, size);
 
         User user = userSecurityFacade.getCurrentUser();
         Pageable pageable = PageRequest.of(page, size);
         
-        Page<OrderRequest> ordersPage = tradingPort.getMyOrders(user, symbol, side, hasJournal, pageable);
+        Page<OrderRequest> ordersPage = tradingPort.getMyOrders(user, symbol, side, hasJournal, asset, pageable);
         Page<OrderDetailResponseDto> responsePage = ordersPage.map(order -> {
             boolean journalExists = tradeJournalRepository.findByUserAndOrderRequest(user, order).isPresent();
             return OrderDetailResponseDto.from(order, journalExists);
@@ -179,13 +182,15 @@ public class TradingController {
     @GetMapping("/trade-cycles")
     public ResponseEntity<PaginatedResponseDto<TradeCycleResponseDto>> getTradeCycles(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "10") int size,
+            @Parameter(description = "자산 클래스 필터 (us_equity: 미국 주식, crypto: 암호화폐)", example = "us_equity")
+            @RequestParam(value = "asset", required = false) String asset
     ) {
         PagingValidator.validate(page, size);
         
         User user = userSecurityFacade.getCurrentUser();
         Pageable pageable = PageRequest.of(page, size);
-        Page<TradeCycle> tradeCyclesPage = tradeCycleService.getCompletedTradeCycles(user, pageable);
+        Page<TradeCycle> tradeCyclesPage = tradeCycleService.getCompletedTradeCycles(user, asset, pageable);
         Page<TradeCycleResponseDto> responsePage = tradeCyclesPage.map(TradeCycleResponseDto::from);
         PaginatedResponseDto<TradeCycleResponseDto> response = PaginatedResponseDto.from(responsePage);
         return ResponseEntity.ok(response);

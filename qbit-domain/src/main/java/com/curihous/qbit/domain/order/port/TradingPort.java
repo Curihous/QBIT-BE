@@ -17,8 +17,8 @@ public interface TradingPort {
     // 주문 수정
     OrderUpdateResult updateOrder(User user, Long orderId, UpdateOrderCommand request);
     
-    // 내 주문 목록 조회 (symbol, side, hasJournal 필터링 지원)
-    Page<OrderRequest> getMyOrders(User user, String symbol, String side, Boolean hasJournal, Pageable pageable);
+    // 내 주문 목록 조회 (symbol, side, hasJournal, asset 필터링 지원)
+    Page<OrderRequest> getMyOrders(User user, String symbol, String side, Boolean hasJournal, String asset, Pageable pageable);
     
     // 특정 주문 조회
     OrderRequest getOrder(User user, Long orderId);
@@ -29,8 +29,8 @@ public interface TradingPort {
     // 주문 취소
     void cancelOrder(User user, Long orderId);
     
-    // 포지션(보유 주식) 목록 조회 
-    Page<PositionInfo> getPositions(User user, Pageable pageable);
+    // 포지션(보유 주식) 목록 조회 (asset 필터링 지원)
+    Page<PositionInfo> getPositions(User user, String asset, Pageable pageable);
     
     // 특정 종목 포지션 조회 (자산 정보 포함)
     SimplePositionWithAccountInfo getPositionBySymbol(User user, String symbol);

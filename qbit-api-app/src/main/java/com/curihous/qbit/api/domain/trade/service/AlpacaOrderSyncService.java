@@ -674,23 +674,16 @@ public class AlpacaOrderSyncService {
             User user = userOpt.get();
             log.info("TradeCycle 후처리 시작 (OrderRequest 기준): userId={}", userId);
             
-            // 사용자의 모든 OrderRequest를 시간순으로 조회
-            List<OrderRequest> allOrders = orderRequestRepository.findByUserOrderByAlpacaCreatedAtDesc(user);
+            // 사용자의 모든 OrderRequest 조회 
+            List<OrderRequest> allOrders = orderRequestRepository.findByUserOrderByAlpacaCreatedAtAsc(user);
             
             if (allOrders.isEmpty()) {
                 log.info("주문 내역이 없음: userId={}", userId);
                 return 0;
             }
             
-            // 시간순 정렬 (오름차순)
-            allOrders.sort((o1, o2) -> {
-                OffsetDateTime time1 = o1.getAlpacaCreatedAt() != null ? o1.getAlpacaCreatedAt() : o1.getCreatedAt().atOffset(java.time.ZoneOffset.UTC);
-                OffsetDateTime time2 = o2.getAlpacaCreatedAt() != null ? o2.getAlpacaCreatedAt() : o2.getCreatedAt().atOffset(java.time.ZoneOffset.UTC);
-                return time1.compareTo(time2);
-            });
-            
             // 사용자의 모든 완료된 TradeCycle 조회 (기간 필터링용)
-            Page<TradeCycle> completedCyclesPage = tradeCycleRepository.findByUserAndEndDateIsNotNullOrderByEndDateDesc(user, Pageable.unpaged());
+            Page<TradeCycle> completedCyclesPage = tradeCycleRepository.findByUserAndEndDateIsNotNullOrderByEndDateDesc(user, null, Pageable.unpaged());
             List<TradeCycle> completedCycles = completedCyclesPage.getContent();
             
             // TradeCycle의 startDate ~ endDate 범위에 있는 주문은 제외

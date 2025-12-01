@@ -14,20 +14,8 @@ import java.util.List;
 import java.util.Optional;
 
 public interface OrderRequestRepository extends JpaRepository<OrderRequest, Long> {
-    // 사용자의 주문 목록 조회 (최신순)
-    List<OrderRequest> findByUserOrderByAlpacaCreatedAtDesc(User user);
-    
-    // 사용자의 주문 목록 조회 (페이징, 최신순)
-    Page<OrderRequest> findByUser(User user, Pageable pageable);
-    
-    // 사용자의 특정 종목 주문 목록 조회 (페이징, 최신순)
-    Page<OrderRequest> findByUserAndSymbol(User user, String symbol, Pageable pageable);
-    
-    // 사용자의 side별 주문 목록 조회 (페이징, 최신순)
-    Page<OrderRequest> findByUserAndSide(User user, OrderSide side, Pageable pageable);
-    
-    // 사용자의 특정 종목 및 side별 주문 목록 조회 (페이징, 최신순)
-    Page<OrderRequest> findByUserAndSymbolAndSide(User user, String symbol, OrderSide side, Pageable pageable);
+    // 사용자의 모든 주문 조회 (TradeCycle 후처리용)
+    List<OrderRequest> findByUserOrderByAlpacaCreatedAtAsc(User user);
     
     // 사용자의 특정 주문 조회
     Optional<OrderRequest> findByIdAndUser(Long id, User user);
@@ -48,10 +36,22 @@ public interface OrderRequestRepository extends JpaRepository<OrderRequest, Long
         @Param("statuses") List<OrderStatus> statuses
     );
     
-    // 사용자의 side별 주문 목록 조회 (거래 일지가 없는 주문만, 페이징)
+    // 사용자의 주문 목록 조회 (필터링: symbol, side, asset, hasJournal)
     @Query("SELECT req FROM OrderRequest req " +
            "LEFT JOIN TradeJournal tj ON tj.orderRequest.id = req.id " +
-           "WHERE req.user = :user AND req.side IN :sides AND tj.id IS NULL " +
+           "LEFT JOIN req.stock s " +
+           "WHERE req.user = :user " +
+           "AND (:symbol IS NULL OR req.symbol = :symbol) " +
+           "AND (:sides IS NULL OR req.side IN :sides) " +
+           "AND (:assetClass IS NULL OR s.assetClass = :assetClass) " +
+           "AND (:hasJournal IS NULL OR (:hasJournal = true AND tj.id IS NULL) OR (:hasJournal = false AND tj.id IS NOT NULL)) " +
            "ORDER BY req.alpacaCreatedAt DESC")
-    Page<OrderRequest> findByUserAndSideInAndNoJournal(User user, @Param("sides") List<OrderSide> sides, Pageable pageable);
+    Page<OrderRequest> findByUserWithFilters(
+        @Param("user") User user,
+        @Param("symbol") String symbol,
+        @Param("sides") List<OrderSide> sides,
+        @Param("assetClass") String assetClass,
+        @Param("hasJournal") Boolean hasJournal,
+        Pageable pageable
+    );
 }

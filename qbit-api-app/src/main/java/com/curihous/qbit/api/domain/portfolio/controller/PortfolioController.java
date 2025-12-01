@@ -44,13 +44,14 @@ public class PortfolioController {
     @GetMapping("/positions")
     public ResponseEntity<PaginatedResponseDto<PositionResponseDto>> getPositions(
         @RequestParam(defaultValue = "0") int page,
-        @RequestParam(defaultValue = "10") int size
+        @RequestParam(defaultValue = "10") int size,
+        @RequestParam(value = "asset", required = false) String asset
     ) {
         PagingValidator.validate(page, size);
 
         User user = userSecurityFacade.getCurrentUser();
         Pageable pageable = PageRequest.of(page, size);
-        Page<TradingPort.PositionInfo> positionsPage = tradingPort.getPositions(user, pageable);
+        Page<TradingPort.PositionInfo> positionsPage = tradingPort.getPositions(user, asset, pageable);
         Page<PositionResponseDto> responsePage = positionsPage.map(PositionResponseDto::from);
         PaginatedResponseDto<PositionResponseDto> response = PaginatedResponseDto.from(responsePage);
         return ResponseEntity.ok(response);

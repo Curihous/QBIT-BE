@@ -196,8 +196,8 @@ public class AlpacaOAuthService implements TradingPort {
     }
 
     @Override
-    public Page<OrderRequest> getMyOrders(User user, String symbol, String side, Boolean hasJournal, Pageable pageable) {
-        return alpacaOrderRequestService.getMyOrders(user, symbol, side, hasJournal, pageable);
+    public Page<OrderRequest> getMyOrders(User user, String symbol, String side, Boolean hasJournal, String asset, Pageable pageable) {
+        return alpacaOrderRequestService.getMyOrders(user, symbol, side, hasJournal, asset, pageable);
     }
 
     @Override
@@ -216,8 +216,8 @@ public class AlpacaOAuthService implements TradingPort {
     }
 
     @Override
-    public Page<TradingPort.PositionInfo> getPositions(User user, Pageable pageable) {
-        return alpacaOrderRequestService.getPositions(user, pageable);
+    public Page<TradingPort.PositionInfo> getPositions(User user, String asset, Pageable pageable) {
+        return alpacaOrderRequestService.getPositions(user, asset, pageable);
     }
     
     @Override

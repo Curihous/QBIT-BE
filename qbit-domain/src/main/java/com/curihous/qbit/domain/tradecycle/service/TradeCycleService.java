@@ -22,8 +22,10 @@ public class TradeCycleService {
             .orElseThrow(() -> new IllegalArgumentException("TradeCycle not found: " + tradeCycleId));
     }
     
-    // 사용자의 종료된 TradeCycle 목록 조회 (페이징, 최신순 정렬)
-    public Page<TradeCycle> getCompletedTradeCycles(User user, Pageable pageable) {
-        return tradeCycleRepository.findByUserAndEndDateIsNotNullOrderByEndDateDesc(user, pageable);
+    // 사용자의 종료된 TradeCycle 목록 조회 (페이징, 최신순 정렬, asset 필터링 지원)
+    public Page<TradeCycle> getCompletedTradeCycles(User user, String asset, Pageable pageable) {
+        String trimmedAsset = (asset != null && !asset.isBlank()) ? asset.trim() : null;
+        return tradeCycleRepository.findByUserAndEndDateIsNotNullOrderByEndDateDesc(
+            user, trimmedAsset, pageable);
     }
 }

@@ -100,7 +100,7 @@ public class AlpacaOrderRequestService {
 
     // 내 주문 목록 조회
     @Transactional(readOnly = true)
-    public Page<OrderRequest> getMyOrders(User user, String symbol, String side, Boolean hasJournal, Pageable pageable) {
+    public Page<OrderRequest> getMyOrders(User user, String symbol, String side, Boolean hasJournal, String asset, Pageable pageable) {
         // side를 enum으로 변환
         OrderSide orderSide = null;
         if (side != null && !side.isBlank()) {
@@ -114,36 +114,20 @@ public class AlpacaOrderRequestService {
             }
         }
         
-        // symbol 처리
+        // 파라미터 정리
         String trimmedSymbol = (symbol != null && !symbol.isBlank()) ? symbol.trim() : null;
-        boolean hasSymbol = trimmedSymbol != null;
-        boolean filterNoJournal = Boolean.TRUE.equals(hasJournal);
+        String trimmedAsset = (asset != null && !asset.isBlank()) ? asset.trim() : null;
         
-        // hasJournal이 true인 경우
-        if (filterNoJournal) {
-            // side가 없을 때는 BUY와 SELL 둘 다 포함
-            List<OrderSide> sides = orderSide != null 
-                ? List.of(orderSide) 
-                : List.of(OrderSide.BUY, OrderSide.SELL);
-            
-            // symbol만 있을 때는 기존 메서드 사용 (hasJournal 필터링 안 함)
-            if (hasSymbol) {
-                return orderRequestRepository.findByUserAndSymbol(user, trimmedSymbol, pageable);
-            } else {
-                return orderRequestRepository.findByUserAndSideInAndNoJournal(user, sides, pageable);
-            }
-        }
+        // sides 리스트 준비 (side가 null이면 null, 있으면 단일 값 리스트)
+        List<OrderSide> sides = orderSide != null ? List.of(orderSide) : null;
         
-
-        if (hasSymbol && orderSide != null) {
-            return orderRequestRepository.findByUserAndSymbolAndSide(user, trimmedSymbol, orderSide, pageable);
-        } else if (hasSymbol) {
-            return orderRequestRepository.findByUserAndSymbol(user, trimmedSymbol, pageable);
-        } else if (orderSide != null) {
-            return orderRequestRepository.findByUserAndSide(user, orderSide, pageable);
-        } else {
-            return orderRequestRepository.findByUser(user, pageable);
-        }
+        // hasJournal 처리 (true면 거래 일지 없는 주문만, null이면 필터링 안 함)
+        Boolean hasJournalFilter = Boolean.TRUE.equals(hasJournal) ? true : null;
+        
+        // 통일된 동적 쿼리 사용
+        return orderRequestRepository.findByUserWithFilters(
+            user, trimmedSymbol, sides, trimmedAsset, hasJournalFilter, pageable
+        );
     }
 
     // 주문 상세 조회
@@ -193,7 +177,7 @@ public class AlpacaOrderRequestService {
     
     // 포지션 조회
     @Transactional(readOnly = true)
-    public Page<TradingPort.PositionInfo> getPositions(User user, Pageable pageable) {
+    public Page<TradingPort.PositionInfo> getPositions(User user, String asset, Pageable pageable) {
         // 사용자의 활성화된 Alpaca 연결 조회
         AlpacaOAuthConnection connection = alpacaOAuthConnectionService.getValidConnection(user.getId());
         String authorization = "Bearer " + connection.getAccessToken();
@@ -201,6 +185,14 @@ public class AlpacaOrderRequestService {
         try {
             var positions = alpacaTradingPort.getPositions(authorization);
             List<TradingPort.PositionInfo> positionInfoList = positions.stream()
+                    // asset 필터링
+                    .filter(pos -> {
+                        if (asset == null || asset.isBlank()) {
+                            return true;
+                        }
+                        String posAssetClass = pos.assetClass();
+                        return posAssetClass != null && posAssetClass.equalsIgnoreCase(asset);
+                    })
                     .map(pos -> {
                         String originalSymbol = CryptoSymbolConverter.alpacaPositionToAssetFormat(pos.symbol());
                         return new TradingPort.PositionInfo(
