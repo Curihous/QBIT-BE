@@ -1,0 +1,121 @@
+spring:
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME_PROD}
+    password: ${DATABASE_PASSWORD_PROD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+  
+  data:
+    redis:
+      host: ${REDIS_HOST_PROD}
+      port: ${REDIS_PORT_PROD}
+      password: ${REDIS_PASSWORD_PROD}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: ${REDIS_POOL_MAX_ACTIVE:20}
+          max-idle: ${REDIS_POOL_MAX_IDLE:10}
+          min-idle: ${REDIS_POOL_MIN_IDLE:5}
+  
+  cache:
+    type: redis
+    redis:
+      time-to-live: 60000  # 기본 TTL: 1분 (개별 캐시 TTL은 CacheConfig에서 설정)
+
+# WebSocket
+# TODO: 프로덕션에서 명시적 도메인 설정
+websocket:
+  allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS:http://localhost:3000}
+  message-size-limit: ${WEBSOCKET_MESSAGE_SIZE_LIMIT:8192}
+  buffer-size-limit: ${WEBSOCKET_BUFFER_SIZE_LIMIT:8192}
+
+logging:
+  level:
+    com.curihous.qbit: DEBUG
+    com.curihous.qbit.infra.alpaca.client.AlpacaTradingClient: INFO
+    com.curihous.qbit.infra.massive.client.MassiveClient: INFO
+    org.springframework.cloud.openfeign: INFO
+    feign.Logger: INFO
+    okhttp3: INFO
+    org.springframework.web: WARN
+    org.springframework.data.redis: WARN
+    org.springframework.web.socket: WARN
+    root: WARN
+
+# JWT 설정 
+jwt:
+  secret:
+    access: ${JWT_ACCESS_SECRET}
+    refresh: ${JWT_REFRESH_SECRET}
+
+# 암호화 설정
+encryption:
+  secret-key: ${ENCRYPTION_SECRET_KEY}
+
+# Google OAuth2 설정
+oauth2:
+  google:
+    client-id: ${GOOGLE_OAUTH_CLIENT_ID}
+
+# Alpaca OAuth 설정
+alpaca:
+  oauth:
+    client-id: ${ALPACA_OAUTH_CLIENT_ID}
+    client-secret: ${ALPACA_OAUTH_CLIENT_SECRET}
+    redirect-uri: https://api.qbit.o-r.kr/auth/alpaca/callback
+    authorization-url: https://app.alpaca.markets/oauth/authorize
+    token-url: https://api.alpaca.markets/oauth/token
+  paper-trading:
+    base-url: https://paper-api.alpaca.markets
+    
+# OAuth State 보안 설정
+oauth:
+  state:
+    secret: ${OAUTH_STATE_SECRET}
+    
+# 주식 및 암호화폐 동기화 설정
+stock:
+  sync:
+    on: ${STOCK_SYNC_ON}  # 강제 동기화
+    us-equity: ${STOCK_SYNC_US_EQUITY}  # 미국 주식 동기화 활성화
+    crypto: ${STOCK_SYNC_CRYPTO}  # 암호화폐 동기화 활성화
+
+# Massive.io (Polygon.io)
+massive:
+  api-key: ${MASSIVE_API_KEY}
+
+sp500:
+  json-url: ${SP500_JSON_URL}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+
+springdoc:
+  swagger-ui:
+    enabled: true
+  api-docs:
+    enabled: true

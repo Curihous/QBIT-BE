@@ -11,21 +11,24 @@ build/
 # ===========================================
 # IDE & Editor
 # ===========================================
+# IntelliJ IDEA
 .idea/
 *.iml
 *.iws
 *.ipr
-.vscode/
 out/
+
+# VS Code
+.vscode/
 
 # Eclipse
 .apt_generated
 .classpath
 .factorypath
 .project
-.settings
+.settings/
 .springBeans
-.sts4-cache
+.sts4-cache/
 bin/
 
 # NetBeans
@@ -49,7 +52,6 @@ application-local.properties
 # ===========================================
 logs/
 *.log
-spring-boot-*.log
 
 # ===========================================
 # Database
@@ -70,13 +72,20 @@ test-output/
 # ===========================================
 # OS Generated Files
 # ===========================================
+# macOS
 .DS_Store
 .DS_Store?
 ._*
 .Spotlight-V100
 .Trashes
+
+# Windows
 ehthumbs.db
 Thumbs.db
+Desktop.ini
+
+# Linux
+*~
 
 # ===========================================
 # Temporary Files
@@ -85,7 +94,6 @@ Thumbs.db
 *.temp
 *.swp
 *.swo
-*~
 *.bak
 *.backup
 *.orig
@@ -113,7 +121,6 @@ Thumbs.db
 *.truststore
 
 # ===========================================
-# Documentation Build
+# Documentation
 # ===========================================
-docs/_build/
-site/
+docs/
