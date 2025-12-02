@@ -204,9 +204,21 @@ public class TradingController {
         description = "월별 총 거래 횟수, 수익률, 누적손익을 조회합니다."
     )
     @GetMapping("/statistics/monthly")
-    public ResponseEntity<MonthlyTradeStatisticsResponseDto> getMonthlyStatistics() {
+    public ResponseEntity<MonthlyTradeStatisticsResponseDto> getMonthlyStatistics(
+        @Parameter(description = "연도", example = "2024", required = true)
+        @RequestParam int year,
+        @Parameter(description = "월 (1-12)", example = "3", required = true)
+        @RequestParam int month
+    ) {
+        if (month < 1 || month > 12) {
+            throw new QbitException(ErrorCode.INVALID_INPUT_VALUE, "month 파라미터는 1 이상 12 이하이어야 합니다.");
+        }
+        if (year < 1900 || year > 2100) {
+            throw new QbitException(ErrorCode.INVALID_INPUT_VALUE, "year 파라미터는 1900 이상 2100 이하이어야 합니다.");
+        }
+        
         User user = userSecurityFacade.getCurrentUser();
-        MonthlyTradeStatisticsResponseDto response = monthlyTradeStatisticsService.getMonthlyStatistics(user);
+        MonthlyTradeStatisticsResponseDto response = monthlyTradeStatisticsService.getMonthlyStatistics(user, year, month);
         return ResponseEntity.ok(response);
     }
 
