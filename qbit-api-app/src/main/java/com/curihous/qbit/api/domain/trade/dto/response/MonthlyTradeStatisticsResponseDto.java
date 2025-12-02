@@ -7,7 +7,7 @@ import java.util.List;
 
 /**
  * 월별 거래 통계 응답 DTO
- * QBIT API: GET /trading/monthly
+ * QBIT API: GET /trading/statistics/monthly
  */
 public record MonthlyTradeStatisticsResponseDto(
     
