@@ -54,4 +54,18 @@ public interface OrderRequestRepository extends JpaRepository<OrderRequest, Long
         @Param("hasJournal") Boolean hasJournal,
         Pageable pageable
     );
+    
+    // 사용자의 체결된 주문 조회 (월별 집계용)
+    @Query("SELECT req FROM OrderRequest req " +
+           "WHERE req.user = :user " +
+           "AND req.status IN :statuses " +
+           "AND req.filledAt IS NOT NULL " +
+           "AND req.filledQuantity IS NOT NULL " +
+           "AND req.filledQuantity > 0 " +
+           "AND req.filledAvgPrice IS NOT NULL " +
+           "ORDER BY req.filledAt ASC")
+    List<OrderRequest> findFilledOrdersByUser(
+        @Param("user") User user,
+        @Param("statuses") List<OrderStatus> statuses
+    );
 }

@@ -2,6 +2,7 @@ package com.curihous.qbit.api.domain.trade.controller;
 
 import com.curihous.qbit.api.domain.trade.dto.request.CreateOrderRequestDto;
 import com.curihous.qbit.api.domain.trade.dto.request.UpdateOrderRequestDto;
+import com.curihous.qbit.api.domain.trade.dto.response.MonthlyTradeStatisticsResponseDto;
 import com.curihous.qbit.api.domain.trade.dto.response.OrderCreatedResponseDto;
 import com.curihous.qbit.api.domain.trade.dto.response.OrderDetailResponseDto;
 import com.curihous.qbit.api.domain.trade.dto.response.OrderUpdateResponseDto;
@@ -19,6 +20,7 @@ import com.curihous.qbit.domain.tradecycle.service.TradeCycleService;
 import com.curihous.qbit.domain.user.entity.User;
 import com.curihous.qbit.infra.alpaca.service.AlpacaStockService;
 import com.curihous.qbit.api.domain.trade.service.AlpacaOrderSyncService;
+import com.curihous.qbit.api.domain.trade.service.MonthlyTradeStatisticsService;
 import com.curihous.qbit.infra.security.facade.UserSecurityFacade;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -56,6 +58,7 @@ public class TradingController {
     private final AlpacaOrderSyncService alpacaOrderSyncService;
     private final TradeCycleService tradeCycleService;
     private final TradeJournalRepository tradeJournalRepository;
+    private final MonthlyTradeStatisticsService monthlyTradeStatisticsService;
     
     @Value("${stock.sync.us-equity}")
     private boolean allowUsEquity;
@@ -193,6 +196,17 @@ public class TradingController {
         Page<TradeCycle> tradeCyclesPage = tradeCycleService.getCompletedTradeCycles(user, asset, pageable);
         Page<TradeCycleResponseDto> responsePage = tradeCyclesPage.map(TradeCycleResponseDto::from);
         PaginatedResponseDto<TradeCycleResponseDto> response = PaginatedResponseDto.from(responsePage);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(
+        summary = "월별 거래 통계 조회",
+        description = "월별 총 거래 횟수, 수익률, 누적손익을 조회합니다."
+    )
+    @GetMapping("/statistics/monthly")
+    public ResponseEntity<MonthlyTradeStatisticsResponseDto> getMonthlyStatistics() {
+        User user = userSecurityFacade.getCurrentUser();
+        MonthlyTradeStatisticsResponseDto response = monthlyTradeStatisticsService.getMonthlyStatistics(user);
         return ResponseEntity.ok(response);
     }
 
