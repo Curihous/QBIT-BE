@@ -123,9 +123,9 @@ class RedisStreamsPerformanceTest {
                         log.info("처리 진행 없음으로 종료: 처리된 메시지 수 = {}", currentProcessed);
                         break;
                     }
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
                 break;
             }
         }
@@ -259,10 +259,10 @@ class RedisStreamsPerformanceTest {
                 // 메인 테스트에서 종료 조건을 관리하므로 여기서는 무한 대기
                 // cancel() 호출 시 shouldStop이 true가 되어 자동 종료됨
                 while (!shouldStop.get()) {
-                    try {
+                try {
                         Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
                         break;
                     }
                 }
@@ -282,10 +282,10 @@ class RedisStreamsPerformanceTest {
         List<MapRecord<String, Object, Object>> messages;
         try {
             messages = redisTemplate.opsForStream().read(
-                Consumer.from(CONSUMER_GROUP, CONSUMER_NAME),
-                readOptions,
-                streamOffset
-            );
+            Consumer.from(CONSUMER_GROUP, CONSUMER_NAME),
+            readOptions,
+            streamOffset
+        );
         } catch (Exception e) {
             // 예외는 상위에서 처리 (Redis command interrupted 등)
             throw e;
@@ -318,12 +318,12 @@ class RedisStreamsPerformanceTest {
                             int sequence = Integer.parseInt(orderId.substring("test-order-".length()));
                             String seqKey = "seq-" + sequence;
                             Long publishTime = publishTimes.get(seqKey);
-                            
-                            if (publishTime != null) {
-                                long latency = currentTime - publishTime;
-                                latencies.add(latency);
-                                processedCount.incrementAndGet();
-                            }
+            
+            if (publishTime != null) {
+                long latency = currentTime - publishTime;
+                latencies.add(latency);
+                processedCount.incrementAndGet();
+            }
                         } catch (NumberFormatException e) {
                             // sequence 파싱 실패 시 무시
                         }
@@ -335,7 +335,7 @@ class RedisStreamsPerformanceTest {
             }
             
             try {
-                redisTemplate.opsForStream().acknowledge(CONSUMER_GROUP, message);
+            redisTemplate.opsForStream().acknowledge(CONSUMER_GROUP, message);
             } catch (Exception e) {
                 // Ack 실패는 로그만 남기고 계속 진행
                 log.warn("메시지 Ack 실패: messageId={}, error={}", 
