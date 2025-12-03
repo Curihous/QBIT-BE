@@ -22,6 +22,7 @@ import org.springframework.test.context.ActiveProfiles;
 import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
@@ -29,8 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Redis Streams 성능 테스트
- * 1. 고부하 처리 능력 검증 - 초당 수백 건의 주문 부하 시뮬레이션
- * 2. 장애 복구 검증 - 워커 중단 후 재시작 시 데이터 손실 없이 복구
+ * 자세한 설명은 docs/블로그.md 참고
  */
 @Slf4j
 @SpringBootTest
@@ -42,10 +42,11 @@ class RedisStreamsPerformanceTest {
     private static final String CONSUMER_NAME = "qbit-realtime-consumer-trade";
     
     private static final int MESSAGES_PER_SECOND = 200;
-    private static final int TEST_DURATION_SECONDS = 3;
-    private static final int EXPECTED_TOTAL_MESSAGES = MESSAGES_PER_SECOND * TEST_DURATION_SECONDS;
-    private static final int MAX_LATENCY_MS = 400;
-    private static final int P95_MAX_LATENCY_MS = 500;
+    private static final int PUBLISH_DURATION_SECONDS = 3;  // 발행 시간
+    private static final int PROCESSING_TIMEOUT_SECONDS = 10;  // 발행 완료 후 처리 대기 시간
+    private static final int EXPECTED_TOTAL_MESSAGES = MESSAGES_PER_SECOND * PUBLISH_DURATION_SECONDS;
+    private static final int MAX_LATENCY_MS = 200;  // 실시간 거래 시스템 목표: 평균 지연 200ms 이하
+    private static final int P95_MAX_LATENCY_MS = 300;  // 실시간 거래 시스템 목표: P95 지연 300ms 이하
 
     @Autowired
     private TradeUpdateProducer tradeUpdateProducer;
@@ -76,32 +77,66 @@ class RedisStreamsPerformanceTest {
     @Test
     @DisplayName("초당 수백 건의 주문 부하 시뮬레이션 - 평균 응답 지연 확인")
     void testHighLoadThroughput() {
-        // given
-        Map<String, Long> publishTimes = new ConcurrentHashMap<>();
-        List<Long> latencies = new CopyOnWriteArrayList<>();
+        // given: 테스트 데이터 구조 초기화
+        Map<String, Long> publishTimes = new ConcurrentHashMap<>();  // sequence -> 발행 시간
+        List<Long> latencies = new CopyOnWriteArrayList<>();          // 지연 시간 목록
         AtomicInteger publishedCount = new AtomicInteger(0);
         AtomicInteger processedCount = new AtomicInteger(0);
-        CountDownLatch completionLatch = new CountDownLatch(EXPECTED_TOTAL_MESSAGES);
+        AtomicBoolean publishingComplete = new AtomicBoolean(false);
 
         // when: Producer와 Consumer를 병렬로 실행
-        Future<?> producerFuture = startProducer(publishTimes, publishedCount, completionLatch);
-        Future<?> consumerFuture = startConsumer(publishTimes, latencies, processedCount, completionLatch);
+        Future<?> producerFuture = startProducer(publishTimes, publishedCount, publishingComplete);
+        Future<?> consumerFuture = startConsumer(publishTimes, latencies, processedCount, publishingComplete);
 
-        // then: 메시지가 처리될 때까지 대기
+        // then: 발행 완료 대기
         try {
-            boolean completed = completionLatch.await(30, TimeUnit.SECONDS);
-            if (!completed) {
-                log.warn("테스트 시간 초과: 처리된 메시지 수 = {}", processedCount.get());
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+            producerFuture.get(PUBLISH_DURATION_SECONDS + 5, TimeUnit.SECONDS);
+            log.info("발행 완료: 발행된 메시지 수 = {}", publishedCount.get());
+        } catch (Exception e) {
+            log.warn("Producer 대기 중 오류: {}", e.getMessage());
         }
 
+        // 발행 완료 후 처리 대기
+        publishingComplete.set(true);
+        log.info("발행 완료 후 처리 대기 시작: 처리된 메시지 수 = {}", processedCount.get());
+        
+        // 일정 시간 동안 처리된 메시지가 없을 때까지 대기
+        // (1초 동안 진행 없으면 종료)
+        int previousProcessed = processedCount.get();
+        int noProgressCount = 0;
+        long startWaitTime = System.currentTimeMillis();
+        long maxWaitTime = PROCESSING_TIMEOUT_SECONDS * 1000L;
+        
+        while ((System.currentTimeMillis() - startWaitTime) < maxWaitTime) {
+            try {
+                Thread.sleep(200);
+                int currentProcessed = processedCount.get();
+                
+                if (currentProcessed > previousProcessed) {
+                    // 진행 중 - 카운터 리셋
+                    previousProcessed = currentProcessed;
+                    noProgressCount = 0;
+                } else {
+                    // 진행 없음 - 카운터 증가
+                    noProgressCount++;
+                    if (noProgressCount >= 5) {  // 200ms * 5 = 1초 동안 진행 없으면 종료
+                        log.info("처리 진행 없음으로 종료: 처리된 메시지 수 = {}", currentProcessed);
+                        break;
+                    }
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        
+        log.info("처리 대기 완료: 발행된 메시지 수 = {}, 처리된 메시지 수 = {}", 
+            publishedCount.get(), processedCount.get());
+
         // 종료
-        producerFuture.cancel(true);
         consumerFuture.cancel(true);
 
-        // 검증
+        // 검증: 처리율 및 지연 시간 검증
         assertPerformanceMetrics(latencies, processedCount, publishedCount);
     }
 
@@ -115,7 +150,7 @@ class RedisStreamsPerformanceTest {
         publishMessages(1, initialMessages);
         
         // when: Consumer가 일부 처리한 후 중단 시뮬레이션
-        processMessagesPartially(initialMessages / 2);
+        processMessagesPartially(initialMessages / 2);  // 50개만 처리
         
         // 추가 메시지 발행 (워커 중단 중)
         publishMessages(initialMessages + 1, initialMessages + additionalMessages);
@@ -130,7 +165,7 @@ class RedisStreamsPerformanceTest {
     // ========== 헬퍼 메서드 ==========
 
     private Future<?> startProducer(Map<String, Long> publishTimes, AtomicInteger publishedCount, 
-                                   CountDownLatch completionLatch) {
+                                   AtomicBoolean publishingComplete) {
         return executorService.submit(() -> {
             ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
             try {
@@ -153,25 +188,25 @@ class RedisStreamsPerformanceTest {
                             long publishTime = System.currentTimeMillis();
                             
                             try {
-                                // Record ID를 얻기 위해 직접 RedisTemplate 사용
-                                var recordId = redisTemplate.opsForStream().add(
-                                    MapRecord.create(STREAM_KEY, Map.of("value", event))
-                                );
+                                // TradeUpdateProducer를 사용하여 실제 프로덕션과 동일한 방식으로 발행
+                                tradeUpdateProducer.publishTradeUpdate(event);
                                 
-                                if (recordId != null) {
-                                    publishTimes.put(recordId.getValue(), publishTime);
-                                    completionLatch.countDown();
-                                }
+                                // 발행 시간 기록 (sequence 번호를 키로 사용)
+                                // Consumer에서 orderId에서 sequence를 추출하여 지연 시간 측정
+                                publishTimes.put("seq-" + sequence, publishTime);
                             } catch (Exception e) {
                                 log.error("메시지 발행 실패: sequence={}, error={}", sequence, e.getMessage());
                             }
                         });
                 }, 0, 1, TimeUnit.SECONDS);
                 
-                // 테스트 시간 동안 실행
-                Thread.sleep(TEST_DURATION_SECONDS * 1000L);
+                // 발행 시간 동안 실행
+                Thread.sleep(PUBLISH_DURATION_SECONDS * 1000L);
+                publishingComplete.set(true);
+                log.info("Producer 발행 완료: 총 발행된 메시지 수 = {}", publishedCount.get());
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
+                publishingComplete.set(true);
             } finally {
                 shutdownExecutor(scheduler);
             }
@@ -179,24 +214,60 @@ class RedisStreamsPerformanceTest {
     }
 
     private Future<?> startConsumer(Map<String, Long> publishTimes, List<Long> latencies,
-                                    AtomicInteger processedCount, CountDownLatch completionLatch) {
+                                    AtomicInteger processedCount, AtomicBoolean publishingComplete) {
         return executorService.submit(() -> {
             ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+            AtomicInteger consecutiveErrors = new AtomicInteger(0);
+            final int MAX_CONSECUTIVE_ERRORS = 10;
+            
             try {
+                AtomicBoolean shouldStop = new AtomicBoolean(false);
+                
                 scheduler.scheduleAtFixedRate(() -> {
+                    if (shouldStop.get()) {
+                        return;
+                    }
+                    
                     try {
                         processMessages(publishTimes, latencies, processedCount);
+                        consecutiveErrors.set(0); // 성공 시 에러 카운터 리셋
                     } catch (Exception e) {
-                        log.error("메시지 수신 실패: {}", e.getMessage());
+                        String errorMsg = e.getMessage();
+                        
+                        // Redis command interrupted는 테스트 종료 시그널로 처리
+                        if (errorMsg != null && 
+                            (errorMsg.contains("Redis command interrupted") || 
+                             errorMsg.contains("Command interrupted") ||
+                             e instanceof java.util.concurrent.CancellationException)) {
+                            log.debug("Redis 명령 중단됨 - Consumer 종료: {}", errorMsg);
+                            shouldStop.set(true);
+                            return;
+                        }
+                        
+                        int errorCount = consecutiveErrors.incrementAndGet();
+                        
+                        if (errorCount <= MAX_CONSECUTIVE_ERRORS) {
+                            log.warn("메시지 수신 실패 (재시도 중): error={}, count={}", errorMsg, errorCount);
+                        } else {
+                            log.error("메시지 수신 실패 (최대 재시도 횟수 초과): error={}, count={}", errorMsg, errorCount);
+                            // 연속 에러가 너무 많으면 Consumer 종료
+                            shouldStop.set(true);
+                        }
                     }
                 }, 0, 100, TimeUnit.MILLISECONDS);
                 
-                // completionLatch가 0이 될 때까지 대기
-                try {
-                    completionLatch.await(30, TimeUnit.SECONDS);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
+                // 메인 테스트에서 종료 조건을 관리하므로 여기서는 무한 대기
+                // cancel() 호출 시 shouldStop이 true가 되어 자동 종료됨
+                while (!shouldStop.get()) {
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
                 }
+                
+                log.info("Consumer 종료: 처리된 메시지 수 = {}", processedCount.get());
             } finally {
                 shutdownExecutor(scheduler);
             }
@@ -206,13 +277,19 @@ class RedisStreamsPerformanceTest {
     private void processMessages(Map<String, Long> publishTimes, List<Long> latencies,
                                 AtomicInteger processedCount) {
         StreamReadOptions readOptions = StreamReadOptions.empty().count(50);
-        StreamOffset<String> streamOffset = createStreamOffset(ReadOffset.from(">"));
+        StreamOffset<String> streamOffset = StreamOffset.create(STREAM_KEY, ReadOffset.from(">"));
         
-        List<MapRecord<String, Object, Object>> messages = redisTemplate.opsForStream().read(
-            Consumer.from(CONSUMER_GROUP, CONSUMER_NAME),
-            readOptions,
-            streamOffset
-        );
+        List<MapRecord<String, Object, Object>> messages;
+        try {
+            messages = redisTemplate.opsForStream().read(
+                Consumer.from(CONSUMER_GROUP, CONSUMER_NAME),
+                readOptions,
+                streamOffset
+            );
+        } catch (Exception e) {
+            // 예외는 상위에서 처리 (Redis command interrupted 등)
+            throw e;
+        }
 
         if (messages == null || messages.isEmpty()) {
             return;
@@ -220,23 +297,53 @@ class RedisStreamsPerformanceTest {
 
         long currentTime = System.currentTimeMillis();
         for (MapRecord<String, Object, Object> message : messages) {
-            String messageId = message.getId().getValue();
-            Long publishTime = publishTimes.get(messageId);
-            
-            if (publishTime != null) {
-                long latency = currentTime - publishTime;
-                latencies.add(latency);
-                processedCount.incrementAndGet();
+            try {
+                // 메시지에서 TradeUpdateEvent 추출
+                Map<Object, Object> valueMap = message.getValue();
+                Object valueObj = valueMap.get("value");
+                
+                TradeUpdateEvent event = null;
+                if (valueObj instanceof TradeUpdateEvent) {
+                    event = (TradeUpdateEvent) valueObj;
+                } else if (valueObj instanceof String) {
+                    // JSON 문자열인 경우 파싱 (테스트에서는 발생하지 않지만 안전을 위해)
+                    continue;
+                }
+                
+                if (event != null && event.getAlpacaOrderId() != null) {
+                    // orderId에서 sequence 추출: "test-order-{sequence}"
+                    String orderId = event.getAlpacaOrderId();
+                    if (orderId.startsWith("test-order-")) {
+                        try {
+                            int sequence = Integer.parseInt(orderId.substring("test-order-".length()));
+                            String seqKey = "seq-" + sequence;
+                            Long publishTime = publishTimes.get(seqKey);
+                            
+                            if (publishTime != null) {
+                                long latency = currentTime - publishTime;
+                                latencies.add(latency);
+                                processedCount.incrementAndGet();
+                            }
+                        } catch (NumberFormatException e) {
+                            // sequence 파싱 실패 시 무시
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("메시지 처리 중 오류: messageId={}, error={}", 
+                    message.getId().getValue(), e.getMessage());
             }
             
-            redisTemplate.opsForStream().acknowledge(CONSUMER_GROUP, message);
+            try {
+                redisTemplate.opsForStream().acknowledge(CONSUMER_GROUP, message);
+            } catch (Exception e) {
+                // Ack 실패는 로그만 남기고 계속 진행
+                log.warn("메시지 Ack 실패: messageId={}, error={}", 
+                    message.getId().getValue(), e.getMessage());
+            }
         }
     }
     
-    @SuppressWarnings({"unchecked", "varargs"})
-    private StreamOffset<String> createStreamOffset(ReadOffset readOffset) {
-        return StreamOffset.create(STREAM_KEY, readOffset);
-    }
 
     private void publishMessages(int startSequence, int endSequence) {
         IntStream.rangeClosed(startSequence, endSequence)
@@ -259,7 +366,7 @@ class RedisStreamsPerformanceTest {
                 
                 try {
                     StreamReadOptions readOptions = StreamReadOptions.empty().count(10);
-                    StreamOffset<String> streamOffset = createStreamOffset(ReadOffset.from(">"));
+                    StreamOffset<String> streamOffset = StreamOffset.create(STREAM_KEY, ReadOffset.from(">"));
                     
                     List<MapRecord<String, Object, Object>> messages = redisTemplate.opsForStream().read(
                         Consumer.from(CONSUMER_GROUP, CONSUMER_NAME),
@@ -283,20 +390,17 @@ class RedisStreamsPerformanceTest {
                 }
             }, 0, 100, TimeUnit.MILLISECONDS);
             
-            waitForCompletion(processed, count, 5000);
+            // 목표 개수까지 처리 대기 (최대 5초)
+            long startTime = System.currentTimeMillis();
+            while (processed.get() < count && (System.currentTimeMillis() - startTime) < 5000) {
+                Thread.sleep(100);
+            }
         } finally {
             shutdownExecutor(scheduler);
             Thread.sleep(500); // Consumer 중단 시뮬레이션
         }
     }
     
-    private void waitForCompletion(AtomicInteger counter, int target, long timeoutMs) 
-            throws InterruptedException {
-        long startTime = System.currentTimeMillis();
-        while (counter.get() < target && (System.currentTimeMillis() - startTime) < timeoutMs) {
-            Thread.sleep(100);
-        }
-    }
 
     private int recoverAllMessages() {
         AtomicInteger recoveredCount = new AtomicInteger(0);
@@ -312,7 +416,7 @@ class RedisStreamsPerformanceTest {
     private void recoverPendingMessages(AtomicInteger recoveredCount, Set<String> processedMessageIds) {
         try {
             StreamReadOptions readOptions = StreamReadOptions.empty().count(200);
-            StreamOffset<String> streamOffset = createStreamOffset(ReadOffset.from("0-0"));
+            StreamOffset<String> streamOffset = StreamOffset.create(STREAM_KEY, ReadOffset.from("0-0"));
             
             List<MapRecord<String, Object, Object>> pendingMessages = redisTemplate.opsForStream().read(
                 Consumer.from(CONSUMER_GROUP, CONSUMER_NAME),
@@ -343,7 +447,7 @@ class RedisStreamsPerformanceTest {
         while ((System.currentTimeMillis() - startTime) < timeout) {
             try {
                 StreamReadOptions readOptions = StreamReadOptions.empty().count(50);
-                StreamOffset<String> streamOffset = createStreamOffset(ReadOffset.from(">"));
+                StreamOffset<String> streamOffset = StreamOffset.create(STREAM_KEY, ReadOffset.from(">"));
                 
                 List<MapRecord<String, Object, Object>> messages = redisTemplate.opsForStream().read(
                     Consumer.from(CONSUMER_GROUP, CONSUMER_NAME),
