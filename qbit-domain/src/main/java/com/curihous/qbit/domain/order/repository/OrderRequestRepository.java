@@ -23,6 +23,10 @@ public interface OrderRequestRepository extends JpaRepository<OrderRequest, Long
     // Alpaca 주문 ID로 조회
     Optional<OrderRequest> findByAlpacaOrderId(String alpacaOrderId);
     
+    // Alpaca 주문 ID로 조회 (User, Stock 함께 조회)
+    @Query("SELECT o FROM OrderRequest o JOIN FETCH o.user JOIN FETCH o.stock WHERE o.alpacaOrderId = :alpacaOrderId")
+    Optional<OrderRequest> findByAlpacaOrderIdWithUserAndStock(@Param("alpacaOrderId") String alpacaOrderId);
+    
     // 사용자의 Alpaca 주문 ID로 조회
     Optional<OrderRequest> findByAlpacaOrderIdAndUser(String alpacaOrderId, User user);
     

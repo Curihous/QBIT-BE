@@ -163,17 +163,14 @@ AI 분석 리포트 생성을 위한 데이터를 제공하는 API입니다.
 
 ## 테스트
 
-프로젝트는 Redis Streams 기반의 실시간 이벤트 처리 시스템의 성능을 검증하는 테스트(고부하 처리 능력 검증, 장애 복구 검증)를 포함하고 있습니다. 상세한 성능 테스트 내용과 결과는 [문서](docs/블로그.md)를 참고하세요.
+프로젝트는 다음과 같은 테스트 및 성능 개선 과정을 포함하고 있습니다:
+- **Redis Streams 성능 테스트**: 고부하 처리 능력 검증 및 장애 복구 검증
+- **N+1 쿼리 최적화 테스트**: Trade Update 이벤트 처리 시 발생했던 중복 쿼리 제거를 통한 성능 개선
+
+상세한 테스트 내용과 결과는 [Redis Streams 성능 테스트 문서](docs/블로그.md)와 [N+1 쿼리 최적화 문서](docs/N1-쿼리-최적화.md)를 참고하세요.
 
 ## 사용한 오픈소스
 
 - **Spring Boot** (3.5.6) - Apache License 2.0
-- **Spring Cloud** (2025.0.0) - Apache License 2.0
-- **Spring Security** - Apache License 2.0
-- **Springdoc OpenAPI** (2.8.13) - Apache License 2.0
-- **JWT (jjwt)** (0.13.0) - Apache License 2.0
 - **PostgreSQL Driver** - BSD License
-- **Jackson** - Apache License 2.0
-- **Google API Client Library** (2.2.0) - Apache License 2.0
-- **Lombok** - MIT License
-- **Feign Client** - Apache License 2.0
+- **JWT (jjwt)** (0.13.0) - Apache License 2.0

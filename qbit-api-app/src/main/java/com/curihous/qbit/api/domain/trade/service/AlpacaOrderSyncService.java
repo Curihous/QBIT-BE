@@ -297,7 +297,11 @@ public class AlpacaOrderSyncService {
             case "pending_new":
             case "accepted":
                 // 상태만 업데이트
-                updateOrderStatus(event);
+                Optional<OrderRequest> orderOpt = orderRequestRepository
+                        .findByAlpacaOrderId(event.getAlpacaOrderId());
+                if (orderOpt.isPresent()) {
+                    updateOrderStatus(event, orderOpt.get());
+                }
                 break;
             default:
                 log.warn("알 수 없는 이벤트: event={}, orderId={}", 
@@ -307,31 +311,47 @@ public class AlpacaOrderSyncService {
     
     // 완전 체결 이벤트 처리
     private void handleFillEvent(TradeUpdateEvent event) {
-        updateOrderStatus(event);
-        updatePortfolio(event);
-        updateTradeCycle(event);
+        OrderRequest order = orderRequestRepository
+                .findByAlpacaOrderIdWithUserAndStock(event.getAlpacaOrderId())
+                .orElseThrow(() -> new QbitException(ErrorCode.ORDER_REQUEST_NOT_FOUND));
+        
+        User user = order.getUser();
+        Stock stock = order.getStock();
+        
+        updateOrderStatus(event, order);
+        updatePortfolio(event, user, stock);
+        updateTradeCycle(event, user, stock, order);
     }
+    
+    // [PERF] 최적화 전 코드
+    // private void handleFillEvent(TradeUpdateEvent event) {
+    //     updateOrderStatus(event);
+    //     updatePortfolio(event);
+    //     updateTradeCycle(event);
+    // }
     
     // 부분 체결 이벤트 처리
     private void handlePartialFillEvent(TradeUpdateEvent event) {
-        updateOrderStatus(event);   
-        updatePortfolio(event);
+        OrderRequest order = orderRequestRepository
+                .findByAlpacaOrderIdWithUserAndStock(event.getAlpacaOrderId())
+                .orElseThrow(() -> new QbitException(ErrorCode.ORDER_REQUEST_NOT_FOUND));
+        
+        User user = order.getUser();
+        Stock stock = order.getStock();
+        
+        updateOrderStatus(event, order);
+        updatePortfolio(event, user, stock);
     }
     
+    // [PERF] 최적화 전 코드
+    // private void handlePartialFillEvent(TradeUpdateEvent event) {
+    //     updateOrderStatus(event);   
+    //     updatePortfolio(event);
+    // }
+    
     // 주문 상태 업데이트
-    private void updateOrderStatus(TradeUpdateEvent event) {
+    private void updateOrderStatus(TradeUpdateEvent event, OrderRequest order) {
         try {
-            Optional<OrderRequest> orderOpt = orderRequestRepository
-                    .findByAlpacaOrderId(event.getAlpacaOrderId());
-            
-            if (orderOpt.isEmpty()) {
-                log.warn("주문을 찾을 수 없음: alpacaOrderId={}", event.getAlpacaOrderId());
-                return;
-            }
-            
-            OrderRequest order = orderOpt.get();
-            
-            // 사용자 검증
             if (!order.getUser().getId().equals(event.getUserId())) {
                 log.error("사용자 불일치: alpacaOrderId={}, expectedUserId={}, actualUserId={}", 
                         event.getAlpacaOrderId(), event.getUserId(), order.getUser().getId());
@@ -342,7 +362,6 @@ public class AlpacaOrderSyncService {
             log.info("주문 상태 업데이트: orderId={}, oldStatus={}, newStatus={}", 
                     order.getId(), order.getStatus(), newStatus);
             
-            // canceledAt, rejectedAt, expiredAt 타임스탬프 누락 방지를 위해 상태별 switch문 사용
             switch (newStatus) {
                 case CANCELED:
                     order.markAsCanceled();
@@ -358,7 +377,6 @@ public class AlpacaOrderSyncService {
                     break;
             }
             
-            // 체결 정보가 있으면 업데이트
             if (event.getFilledQuantity() != null && !event.getFilledQuantity().isEmpty()) {
                 BigDecimal filledQty = parseBigDecimal(event.getFilledQuantity());
                 BigDecimal filledAvgPrice = parseBigDecimal(event.getFilledAvgPrice());
@@ -375,24 +393,66 @@ public class AlpacaOrderSyncService {
         }
     }
     
+    // [PERF] 최적화 전 코드
+    // private void updateOrderStatus(TradeUpdateEvent event) {
+    //     try {
+    //         Optional<OrderRequest> orderOpt = orderRequestRepository
+    //                 .findByAlpacaOrderId(event.getAlpacaOrderId());
+    //         
+    //         if (orderOpt.isEmpty()) {
+    //             log.warn("주문을 찾을 수 없음: alpacaOrderId={}", event.getAlpacaOrderId());
+    //             return;
+    //         }
+    //         
+    //         OrderRequest order = orderOpt.get();
+    //         
+    //         // 사용자 검증
+    //         if (!order.getUser().getId().equals(event.getUserId())) {
+    //             log.error("사용자 불일치: alpacaOrderId={}, expectedUserId={}, actualUserId={}", 
+    //                     event.getAlpacaOrderId(), event.getUserId(), order.getUser().getId());
+    //             return;
+    //         }
+    //         
+    //         OrderStatus newStatus = convertToOrderStatus(event.getEvent());
+    //         log.info("주문 상태 업데이트: orderId={}, oldStatus={}, newStatus={}", 
+    //                 order.getId(), order.getStatus(), newStatus);
+    //         
+    //         // canceledAt, rejectedAt, expiredAt 타임스탬프 누락 방지를 위해 상태별 switch문 사용
+    //         switch (newStatus) {
+    //             case CANCELED:
+    //                 order.markAsCanceled();
+    //                 break;
+    //             case REJECTED:
+    //                 order.markAsRejected();
+    //                 break;
+    //             case EXPIRED:
+    //                 order.markAsExpired();
+    //                 break;
+    //             default:
+    //                 order.updateStatus(newStatus);
+    //                 break;
+    //         }
+    //         
+    //         // 체결 정보가 있으면 업데이트
+    //         if (event.getFilledQuantity() != null && !event.getFilledQuantity().isEmpty()) {
+    //             BigDecimal filledQty = parseBigDecimal(event.getFilledQuantity());
+    //             BigDecimal filledAvgPrice = parseBigDecimal(event.getFilledAvgPrice());
+    //             OffsetDateTime filledAt = parseOffsetDateTime(event.getFilledAt());
+    //             
+    //             order.updateFilledInfo(filledQty, filledAvgPrice, filledAt);
+    //         }
+    //         
+    //         orderRequestRepository.save(order);
+    //         
+    //     } catch (Exception e) {
+    //         log.error("주문 상태 업데이트 실패: alpacaOrderId={}, error={}", 
+    //                 event.getAlpacaOrderId(), e.getMessage(), e);
+    //     }
+    // }
+    
     // Portfolio 업데이트
-    private void updatePortfolio(TradeUpdateEvent event) {
+    private void updatePortfolio(TradeUpdateEvent event, User user, Stock stock) {
         try {
-            Optional<User> userOpt = userRepository.findById(event.getUserId());
-            if (userOpt.isEmpty()) {
-                log.error("사용자를 찾을 수 없음: userId={}", event.getUserId());
-                return;
-            }
-            
-            Optional<Stock> stockOpt = stockRepository.findBySymbol(event.getSymbol());
-            if (stockOpt.isEmpty()) {
-                log.error("종목을 찾을 수 없음: symbol={}", event.getSymbol());
-                return;
-            }
-            
-            User user = userOpt.get();
-            Stock stock = stockOpt.get();
-            
             BigDecimal quantity = parseBigDecimal(event.getEventQuantity());
             BigDecimal price = parseBigDecimal(event.getEventPrice());
             
@@ -410,38 +470,47 @@ public class AlpacaOrderSyncService {
         }
     }
     
+    // [PERF] 최적화 전 코드
+    // private void updatePortfolio(TradeUpdateEvent event) {
+    //     try {
+    //         Optional<User> userOpt = userRepository.findById(event.getUserId());
+    //         if (userOpt.isEmpty()) {
+    //             log.error("사용자를 찾을 수 없음: userId={}", event.getUserId());
+    //             return;
+    //         }
+    //         
+    //         Optional<Stock> stockOpt = stockRepository.findBySymbol(event.getSymbol());
+    //         if (stockOpt.isEmpty()) {
+    //             log.error("종목을 찾을 수 없음: symbol={}", event.getSymbol());
+    //             return;
+    //         }
+    //         
+    //         User user = userOpt.get();
+    //         Stock stock = stockOpt.get();
+    //         
+    //         BigDecimal quantity = parseBigDecimal(event.getEventQuantity());
+    //         BigDecimal price = parseBigDecimal(event.getEventPrice());
+    //         
+    //         Optional<Portfolio> portfolioOpt = portfolioRepository.findByUserAndStock(user, stock);
+    //         
+    //         if ("buy".equalsIgnoreCase(event.getSide())) {
+    //             handleBuy(portfolioOpt, user, stock, quantity, price);
+    //         } else if ("sell".equalsIgnoreCase(event.getSide())) {
+    //             handleSell(portfolioOpt, user, stock, quantity, price);
+    //         }
+    //         
+    //     } catch (Exception e) {
+    //         log.error("Portfolio 업데이트 실패: userId={}, symbol={}, error={}", 
+    //                 event.getUserId(), event.getSymbol(), e.getMessage(), e);
+    //     }
+    // }
+    
     // TradeCycle 업데이트
-    private void updateTradeCycle(TradeUpdateEvent event) {
+    private void updateTradeCycle(TradeUpdateEvent event, User user, Stock stock, OrderRequest order) {
         try {
-            Optional<User> userOpt = userRepository.findById(event.getUserId());
-            if (userOpt.isEmpty()) {
-                log.error("사용자를 찾을 수 없음: userId={}", event.getUserId());
-                return;
-            }
-            
-            Optional<Stock> stockOpt = stockRepository.findBySymbol(event.getSymbol());
-            if (stockOpt.isEmpty()) {
-                log.error("종목을 찾을 수 없음: symbol={}", event.getSymbol());
-                return;
-            }
-            
-            User user = userOpt.get();
-            Stock stock = stockOpt.get();
-            
             BigDecimal filledQty = parseBigDecimal(event.getFilledQuantity());
             BigDecimal filledAvgPrice = parseBigDecimal(event.getFilledAvgPrice());
             OffsetDateTime filledAt = parseOffsetDateTime(event.getFilledAt());
-            
-            Optional<OrderRequest> orderOpt = orderRequestRepository
-                    .findByAlpacaOrderId(event.getAlpacaOrderId());
-
-            if (orderOpt.isEmpty()) {
-                log.warn("OrderRequest를 찾을 수 없어 TradeCycle 업데이트 건너뜀: alpacaOrderId={}",
-                        event.getAlpacaOrderId());
-                return;
-            }
-
-            OrderRequest order = orderOpt.get();
 
             if ("buy".equalsIgnoreCase(event.getSide())) {
                 handleBuyTradeCycle(user, stock, filledQty, filledAvgPrice, filledAt, order);
@@ -454,6 +523,51 @@ public class AlpacaOrderSyncService {
                     event.getUserId(), event.getSymbol(), e.getMessage(), e);
         }
     }
+    
+    // [PERF] 최적화 전 코드
+    // private void updateTradeCycle(TradeUpdateEvent event) {
+    //     try {
+    //         Optional<User> userOpt = userRepository.findById(event.getUserId());
+    //         if (userOpt.isEmpty()) {
+    //             log.error("사용자를 찾을 수 없음: userId={}", event.getUserId());
+    //             return;
+    //         }
+    //         
+    //         Optional<Stock> stockOpt = stockRepository.findBySymbol(event.getSymbol());
+    //         if (stockOpt.isEmpty()) {
+    //             log.error("종목을 찾을 수 없음: symbol={}", event.getSymbol());
+    //             return;
+    //         }
+    //         
+    //         User user = userOpt.get();
+    //         Stock stock = stockOpt.get();
+    //         
+    //         BigDecimal filledQty = parseBigDecimal(event.getFilledQuantity());
+    //         BigDecimal filledAvgPrice = parseBigDecimal(event.getFilledAvgPrice());
+    //         OffsetDateTime filledAt = parseOffsetDateTime(event.getFilledAt());
+    //         
+    //         Optional<OrderRequest> orderOpt = orderRequestRepository
+    //                 .findByAlpacaOrderId(event.getAlpacaOrderId());
+    //
+    //         if (orderOpt.isEmpty()) {
+    //             log.warn("OrderRequest를 찾을 수 없어 TradeCycle 업데이트 건너뜀: alpacaOrderId={}",
+    //                     event.getAlpacaOrderId());
+    //             return;
+    //         }
+    //
+    //         OrderRequest order = orderOpt.get();
+    //
+    //         if ("buy".equalsIgnoreCase(event.getSide())) {
+    //             handleBuyTradeCycle(user, stock, filledQty, filledAvgPrice, filledAt, order);
+    //         } else if ("sell".equalsIgnoreCase(event.getSide())) {
+    //             handleSellTradeCycle(user, stock, filledQty, filledAvgPrice, filledAt, order);
+    //         }
+    //         
+    //     } catch (Exception e) {
+    //         log.error("TradeCycle 업데이트 실패: userId={}, symbol={}, error={}", 
+    //                 event.getUserId(), event.getSymbol(), e.getMessage(), e);
+    //     }
+    // }
     
     // === 헬퍼 메서드 ===
     

@@ -1,0 +1,95 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/qbit_dev
+    username: ${DB_USERNAME_DEV}
+    password: ${DB_PASSWORD_DEV}
+    driver-class-name: org.postgresql.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO_DEV}
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  
+  data:
+    redis:
+      host: ${REDIS_HOST_DEV}
+      port: ${REDIS_PORT_DEV}
+      password: ${REDIS_PASSWORD_DEV}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+  
+  cache:
+    type: redis
+    redis:
+      time-to-live: 60000  # 기본 TTL: 1분 (개별 캐시 TTL은 CacheConfig에서 설정)
+
+# JWT 
+jwt:
+  secret:
+    access: ${JWT_ACCESS_SECRET_DEV}
+    refresh: ${JWT_REFRESH_SECRET_DEV}
+
+# 암호화 설정
+encryption:
+  secret-key: ${ENCRYPTION_SECRET_KEY:dkfajsldcnsdkvnlsadkjfasiefskdnv}
+
+# Google OAuth2 설정
+oauth2:
+  google:
+    client-id: ${GOOGLE_OAUTH_CLIENT_ID}
+
+# Alpaca OAuth 설정
+alpaca:
+  oauth:
+    client-id: ${ALPACA_OAUTH_CLIENT_ID}
+    client-secret: ${ALPACA_OAUTH_CLIENT_SECRET}
+    redirect-uri: http://localhost:8080/auth/alpaca/callback
+    authorization-url: https://app.alpaca.markets/oauth/authorize
+    token-url: https://api.alpaca.markets/oauth/token
+  paper-trading:
+    base-url: https://paper-api.alpaca.markets
+
+# OAuth State 보안 설정
+oauth:
+  state:
+    secret: ${OAUTH_STATE_SECRET}
+
+# 주식 및 암호화폐 동기화 설정
+stock:
+  sync:
+    on: ${STOCK_SYNC_ON}  # 강제 동기화
+    us-equity: ${STOCK_SYNC_US_EQUITY}  # 미국 주식 동기화 활성화
+    crypto: ${STOCK_SYNC_CRYPTO}  # 암호화폐 동기화 활성화
+
+# Massive.io (Polygon.io)
+massive:
+  api-key: ${MASSIVE_API_KEY}
+
+sp500:
+  json-url: ${SP500_JSON_URL}
+
+logging:
+  level:
+    com.curihous.qbit: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.springframework.data.redis: DEBUG
+    org.springframework.security: DEBUG
+
+# Swagger
+springdoc:
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+  api-docs:
+    enabled: true
+    path: /api-docs
